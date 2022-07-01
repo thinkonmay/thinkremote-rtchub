@@ -2,6 +2,9 @@ package datachannel
 
 
 
-type Datachannel struct {
 	
+type Datachannel interface {
+	Open(port int);
+	Write(data []byte, err error);
+	Close();
 }

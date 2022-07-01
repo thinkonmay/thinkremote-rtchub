@@ -9,7 +9,7 @@ import (
 
 type Proxy struct {
 	listeners []listener.Listener
-	datachannels []*datachannel.Datachannel
+	datachannels []datachannel.Datachannel
 	signallingClient signalling.Signalling
 	webrtcClient *webrtc.WebRTCClient
 }
