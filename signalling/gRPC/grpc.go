@@ -3,9 +3,12 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"strconv"
 
+	"github.com/pigeatgarlic/webrtc-proxy/signalling"
 	"github.com/pigeatgarlic/webrtc-proxy/signalling/gRPC/packet"
 	"github.com/pigeatgarlic/webrtc-proxy/util/config"
+	"github.com/pion/webrtc/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -15,12 +18,17 @@ type GRPCclient struct {
 	conn *grpc.ClientConn
 
 	stream packet.StreamServiceClient
+	client packet.StreamService_StreamRequestClient
+	requestCount int
 
+	sdpChan chan *webrtc.SessionDescription
+	iceChan chan *webrtc.ICECandidateInit
 }
 
 
-func InitGRPCClient (conf *config.GrpcConfig) (ret *GRPCclient, err error) {
-	ret = &GRPCclient{};
+func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
+	ret.sdpChan = make(chan *webrtc.SessionDescription)
+	ret.iceChan = make(chan *webrtc.ICECandidateInit)
 	ret.conn,err = grpc.Dial(
 		fmt.Sprintf("%s:%d",conf.ServerAddress,conf.Port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -30,22 +38,100 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret *GRPCclient, err error) {
 
 
 	ret.stream = packet.NewStreamServiceClient(ret.conn);
-	ret.stream.StreamRequest(context.Background())
+	ret.client,err = ret.stream.StreamRequest(context.Background())
+	if err != nil {
+		return;
+	}
+
+	ret.requestCount = 0;
+	go func() {
+		for {
+			res,err := ret.client.Recv()
+			if err != nil || len(res.Error) != 0 {
+				fmt.Println(res.Error);
+			}
+			if res.Data["Target"] == "SDP" {
+				var sdp webrtc.SessionDescription;	
+
+				sdp.SDP		= res.Data["SDP"];
+				Type,_		:= strconv.Atoi(res.Data["Type"]);
+				sdp.Type	= webrtc.SDPType(Type);
+
+				ret.sdpChan <- &sdp;
+			} else if res.Data["Target"] == "ICE" {
+				var ice webrtc.ICECandidateInit;
+
+				ice.Candidate  =	res.Data["Candidate"] 
+				SDPMid        :=	res.Data["SDPMid"] 
+				ice.SDPMid     = 	&SDPMid;
+
+				LineIndex,_ 	 :=	strconv.Atoi(res.Data["SDPMLineIndex"])
+				LineIndexint	 := uint16(LineIndex)
+				ice.SDPMLineIndex = &LineIndexint;			
+
+				ret.iceChan <- &ice;
+			} else {
+				fmt.Println("Unknown packet");
+			}
+		}	
+	}()
 	return;
 }
 
-func (client *GRPCclient) SendSDP() {
+func (client *GRPCclient) SendSDP(desc *webrtc.SessionDescription) error {
+	req := packet.UserRequest{
+		Id: (int64) (client.requestCount),
+		Target: "SDP",
+		Headers: map[string]string{
+			"Authorization": "token",
+		},
+		Data: map[string]string{
+			"SDP": desc.SDP,
+			"Type": desc.Type.String(),
+		},
+	}
+	if err := client.client.Send(&req); err != nil {
+		return err;
+	}
+	client.requestCount++;
+	return nil;
+}
+
+func (client *GRPCclient) SendICE(ice *webrtc.ICECandidateInit) error {
+	req := packet.UserRequest{
+		Id: (int64) (client.requestCount),
+		Target: "ICE",
+		Headers: map[string]string{
+			"Authorization": "token",
+		},
+		Data: map[string]string{
+			"Candidate":     ice.Candidate,
+			"SDPMid":        *ice.SDPMid,
+			"SDPMLineIndex": fmt.Sprintf("%d",*ice.SDPMLineIndex),
+		},
+	}
+	if err := client.client.Send(&req); err != nil {
+		return err;
+	}
+	client.requestCount++;
+	return nil;
 
 }
 
-func (client *GRPCclient) SendICE() {
-
+func (client *GRPCclient) OnICE(fun signalling.OnIceFunc) {
+	go func() {
+		for {
+			ice := <- client.iceChan;
+			fun(ice);
+		}
+	}()
 }
 
-func (client *GRPCclient) OnICE() {
-
-}
-
-func (client *GRPCclient) OnSDP() {
-
+func (client *GRPCclient) OnSDP(fun signalling.OnSDPFunc) {
+	go func() {
+		for {
+			sdp := <- client.sdpChan;
+			fun(sdp);
+		}
+	}()
 }

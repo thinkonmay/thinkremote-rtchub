@@ -1,9 +1,13 @@
 package listener
 
+import "github.com/pigeatgarlic/webrtc-proxy/util/config"
 
+type OnCloseFunc func(lis Listener)
 
 type Listener interface {
-	Open(port int);
-	Read() (size int, data []byte, err error);
-	Close();
+	ReadConfig() *config.ListenerConfig
+	Open()
+	Read() (size int, data []byte)
+	OnClose(fun OnCloseFunc)
+	Close()
 }
