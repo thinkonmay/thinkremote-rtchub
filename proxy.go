@@ -7,6 +7,8 @@ import (
 	datachannel "github.com/pigeatgarlic/webrtc-proxy/data-channel"
 	"github.com/pigeatgarlic/webrtc-proxy/listener"
 	"github.com/pigeatgarlic/webrtc-proxy/listener/udp"
+	udpbr "github.com/pigeatgarlic/webrtc-proxy/broadcaster/udp"
+
 	"github.com/pigeatgarlic/webrtc-proxy/signalling"
 	grpc "github.com/pigeatgarlic/webrtc-proxy/signalling/gRPC"
 	"github.com/pigeatgarlic/webrtc-proxy/util/config"
@@ -16,10 +18,10 @@ import (
 
 type Proxy struct {
 	listeners []listener.Listener
-	broadcaster []broadcaster.Broadcaster
 	datachannels []datachannel.Datachannel
 	signallingClient signalling.Signalling
 	webrtcClient *webrtc.WebRTCClient
+	started bool
 }
 
 
@@ -27,9 +29,10 @@ type Proxy struct {
 func InitWebRTCProxy(sock *config.WebsocketConfig,
 					 grpc_conf *config.GrpcConfig,
 					 webrtc_conf *config.WebRTCConfig,
-					 lis  []*config.ListenerConfig) (prox Proxy, err error) {
-	
-	var proxy Proxy;					
+					 br_conf []*config.BroadcasterConfig,
+					 lis  []*config.ListenerConfig) (proxy *Proxy, err error) {
+	proxy = &Proxy{}	
+	proxy.started = false;
 	for _,lis_conf := range lis {
 		if lis_conf.Protocol == "udp" {
 			var udpLis udp.UDPListener;
@@ -37,6 +40,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 			if err != nil {
 				return;	
 			}
+			fmt.Printf("added listener\n");
 			proxy.listeners = append(proxy.listeners, &udpLis);
 		}else if lis_conf.Protocol == "tpc" {
 			err = fmt.Errorf("Unimplemented");
@@ -59,7 +63,36 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 		return;
 	}
 
-	proxy.webrtcClient,err = webrtc.InitWebRtcClient(*webrtc_conf);
+	proxy.webrtcClient,err = webrtc.InitWebRtcClient(func(tr *webrtclib.TrackRemote) (br broadcaster.Broadcaster, err error) {
+		for _,conf := range br_conf {
+			if tr.Codec().MimeType == conf.Codec {
+				if conf.Protocol == "udp" {
+					br,err = udpbr.NewUDPBroadcaster(conf);
+					return;
+				}	
+			}
+		}
+
+		err = fmt.Errorf("unimplemented broadcaster");
+		return;
+	},*webrtc_conf);
+	if err != nil {
+		panic(err);
+	}
+
+	go func ()  {
+		proxy.signallingClient.WaitForStart()
+		if proxy.started == false {
+			proxy.Start()
+		}
+	}()
+	go func ()  {
+		proxy.webrtcClient.WaitConnected()
+		if proxy.started == false {
+			proxy.Start()
+		}
+	}()
+
 	go func() {
 		for {
 			proxy.signallingClient.SendICE(proxy.webrtcClient.OnLocalICE())		
@@ -79,6 +112,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	return;
 }
 
-func (prox *Proxy) Start () {
+func (prox *Proxy) Start() {
+	prox.started = true;
 	prox.webrtcClient.ListenRTP(prox.listeners);	
 }

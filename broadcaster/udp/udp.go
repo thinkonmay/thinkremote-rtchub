@@ -20,7 +20,8 @@ type UDPBroadcaster struct {
 }
 
 
-func NewUDPBroadcaster(config *config.BroadcasterConfig) (udp UDPBroadcaster, err error) {
+func NewUDPBroadcaster(config *config.BroadcasterConfig) (udp *UDPBroadcaster, err error) {
+	udp = &UDPBroadcaster{}
 	udp.config = config;
 	udp.bufferSize = config.BufferSize;
 	udp.port = config.Port;

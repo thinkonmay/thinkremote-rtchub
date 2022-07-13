@@ -23,12 +23,14 @@ type GRPCclient struct {
 
 	sdpChan chan *webrtc.SessionDescription
 	iceChan chan *webrtc.ICECandidateInit
+	startChan chan bool
 }
 
 
 func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 	ret.sdpChan = make(chan *webrtc.SessionDescription)
 	ret.iceChan = make(chan *webrtc.ICECandidateInit)
+	ret.startChan = make(chan bool)
 	ret.conn,err = grpc.Dial(
 		fmt.Sprintf("%s:%d",conf.ServerAddress,conf.Port),
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -54,9 +56,9 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 				var sdp webrtc.SessionDescription;	
 
 				sdp.SDP		= res.Data["SDP"];
-				Type,_		:= strconv.Atoi(res.Data["Type"]);
-				sdp.Type	= webrtc.SDPType(Type);
+				sdp.Type	= webrtc.NewSDPType(res.Data["Type"]);
 
+				fmt.Printf("SDP received: %s\n",res.Data["Type"])
 				ret.sdpChan <- &sdp;
 			} else if res.Data["Target"] == "ICE" {
 				var ice webrtc.ICECandidateInit;
@@ -69,7 +71,10 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 				LineIndexint	 := uint16(LineIndex)
 				ice.SDPMLineIndex = &LineIndexint;			
 
+				fmt.Printf("ICE received\n")
 				ret.iceChan <- &ice;
+			} else if res.Data["Target"] == "START" {
+				ret.startChan <- true;
 			} else {
 				fmt.Println("Unknown packet");
 			}
@@ -90,6 +95,7 @@ func (client *GRPCclient) SendSDP(desc *webrtc.SessionDescription) error {
 			"Type": desc.Type.String(),
 		},
 	}
+	fmt.Printf("SDP send %s\n",req.Data["Type"])
 	if err := client.client.Send(&req); err != nil {
 		return err;
 	}
@@ -110,6 +116,7 @@ func (client *GRPCclient) SendICE(ice *webrtc.ICECandidateInit) error {
 			"SDPMLineIndex": fmt.Sprintf("%d",*ice.SDPMLineIndex),
 		},
 	}
+	fmt.Printf("ICE sent: %s\n",req.Data["Candidate"]);
 	if err := client.client.Send(&req); err != nil {
 		return err;
 	}
@@ -134,4 +141,8 @@ func (client *GRPCclient) OnSDP(fun signalling.OnSDPFunc) {
 			fun(sdp);
 		}
 	}()
+}
+
+func (client *GRPCclient) WaitForStart(){
+	<- client.startChan;
 }

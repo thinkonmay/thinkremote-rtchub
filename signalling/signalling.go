@@ -11,4 +11,5 @@ type Signalling interface {
 	SendICE(*webrtc.ICECandidateInit) error;
 	OnICE(OnIceFunc);
 	OnSDP(OnSDPFunc);
+	WaitForStart();
 }
