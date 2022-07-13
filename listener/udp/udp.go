@@ -1,6 +1,7 @@
 package udp
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/pigeatgarlic/webrtc-proxy/listener"
@@ -15,7 +16,7 @@ type UDPListener struct {
 	buffer []byte
 	bufferSize int
 
-	packetChannel chan incomingPacket
+	packetChannel chan *incomingPacket
 	closeChannel chan bool
 	closed bool
 }
@@ -38,7 +39,7 @@ func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) 
 	}
 	udp.buffer = make([]byte, udp.bufferSize);
 	udp.closeChannel = make(chan bool);
-	udp.packetChannel = make(chan incomingPacket);
+	udp.packetChannel = make(chan *incomingPacket);
 	udp.closed = true;
 	return;
 }
@@ -53,13 +54,17 @@ func (udp *UDPListener)	Open() {
 
 		for {
 			size, _, err := udp.conn.ReadFrom(udp.buffer)
-			if err != nil || udp.closed {
+			if err != nil {
+				fmt.Printf("udp error: %s\n",err)
+				continue;
+			}
+			if udp.closed {
 				return;
 			}
 			var packet incomingPacket;
 			packet.size = size;
 			packet.data = udp.buffer[:size];
-			udp.packetChannel <- packet;
+			udp.packetChannel <- &packet;
 		}
 	}();
 }

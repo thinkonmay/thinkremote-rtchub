@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/pigeatgarlic/webrtc-proxy/broadcaster"
+	udpbr "github.com/pigeatgarlic/webrtc-proxy/broadcaster/udp"
 	datachannel "github.com/pigeatgarlic/webrtc-proxy/data-channel"
 	"github.com/pigeatgarlic/webrtc-proxy/listener"
 	"github.com/pigeatgarlic/webrtc-proxy/listener/udp"
-	udpbr "github.com/pigeatgarlic/webrtc-proxy/broadcaster/udp"
 
 	"github.com/pigeatgarlic/webrtc-proxy/signalling"
 	grpc "github.com/pigeatgarlic/webrtc-proxy/signalling/gRPC"

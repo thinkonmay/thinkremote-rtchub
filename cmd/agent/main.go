@@ -23,7 +23,7 @@ func main() {
 			BufferSize: 1028,
 
 			Type: "video",
-			Name: "rtp",
+			Name: "rtp2",
 			Codec: webrtc.MimeTypeH264,
 		},
 	}
@@ -34,15 +34,15 @@ func main() {
 			BufferSize: 1028,
 
 			Type: "video",
-			Name: "rtp",
+			Name: "rtp2",
 			Codec: webrtc.MimeTypeH264,
 		},
 	}
 
-	shutdown := make(chan bool);
 	_,err := proxy.InitWebRTCProxy(nil,&grpc,&rtc,br,lis);
 	if err != nil {
 		panic(err);
 	}
-	<-shutdown;
+	shut := make(chan bool)
+	<- shut
 }

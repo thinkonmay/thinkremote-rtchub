@@ -20,7 +20,7 @@ func main() {
 		&config.BroadcasterConfig{
 			Port: 5000,
 			Protocol: "udp",
-			BufferSize: 1028,
+			BufferSize: 10000,
 
 			Type: "video",
 			Name: "rtp",
@@ -31,7 +31,7 @@ func main() {
 		&config.ListenerConfig{
 			Port: 6001,
 			Protocol: "udp",
-			BufferSize: 1028,
+			BufferSize: 10000,
 
 			Type: "video",
 			Name: "rtp",
@@ -39,10 +39,10 @@ func main() {
 		},
 	}
 
-	shutdown := make(chan bool);
 	_,err := proxy.InitWebRTCProxy(nil,&grpc,&rtc,br,lis);
 	if err != nil {
 		panic(err);
 	}
-	<-shutdown;
+	shut := make(chan bool)
+	<- shut
 }

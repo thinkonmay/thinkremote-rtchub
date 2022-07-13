@@ -1,12 +1,15 @@
 package webrtc
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/pigeatgarlic/webrtc-proxy/broadcaster"
 	"github.com/pigeatgarlic/webrtc-proxy/listener"
 	"github.com/pigeatgarlic/webrtc-proxy/util/config"
+	"github.com/pion/rtcp"
 	webrtc "github.com/pion/webrtc/v3"
 )
 
@@ -16,7 +19,7 @@ type WebRTCClient struct {
 	conn *webrtc.PeerConnection
 
 
-	mediaTracks []*webrtc.TrackLocalStaticSample
+	mediaTracks []*webrtc.TrackLocalStaticRTP
 	dataChannels []*webrtc.DataChannel
 
 	fromSdpChannel chan(*webrtc.SessionDescription)
@@ -38,7 +41,7 @@ func InitWebRtcClient(track OnTrackFunc,conf config.WebRTCConfig) (client *WebRT
 	client.fromIceChannel 	= make(chan *webrtc.ICECandidateInit)
 	client.connected		= make(chan bool)
 
-	client.mediaTracks 		= make([]*webrtc.TrackLocalStaticSample, 0)
+	client.mediaTracks 		= make([]*webrtc.TrackLocalStaticRTP, 0)
 
 	
 	client.onTrack = track;
@@ -84,35 +87,38 @@ func InitWebRtcClient(track OnTrackFunc,conf config.WebRTCConfig) (client *WebRT
 		fmt.Printf("%s\n",is.String());
 	})
 
-	client.conn.OnTrack(func(tr *webrtc.TrackRemote, r *webrtc.RTPReceiver) {
-		fmt.Printf("new track\n");
-		br,err := client.onTrack(tr);
-		conf := br.ReadConfig()
-		buffer := make([]byte,conf.BufferSize);
-		shutdown := make(chan bool);
+	client.conn.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 		go func() {
-			defer func ()  {
-				br.Close();	
-			}();
-			for {
-				switch {
-				case <-shutdown:
-					return;
-				default:
-					var count int;
-					count,_,err = r.Read(buffer);
-					if err != nil {
-						fmt.Printf("%v",err);
-						return;
-					}
-					err = br.Write(count,buffer)
+			ticker := time.NewTicker(time.Second * 3)
+			for range ticker.C {
+				rtcpSendErr := client.conn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
+				if rtcpSendErr != nil {
+					fmt.Println(rtcpSendErr)
 				}
 			}
 		}()
 
-		br.OnClose(func(lis broadcaster.Broadcaster) {
-			shutdown <- true;
-		})
+		br,err := client.onTrack(track);
+		if err != nil {
+			panic(err);	
+		}
+
+		fmt.Printf("new track: %s\n\n",br.ReadConfig().Name);
+		go func() {
+			buf := make([]byte, 100000);
+			for {
+				packet,_,err :=track.ReadRTP();
+				if err != nil {
+					fmt.Printf("%v",err);	
+				}		
+				size, err := packet.MarshalTo(buf);
+				if err != nil {
+					fmt.Printf("%v",err);	
+				}		
+				// TODO
+				br.Write(size,buf);
+			}
+		}()
 	})
 
 	go func() {
@@ -164,7 +170,7 @@ func InitWebRtcClient(track OnTrackFunc,conf config.WebRTCConfig) (client *WebRT
 		dc.OnOpen(func() {
 			for {
 				dc.SendText("hello from peer\n")
-				time.Sleep(time.Second)	
+				time.Sleep(10 * time.Second)	
 			}
 		})
 	})
@@ -174,8 +180,6 @@ func InitWebRtcClient(track OnTrackFunc,conf config.WebRTCConfig) (client *WebRT
 }
 
 func (client *WebRTCClient)	ListenRTP(listeners []listener.Listener) {
-	var err error;
-
 	fmt.Printf("added datachannel\n");
 	channel, err := client.conn.CreateDataChannel("data", nil)
 	if err != nil {
@@ -186,18 +190,22 @@ func (client *WebRTCClient)	ListenRTP(listeners []listener.Listener) {
 		})
 	}
 
-
-	client.dataChannels = append(client.dataChannels, channel);
+	client.dataChannels = append(client.dataChannels, channel)
 
 	for _,lis := range listeners{
 		listenerConfig := lis.ReadConfig();
-		var track *webrtc.TrackLocalStaticSample;
+		var track *webrtc.TrackLocalStaticRTP;
 		var rtpSender *webrtc.RTPSender;
 
-		track, err = webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{
-				MimeType: listenerConfig.Codec,
-			}, listenerConfig.Type, listenerConfig.Name);
-		fmt.Printf("addded track\n");
+		track, err = webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
+			MimeType: listenerConfig.Codec,
+		}, listenerConfig.Type, listenerConfig.Name);
+		if err != nil {
+			panic(err);
+		}
+		
+
+		fmt.Printf("added track\n");
 		rtpSender,err = client.conn.AddTrack(track);
 		if err != nil {
 			panic(err);
@@ -213,21 +221,26 @@ func (client *WebRTCClient)	ListenRTP(listeners []listener.Listener) {
 				}
 			}
 		}()
+
 		client.mediaTracks = append(client.mediaTracks, track);
 	}
 
-	// for index,track := range client.mediaTracks {
-	// 	go func() {
-	// 		n,data := listeners[index].Read()
-	// 		if _, err = track.WriteSample(media.Sample{Data: }); err != nil {
-	// 			if errors.Is(err, io.ErrClosedPipe) {
-	// 				// The peerConnection has been closed.
-	// 				return;
-	// 			}
-	// 			panic(err);
-	// 		}
-	// 	}()
-	// }
+	for index,track := range client.mediaTracks {
+		listeners[index].Open();
+		go func() {
+			for {
+				size, dat := listeners[index].Read();
+				if _, err = track.Write(dat[:size]); err != nil {
+					if errors.Is(err, io.ErrClosedPipe) {
+						// The peerConnection has been closed.
+						return
+					}
+
+					panic(err)
+				}
+			}
+		}()
+	}
 }
 
 func (client *WebRTCClient)	WaitConnected() {
