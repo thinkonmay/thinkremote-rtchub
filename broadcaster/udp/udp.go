@@ -37,6 +37,7 @@ func NewUDPBroadcaster(config *config.BroadcasterConfig) (udp *UDPBroadcaster, e
 
 
 func (udp *UDPBroadcaster) Write(size int, data []byte) error {
+	fmt.Printf("writting buffer size %d\n",size);
 	str := string(data[:size]);
 	written,err := fmt.Fprintf(udp.conn,str);
 	if written != size {
