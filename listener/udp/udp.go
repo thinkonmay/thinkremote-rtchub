@@ -6,6 +6,7 @@ import (
 
 	"github.com/pigeatgarlic/webrtc-proxy/listener"
 	"github.com/pigeatgarlic/webrtc-proxy/util/config"
+	"github.com/pion/rtp"
 )
 
 type UDPListener struct {
@@ -16,15 +17,11 @@ type UDPListener struct {
 	buffer []byte
 	bufferSize int
 
-	packetChannel chan *incomingPacket
+	packetChannel chan *rtp.Packet
 	closeChannel chan bool
 	closed bool
 }
 
-type incomingPacket struct {
-	size int
-	data []byte
-}
 
 func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) {
 	udp.config = config;
@@ -39,7 +36,7 @@ func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) 
 	}
 	udp.buffer = make([]byte, udp.bufferSize);
 	udp.closeChannel = make(chan bool);
-	udp.packetChannel = make(chan *incomingPacket);
+	udp.packetChannel = make(chan *rtp.Packet);
 	udp.closed = true;
 	return;
 }
@@ -61,19 +58,20 @@ func (udp *UDPListener)	Open() {
 			if udp.closed {
 				return;
 			}
-			var packet incomingPacket;
-			packet.size = size;
-			packet.data = udp.buffer[:size];
-			udp.packetChannel <- &packet;
+			pk := rtp.Packet{}
+
+			pk.Unmarshal(udp.buffer[:size])
+
+			fmt.Printf("got %dbyte from port %d\n", size, udp.port)
+			fmt.Printf("GOT %s\n", pk.String())
+
+			udp.packetChannel <- &pk;
 		}
 	}();
 }
 
-func (udp *UDPListener) Read() (size int, data []byte) {
-	packet := <-udp.packetChannel;
-	size = packet.size;
-	data = packet.data;
-	return;
+func (udp *UDPListener) Read() *rtp.Packet {
+	return <-udp.packetChannel;
 }
 
 func (udp *UDPListener)	Close() {

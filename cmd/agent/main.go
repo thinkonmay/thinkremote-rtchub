@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"time"
+
 	proxy "github.com/pigeatgarlic/webrtc-proxy"
 	"github.com/pigeatgarlic/webrtc-proxy/util/config"
 	"github.com/pion/webrtc/v3"
@@ -20,7 +23,7 @@ func main() {
 		&config.BroadcasterConfig{
 			Port: 5001,
 			Protocol: "udp",
-			BufferSize: 1028,
+			BufferSize: 10000,
 
 			Type: "video",
 			Name: "rtp2",
@@ -31,7 +34,7 @@ func main() {
 		&config.ListenerConfig{
 			Port: 6000,
 			Protocol: "udp",
-			BufferSize: 1028,
+			BufferSize: 10000,
 
 			Type: "video",
 			Name: "rtp2",
@@ -39,7 +42,27 @@ func main() {
 		},
 	}
 
-	_,err := proxy.InitWebRTCProxy(nil,&grpc,&rtc,br,lis);
+	chans := map[string]* config.DataChannelConfig {
+		"test": &config.DataChannelConfig{
+			Recv: make(chan string),
+			Send: make(chan string),
+		},
+	}
+
+	go func() {
+		for {
+			time.Sleep(1 * time.Second);
+			chans["test"].Send <-"test";
+		}	
+	}()
+	go func() {
+		for {
+			str := <-chans["test"].Recv
+			fmt.Sprintf("%s\n",str);
+		}	
+	}()
+
+	_,err := proxy.InitWebRTCProxy(nil,&grpc,&rtc,br,chans,lis);
 	if err != nil {
 		panic(err);
 	}

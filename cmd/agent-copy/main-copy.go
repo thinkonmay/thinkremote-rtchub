@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"time"
+
 	proxy "github.com/pigeatgarlic/webrtc-proxy"
 	"github.com/pigeatgarlic/webrtc-proxy/util/config"
 	"github.com/pion/webrtc/v3"
@@ -37,9 +40,30 @@ func main() {
 			Name: "rtp",
 			Codec: webrtc.MimeTypeH264,
 		},
+	};
+
+	chans := map[string]* config.DataChannelConfig {
+		"test": &config.DataChannelConfig{
+			Recv: make(chan string),
+			Send: make(chan string),
+		},
 	}
 
-	_,err := proxy.InitWebRTCProxy(nil,&grpc,&rtc,br,lis);
+	go func() {
+		for {
+			time.Sleep(1 * time.Second);
+			chans["test"].Send <-"test";
+		}	
+	}()
+	go func() {
+		for {
+			str := <-chans["test"].Recv
+			fmt.Printf("%s\n",str);
+		}	
+	}()
+
+
+	_,err := proxy.InitWebRTCProxy(nil,&grpc,&rtc,br,chans,lis);
 	if err != nil {
 		panic(err);
 	}

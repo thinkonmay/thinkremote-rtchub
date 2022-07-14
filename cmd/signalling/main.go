@@ -91,7 +91,7 @@ func (server *SignallingServer) StreamRequest(client packet.StreamService_Stream
 			select{
 			case <-shutdown:
 				return;
-			case req := <- this:	
+			case req := <-this:	
 				var res packet.UserResponse;
 
 				res.Id = req.Id;
@@ -105,6 +105,7 @@ func (server *SignallingServer) StreamRequest(client packet.StreamService_Stream
 				}
 			default:
 			}
+			time.Sleep(time.Microsecond * 100)
 		}
 	}()
 

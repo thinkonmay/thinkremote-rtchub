@@ -36,3 +36,10 @@ type BroadcasterConfig struct {
 	Name  string
 	Codec string
 }
+
+
+
+type DataChannelConfig struct {
+	Send chan string
+	Recv chan string
+}

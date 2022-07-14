@@ -26,6 +26,7 @@ require (
 	github.com/pions/pkg v0.0.0-20181115215726-b60cd756f712 // indirect
 	github.com/pions/webrtc v1.2.0 // indirect
 	github.com/pkg/errors v0.8.0 // indirect
+	gocv.io/x/gocv v0.31.0 // indirect
 	golang.org/x/crypto v0.0.0-20220516162934-403b01795ae8 // indirect
 	golang.org/x/net v0.0.0-20220531201128-c960675eff93 // indirect
 	golang.org/x/sys v0.0.0-20220608164250-635b8c9b7f68 // indirect

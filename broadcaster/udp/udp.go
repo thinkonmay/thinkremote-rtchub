@@ -6,6 +6,7 @@ import (
 
 	"github.com/pigeatgarlic/webrtc-proxy/broadcaster"
 	"github.com/pigeatgarlic/webrtc-proxy/util/config"
+	"github.com/pion/rtp"
 )
 
 type UDPBroadcaster struct {
@@ -36,14 +37,19 @@ func NewUDPBroadcaster(config *config.BroadcasterConfig) (udp *UDPBroadcaster, e
 
 
 
-func (udp *UDPBroadcaster) Write(size int, data []byte) error {
-	fmt.Printf("writting %d buffer size %d\n",udp.port,size);
-	str := string(data[:size]);
-	written,err := fmt.Fprintf(udp.conn,str);
-	if written != size {
-		err = fmt.Errorf("wrong size");
+func (udp *UDPBroadcaster) Write(packet *rtp.Packet) {
+	size, err := packet.MarshalTo(udp.buffer)
+	if err != nil {
+		fmt.Printf("%v", err)
 	}
-	return err;
+
+	fmt.Printf("sent %dbyte to port %d\n", size, udp.port)
+	fmt.Printf("SENT %s\n", packet.String())
+
+	_,err = udp.conn.Write(udp.buffer[:size]);
+	if err != nil {
+		fmt.Printf("%s\n",err.Error());	
+	}
 }
 
 func (udp *UDPBroadcaster)	Close() {

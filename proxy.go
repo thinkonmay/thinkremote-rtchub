@@ -4,8 +4,10 @@ import (
 	"fmt"
 
 	"github.com/pigeatgarlic/webrtc-proxy/broadcaster"
+	"github.com/pigeatgarlic/webrtc-proxy/broadcaster/file"
 	udpbr "github.com/pigeatgarlic/webrtc-proxy/broadcaster/udp"
-	datachannel "github.com/pigeatgarlic/webrtc-proxy/data-channel"
+
+	// datachannel "github.com/pigeatgarlic/webrtc-proxy/data-channel"
 	"github.com/pigeatgarlic/webrtc-proxy/listener"
 	"github.com/pigeatgarlic/webrtc-proxy/listener/udp"
 
@@ -18,7 +20,11 @@ import (
 
 type Proxy struct {
 	listeners []listener.Listener
-	datachannels []datachannel.Datachannel
+
+	// TODO
+	chan_conf map[string]*config.DataChannelConfig
+	// datachannels []datachannel.Datachannel
+
 	signallingClient signalling.Signalling
 	webrtcClient *webrtc.WebRTCClient
 	started bool
@@ -30,8 +36,10 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 					 grpc_conf *config.GrpcConfig,
 					 webrtc_conf *config.WebRTCConfig,
 					 br_conf []*config.BroadcasterConfig,
+					 chan_conf map[string]*config.DataChannelConfig,
 					 lis  []*config.ListenerConfig) (proxy *Proxy, err error) {
 	proxy = &Proxy{}	
+	proxy.chan_conf = chan_conf;
 	proxy.started = false;
 	for _,lis_conf := range lis {
 		if lis_conf.Protocol == "udp" {
@@ -68,8 +76,17 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 			if tr.Codec().MimeType == conf.Codec {
 				if conf.Protocol == "udp" {
 					br,err = udpbr.NewUDPBroadcaster(conf);
+					if err != nil {
+						fmt.Printf("%s\n",err.Error());
+					}
 					return;
-				}	
+				}else if conf.Protocol == "file" {
+					br,err = file.NewUDPBroadcaster(conf);
+					if err != nil {
+						fmt.Printf("%s\n",err.Error());
+					}
+					return;
+				}
 			}
 		}
 
@@ -114,5 +131,6 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 func (prox *Proxy) Start() {
 	prox.started = true;
+	prox.webrtcClient.RegisterDataChannel(prox.chan_conf)
 	prox.webrtcClient.ListenRTP(prox.listeners);	
 }
