@@ -114,20 +114,24 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 			if sdp.Type == webrtc.SDPTypeAnswer { // answer
 				err = client.conn.SetRemoteDescription(*sdp)
 				if err != nil {
-					panic(err)
+					fmt.Printf("%s,\n",err.Error())
+					continue;
 				}
 			} else { // offer
 				err = client.conn.SetRemoteDescription(*sdp)
 				if err != nil {
-					panic(err)
+					fmt.Printf("%s,\n",err.Error())
+					continue;
 				}
 				ans, err := client.conn.CreateAnswer(&webrtc.AnswerOptions{})
 				if err != nil {
-					panic(err)
+					fmt.Printf("%s,\n",err.Error())
+					continue;
 				}
 				err = client.conn.SetLocalDescription(ans)
 				if err != nil {
-					panic(err)
+					fmt.Printf("%s,\n",err.Error())
+					continue;
 				}
 				client.toSdpChannel <- &ans
 			}
