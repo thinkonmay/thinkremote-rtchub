@@ -18,6 +18,7 @@ type OnTrackFunc func(*webrtc.TrackRemote) (broadcaster.Broadcaster, error)
 
 type WebRTCClient struct {
 	conn *webrtc.PeerConnection
+	mut *sync.Mutex
 
 	mediaTracks  []*webrtc.TrackLocalStaticRTP
 
@@ -45,6 +46,7 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 
 	client.mediaTracks = make([]*webrtc.TrackLocalStaticRTP, 0)
 
+	client.mut = &sync.Mutex{}
 	client.onTrack = track
 	client.conn, err = webrtc.NewPeerConnection(webrtc.Configuration{
 		ICEServers: conf.Ices,
@@ -172,11 +174,12 @@ func (client *WebRTCClient) ListenRTP(listeners []listener.Listener) {
 			panic(err)
 		}
 
+		fmt.Printf("added track\n")
+		rtpSender, err := client.conn.AddTrack(track)
+
 		lis.Open()
 		go readLoop(lis, track)
 
-		fmt.Printf("added track\n")
-		rtpSender, err := client.conn.AddTrack(track)
 		if err != nil {
 			panic(err)
 		}
@@ -200,75 +203,78 @@ func (client *WebRTCClient) ListenRTP(listeners []listener.Listener) {
 
 }
 
-func (client *WebRTCClient) RegisterDataChannel(chans map[string]*config.DataChannelConfig) {
+func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig) {
 	chanMutx := &sync.Mutex{}
 	confMutx := &sync.Mutex{}
 
-
-	client.conn.OnDataChannel(func(channel *webrtc.DataChannel) {
-		fmt.Printf("new datachannel\n")
-		channel.OnOpen(func() {
-			chanMutx.Lock()
-			client.dataChannels[channel.Label()] = channel
-			chanMutx.Unlock()
-
-			confMutx.Lock()
-			conf := chans[channel.Label()];
-			confMutx.Unlock()
-
-			channel.OnMessage(func(msg webrtc.DataChannelMessage) {
-				conf.Recv <- string(msg.Data)
-			})
-			channel.OnClose(func() {
+	if (!chans.Offer) {
+		client.conn.OnDataChannel(func(channel *webrtc.DataChannel) {
+			fmt.Printf("new datachannel\n")
+			channel.OnOpen(func() {
 				chanMutx.Lock()
-				delete(client.dataChannels, channel.Label())
+				client.dataChannels[channel.Label()] = channel
 				chanMutx.Unlock()
+
+				confMutx.Lock()
+				conf := chans.Confs[channel.Label()];
+				confMutx.Unlock()
+
+				channel.OnMessage(func(msg webrtc.DataChannelMessage) {
+					conf.Recv <- string(msg.Data)
+				})
+				channel.OnClose(func() {
+					chanMutx.Lock()
+					delete(client.dataChannels, channel.Label())
+					chanMutx.Unlock()
+				})
+				go func() {
+					for {
+						msg := <-conf.Send
+						channel.SendText(msg);				
+					}
+				}()
 			})
-			go func() {
-				for {
-					msg := <-conf.Send
-					channel.SendText(msg);				
-				}
-			}()
 		})
-	})
 
-	confMutx.Lock()
-	for Name, channelconf := range chans {
-		chanMutx.Lock()
-		if client.dataChannels[Name] != nil {
-			chanMutx.Unlock()
-			continue;
-		}
-		chanMutx.Unlock()
-
-		channel, err := client.conn.CreateDataChannel(Name, nil)
-		if err != nil {
-			fmt.Printf("unable to add data channel %s: %s", Name, err.Error())
-			continue
-		}
-		channel.OnOpen(func() {
+	} else {
+		confMutx.Lock()
+		for Name, channelconf := range chans.Confs {
 			chanMutx.Lock()
-			client.dataChannels[Name] = channel
+			if client.dataChannels[Name] != nil {
+				chanMutx.Unlock()
+				continue;
+			}
 			chanMutx.Unlock()
 
-			channel.OnMessage(func(msg webrtc.DataChannelMessage) {
-				channelconf.Recv <- string(msg.Data)
-			})
-			channel.OnClose(func() {
+			channel, err := client.conn.CreateDataChannel(Name, nil)
+			if err != nil {
+				fmt.Printf("unable to add data channel %s: %s", Name, err.Error())
+				continue
+			}
+			channel.OnOpen(func() {
 				chanMutx.Lock()
-				delete(client.dataChannels, Name)
+				client.dataChannels[Name] = channel
 				chanMutx.Unlock()
+
+				channel.OnMessage(func(msg webrtc.DataChannelMessage) {
+					channelconf.Recv <- string(msg.Data)
+				})
+				channel.OnClose(func() {
+					chanMutx.Lock()
+					delete(client.dataChannels, Name)
+					chanMutx.Unlock()
+				})
+				go func() {
+					for {
+						msg := <-channelconf.Send
+						channel.SendText(msg);				
+					}
+				}()
 			})
-			go func() {
-				for {
-					msg := <-channelconf.Send
-					channel.SendText(msg);				
-				}
-			}()
-		})
+		}
+		confMutx.Unlock()
+
 	}
-	confMutx.Unlock()
 }
 
 func readLoop(listener listener.Listener, track *webrtc.TrackLocalStaticRTP) {

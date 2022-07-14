@@ -22,7 +22,7 @@ type Proxy struct {
 	listeners []listener.Listener
 
 	// TODO
-	chan_conf map[string]*config.DataChannelConfig
+	chan_conf *config.DataChannelConfig
 	// datachannels []datachannel.Datachannel
 
 	signallingClient signalling.Signalling
@@ -36,7 +36,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 					 grpc_conf *config.GrpcConfig,
 					 webrtc_conf *config.WebRTCConfig,
 					 br_conf []*config.BroadcasterConfig,
-					 chan_conf map[string]*config.DataChannelConfig,
+					 chan_conf *config.DataChannelConfig,
 					 lis  []*config.ListenerConfig) (proxy *Proxy, err error) {
 	proxy = &Proxy{}	
 	proxy.chan_conf = chan_conf;
@@ -99,13 +99,13 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 	go func ()  {
 		proxy.signallingClient.WaitForStart()
-		if proxy.started == false {
+		if !proxy.started {
 			proxy.Start()
 		}
 	}()
 	go func ()  {
 		proxy.webrtcClient.WaitConnected()
-		if proxy.started == false {
+		if !proxy.started {
 			proxy.Start()
 		}
 	}()

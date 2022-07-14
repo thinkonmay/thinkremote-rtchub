@@ -40,6 +40,9 @@ type BroadcasterConfig struct {
 
 
 type DataChannelConfig struct {
-	Send chan string
-	Recv chan string
+	Offer bool
+	Confs map[string]*struct {
+		Send chan string
+		Recv chan string
+	}
 }

@@ -116,7 +116,7 @@ func (client *GRPCclient) SendICE(ice *webrtc.ICECandidateInit) error {
 			"SDPMLineIndex": fmt.Sprintf("%d",*ice.SDPMLineIndex),
 		},
 	}
-	fmt.Printf("ICE sent: %s\n",req.Data["Candidate"]);
+	fmt.Printf("ICE sent\n");
 	if err := client.client.Send(&req); err != nil {
 		return err;
 	}

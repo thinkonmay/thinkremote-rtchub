@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"time"
 
 	"github.com/pigeatgarlic/webrtc-proxy/signalling/gRPC/packet"
 	"google.golang.org/grpc"
@@ -20,15 +19,16 @@ type SignallingServer struct {
 
 	grpcServer *grpc.Server
 
-	reqChannel map[int64]*chan packet.UserRequest
+	reqChannel map[int64]packet.StreamService_StreamRequestServer
+
 	mutex *sync.RWMutex
 
 	connectCount int
 }
 
 func initSignallingServer (conf *SignalingServerConfig) (ret SignallingServer) {
-	ret.reqChannel = make(map[int64]*chan packet.UserRequest, 1000)
 	ret.mutex = &sync.RWMutex{}
+	ret.reqChannel = make(map[int64]packet.StreamService_StreamRequestServer)
 	ret.connectCount = 0;
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", conf.Port))
 	if err != nil {
@@ -40,13 +40,26 @@ func initSignallingServer (conf *SignalingServerConfig) (ret SignallingServer) {
 	return;
 }
 
+func (server *SignallingServer) broadcast(src int64, res *packet.UserResponse) error {
+	for key,val := range server.reqChannel {
+		if key != src{
+			fmt.Printf("response to client %d: %s\n",key,res.Data["Target"]);
+			err := val.Send(res);	
+			if err != nil  {
+				return err;
+			}
+		}		
+	}
+	return nil;
+}
+
 func (server *SignallingServer) StreamRequest(client packet.StreamService_StreamRequestServer) error {
 	_, ok := metadata.FromIncomingContext(client.Context())
 	if !ok {
 		return fmt.Errorf("Unauthorized")
 	} else {
 		server.connectCount++;
-		if server.connectCount == 2 {
+		if server.connectCount % 2 == 0{
 			var res packet.UserResponse;
 
 			res.Id = 0;
@@ -54,78 +67,45 @@ func (server *SignallingServer) StreamRequest(client packet.StreamService_Stream
 			res.Data = make(map[string]string)
 			res.Data["Target"] = "START";
 
-			err := client.Send(&res)
+			err := server.broadcast(0,&res)
 			if err != nil {
 				return err;
 			}
-
 		}
 	}
 
-	// TODO auth
-	// _ := headers["Authorization"]
-	// usr, err = watcher.auth.ValidateToken(token[0], "User")
-	// if err != nil {
-	// 	return nil
-	// }
 
-	this := make(chan packet.UserRequest)
-	shutdown := make(chan bool)
-	rand := time.Now().UTC().UnixMilli()
-	server.reqChannel[rand] = &this;
+	shutdown := false;
+	rand := int64(server.connectCount);
+
+	fmt.Printf("new client %d\n",rand);
+	server.mutex.Lock();
+	server.reqChannel[rand] = client
+	server.mutex.Unlock();
 
 	defer func ()  {
-		server.connectCount--;
-		shutdown <- true;
-		server.mutex.Lock();
+		fmt.Printf("client %d exited\n",rand);
 		delete(server.reqChannel,rand);
-		close(this);
-		close(shutdown);
-		server.mutex.Unlock();
-		return;
+		shutdown = true;
 	}();
 
 
-	go func() {
-		for {
-			select{
-			case <-shutdown:
-				return;
-			case req := <-this:	
-				var res packet.UserResponse;
-
-				res.Id = req.Id;
-				res.Error = "";
-				res.Data = req.Data;
-				res.Data["Target"] = req.Target;
-
-				err := client.Send(&res)
-				if err != nil {
-					return;
-				}
-			default:
-			}
-			time.Sleep(time.Microsecond * 100)
-		}
-	}()
-
 	for {
 		req, err := client.Recv()
-		if err != nil {
+		if err != nil || shutdown {
 			return nil
 		}else {
-			fmt.Printf("new request: %s\n",req.Target);
+			fmt.Printf("new request from client %d: %s\n",rand,req.Target);
 		}
 
+		var res packet.UserResponse;
+		res.Id = req.Id;
+		res.Error = "";
+		res.Data = req.Data;
+		res.Data["Target"] = req.Target;
+
 		server.mutex.Lock();
-		for index,channel := range server.reqChannel {
-			if index == rand {
-				continue;
-			}
-			var clone packet.UserRequest;
-			clone = *req;
-			*channel <- clone;
-		}
+		server.broadcast(rand,&res)
 		server.mutex.Unlock();
 	}
 }

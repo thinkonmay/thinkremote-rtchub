@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os/exec"
 	"time"
 
 	proxy "github.com/pigeatgarlic/webrtc-proxy"
@@ -40,29 +41,50 @@ func main() {
 			Name: "rtp2",
 			Codec: webrtc.MimeTypeH264,
 		},
+	}	
+
+	var cmds []*exec.Cmd
+	for _,i := range lis {
+		cmd := exec.Command("gst-launch-1.0.exe",fmt.Sprintf( "videotestsrc ! openh264enc ! rtph264pay ! application/x-rtp,payload=97 ! udpsink port=%d",i.Port));
+		if err := cmd.Run(); err != nil {
+			panic(err)
+		}
+		cmds = append(cmds, cmd)
 	}
 
-	chans := map[string]* config.DataChannelConfig {
-		"test": &config.DataChannelConfig{
-			Recv: make(chan string),
-			Send: make(chan string),
+	defer func ()  {
+		for _,cmd := range cmds {
+			cmd.Process.Kill();
+		}
+		
+	}();
+
+	
+	chans := config.DataChannelConfig {
+		Offer: false,
+		Confs : map[string]*struct{Send chan string; Recv chan string}{
+			"test" : &struct{Send chan string; Recv chan string}{
+				Send: make(chan string),
+				Recv: make(chan string),
+			},
 		},
 	}
+		
 
 	go func() {
 		for {
 			time.Sleep(1 * time.Second);
-			chans["test"].Send <-"test";
+			chans.Confs["test"].Send <-"test";
 		}	
 	}()
 	go func() {
 		for {
-			str := <-chans["test"].Recv
-			fmt.Sprintf("%s\n",str);
+			str := <-chans.Confs["test"].Recv
+			fmt.Printf("%s\n",str);
 		}	
 	}()
 
-	_,err := proxy.InitWebRTCProxy(nil,&grpc,&rtc,br,chans,lis);
+	_,err := proxy.InitWebRTCProxy(nil,&grpc,&rtc,br,&chans,lis);
 	if err != nil {
 		panic(err);
 	}
