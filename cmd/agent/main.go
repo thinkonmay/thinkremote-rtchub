@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os/exec"
 	"time"
 
 	proxy "github.com/pigeatgarlic/webrtc-proxy"
@@ -24,7 +23,7 @@ func main() {
 		&config.BroadcasterConfig{
 			Port: 5001,
 			Protocol: "udp",
-			BufferSize: 10000,
+			BufferSize: 100000,
 
 			Type: "video",
 			Name: "rtp2",
@@ -35,7 +34,7 @@ func main() {
 		&config.ListenerConfig{
 			Port: 6000,
 			Protocol: "udp",
-			BufferSize: 10000,
+			BufferSize: 100000,
 
 			Type: "video",
 			Name: "rtp2",
@@ -43,21 +42,21 @@ func main() {
 		},
 	}	
 
-	var cmds []*exec.Cmd
-	for _,i := range lis {
-		cmd := exec.Command("gst-launch-1.0.exe",fmt.Sprintf( "videotestsrc ! openh264enc ! rtph264pay ! application/x-rtp,payload=97 ! udpsink port=%d",i.Port));
-		if err := cmd.Run(); err != nil {
-			panic(err)
-		}
-		cmds = append(cmds, cmd)
-	}
+	// var cmds []*exec.Cmd
+	// for _,i := range lis {
+	// 	cmd := exec.Command("gst-launch-1.0.exe",fmt.Sprintf( "videotestsrc ! openh264enc ! rtph264pay ! application/x-rtp,payload=97 ! udpsink port=%d",i.Port));
+	// 	if err := cmd.Run(); err != nil {
+	// 		panic(err)
+	// 	}
+	// 	cmds = append(cmds, cmd)
+	// }
 
-	defer func ()  {
-		for _,cmd := range cmds {
-			cmd.Process.Kill();
-		}
+	// defer func ()  {
+	// 	for _,cmd := range cmds {
+	// 		cmd.Process.Kill();
+	// 	}
 		
-	}();
+	// }();
 
 	
 	chans := config.DataChannelConfig {
