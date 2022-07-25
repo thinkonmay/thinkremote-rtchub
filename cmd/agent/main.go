@@ -21,15 +21,15 @@ func main() {
 		}},
 	}
 	br := []*config.BroadcasterConfig{
-		&config.BroadcasterConfig{
-			Port: 5001,
-			Protocol: "udp",
-			BufferSize: 10000,
+		// &config.BroadcasterConfig{
+		// 	Port: 5001,
+		// 	Protocol: "udp",
+		// 	BufferSize: 10000,
 
-			Type: "video",
-			Name: "rtp2",
-			Codec: webrtc.MimeTypeH264,
-		},
+		// 	Type: "video",
+		// 	Name: "rtp2",
+		// 	Codec: webrtc.MimeTypeH264,
+		// },
 	}
 	lis := []*config.ListenerConfig{
 		&config.ListenerConfig{
@@ -45,9 +45,9 @@ func main() {
 
 	var cmds []*exec.Cmd
 	for _,i := range lis {
-		cmd := exec.Command("gst-launch-1.0.exe",fmt.Sprintf( "videotestsrc ! openh264enc ! rtph264pay ! application/x-rtp,payload=97 ! udpsink port=%d",i.Port));
+		cmd := exec.Command("gst-launch-1.0.exe ",fmt.Sprintf( "videotestsrc ! openh264enc ! rtph264pay ! application/x-rtp,payload=97 ! udpsink port=%d",i.Port));
 		if err := cmd.Run(); err != nil {
-			panic(err)
+			fmt.Printf(err.Error())
 		}
 		cmds = append(cmds, cmd)
 	}

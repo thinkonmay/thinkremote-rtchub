@@ -163,7 +163,6 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 }
 
 func (client *WebRTCClient) ListenRTP(listeners []listener.Listener) {
-
 	for _, lis := range listeners {
 		listenerConfig := lis.ReadConfig()
 
@@ -200,7 +199,6 @@ func (client *WebRTCClient) ListenRTP(listeners []listener.Listener) {
 
 		client.mediaTracks = append(client.mediaTracks, track)
 	}
-
 }
 
 func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig) {
