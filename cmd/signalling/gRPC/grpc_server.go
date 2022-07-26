@@ -1,33 +1,62 @@
-package main
+package grpc
 
 import (
 	"fmt"
 	"net"
-	"sync"
+	"time"
 
+	"github.com/pigeatgarlic/webrtc-proxy/cmd/signalling/protocol"
 	"github.com/pigeatgarlic/webrtc-proxy/signalling/gRPC/packet"
-	"github.com/pigeatgarlic/webrtc-proxy/cmd/signalling"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
 
-type SignallingServer struct {
+type GrpcServer struct {
 	packet.UnimplementedStreamServiceServer
-
 	grpcServer *grpc.Server
-
-	reqChannel map[int64]packet.StreamService_StreamRequestServer
-
-	mutex *sync.RWMutex
-
-	connectCount int
+	fun protocol.OnTenantFunc
 }
 
-func initSignallingServer(conf *signalling.SignalingConfig) (ret SignallingServer) {
-	ret.mutex = &sync.RWMutex{}
-	ret.reqChannel = make(map[int64]packet.StreamService_StreamRequestServer)
-	ret.connectCount = 0
+func (server *GrpcServer) OnTenant(fun protocol.OnTenantFunc) {
+	server.fun = fun
+}
+
+type GrpcTenant struct {
+	exited bool
+	client packet.StreamService_StreamRequestServer
+}
+
+func (tenant *GrpcTenant) Send(pkt *packet.UserResponse) {
+	err := tenant.client.Send(pkt);
+	if err != nil {
+		tenant.exited = true;
+	}
+}
+
+func (tenant *GrpcTenant) Receive() *packet.UserRequest {
+	req, err := tenant.client.Recv();
+	if err != nil {
+		tenant.exited = true;
+		return nil;
+	} else {
+		return req;
+	}
+}
+
+func (tenant *GrpcTenant) Exit() {
+	tenant.exited = true;
+}
+
+func (tenant *GrpcTenant) IsExited() bool {
+	return tenant.exited
+}
+
+
+
+
+func InitSignallingServer(conf *protocol.SignalingConfig) (*GrpcServer) {
+	var ret GrpcServer;
 	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", conf.GrpcPort))
 	if err != nil {
 		panic(err)
@@ -35,73 +64,30 @@ func initSignallingServer(conf *signalling.SignalingConfig) (ret SignallingServe
 	ret.grpcServer = grpc.NewServer()
 	packet.RegisterStreamServiceServer(ret.grpcServer, &ret)
 	go ret.grpcServer.Serve(lis)
-	return
+	return &ret
 }
 
-func (server *SignallingServer) broadcast(src int64, res *packet.UserResponse) error {
-	for key, val := range server.reqChannel {
-		if key != src {
-			fmt.Printf("response to client %d: %s\n", key, res.Data["Target"])
-			err := val.Send(res)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
 
-func (server *SignallingServer) StreamRequest(client packet.StreamService_StreamRequestServer) error {
-	_, ok := metadata.FromIncomingContext(client.Context())
+func (server *GrpcServer) StreamRequest(client packet.StreamService_StreamRequestServer) error {
+	var tenant *GrpcTenant;
+	md, ok := metadata.FromIncomingContext(client.Context())
 	if !ok {
 		return fmt.Errorf("Unauthorized")
 	} else {
-		server.connectCount++
-		if server.connectCount%2 == 0 {
-			var res packet.UserResponse
-
-			res.Id = 0
-			res.Error = ""
-			res.Data = make(map[string]string)
-			res.Data["Target"] = "START"
-
-			err := server.broadcast(0, &res)
-			if err != nil {
-				return err
-			}
+		token := md["Authorization"];
+		tenant = &GrpcTenant{
+			exited: false,
+			client: client,
+		}
+		err := server.fun(token[0],tenant);
+		if err != nil {
+			tenant.exited = true;
 		}
 	}
-
-	shutdown := false
-	rand := int64(server.connectCount)
-
-	fmt.Printf("new client %d\n", rand)
-	server.mutex.Lock()
-	server.reqChannel[rand] = client
-	server.mutex.Unlock()
-
-	defer func() {
-		fmt.Printf("client %d exited\n", rand)
-		delete(server.reqChannel, rand)
-		shutdown = true
-	}()
-
 	for {
-		req, err := client.Recv()
-		if err != nil || shutdown {
-			return nil
-		} else {
-			fmt.Printf("new request from client %d: %s\n", rand, req.Target)
+		if tenant.exited {
+			return nil;
 		}
-
-		var res packet.UserResponse
-		res.Id = req.Id
-		res.Error = ""
-		res.Data = req.Data
-		res.Data["Target"] = req.Target
-
-		server.mutex.Lock()
-		server.broadcast(rand, &res)
-		server.mutex.Unlock()
+		time.Sleep(time.Millisecond)
 	}
 }

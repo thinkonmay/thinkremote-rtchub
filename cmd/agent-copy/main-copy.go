@@ -23,7 +23,7 @@ func main() {
 		&config.BroadcasterConfig{
 			Port: 5000,
 			Protocol: "udp",
-			BufferSize: 10000,
+			BufferSize: 100000,
 
 			Type: "video",
 			Name: "rtp",
@@ -42,8 +42,6 @@ func main() {
 		// },
 	};
 
-
-
 	chans := config.DataChannelConfig {
 		Offer: true,
 		Confs : map[string]*struct{Send chan string; Recv chan string}{
@@ -54,7 +52,6 @@ func main() {
 		},
 	}
 	
-
 
 	go func() {
 		for {
