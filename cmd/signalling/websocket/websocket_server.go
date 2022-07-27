@@ -28,6 +28,9 @@ type WebsocketTenant struct {
 }
 
 func (tenant *WebsocketTenant) Send(pkt *packet.UserResponse) {
+	if pkt == nil {
+		return;	
+	}
 	data, err := json.Marshal(pkt);
 	if err != nil {
 		return;
@@ -73,7 +76,7 @@ func echo(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	defer c.Close()
 	if err != nil {
-		token := r.Header["Authorization"]
+		token := r.Header["authorization"]
 		tenant.exited = false;
 		tenant.conn = c;
 		wsserver.fun(token[0],&tenant);
@@ -90,6 +93,6 @@ func echo(w http.ResponseWriter, r *http.Request) {
 
 func InitSignallingWs(conf *protocol.SignalingConfig) *WebSocketServer{
 	http.HandleFunc("/echo", echo)
-	http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d",conf.WebsocketPort), nil)
+	go http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d",conf.WebsocketPort), nil)
 	return &wsserver;
 }

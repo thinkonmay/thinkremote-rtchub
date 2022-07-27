@@ -28,6 +28,9 @@ type GrpcTenant struct {
 }
 
 func (tenant *GrpcTenant) Send(pkt *packet.UserResponse) {
+	if pkt == nil {
+		return;	
+	}
 	err := tenant.client.Send(pkt);
 	if err != nil {
 		tenant.exited = true;
@@ -74,7 +77,11 @@ func (server *GrpcServer) StreamRequest(client packet.StreamService_StreamReques
 	if !ok {
 		return fmt.Errorf("Unauthorized")
 	} else {
-		token := md["Authorization"];
+		token := md["authorization"];
+		if token == nil {
+			return fmt.Errorf("no authorize header");			
+		}
+
 		tenant = &GrpcTenant{
 			exited: false,
 			client: client,

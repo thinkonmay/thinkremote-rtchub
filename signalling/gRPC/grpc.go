@@ -10,6 +10,7 @@ import (
 	"github.com/pigeatgarlic/webrtc-proxy/util/config"
 	"github.com/pion/webrtc/v3"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -39,8 +40,14 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 	}
 
 
+	// this is the critical step that includes your headers
+	ctx := metadata.NewOutgoingContext(
+		context.Background(),
+		metadata.Pairs("authorization","token"),
+	);
+
 	ret.stream = packet.NewStreamServiceClient(ret.conn);
-	ret.client,err = ret.stream.StreamRequest(context.Background())
+	ret.client,err = ret.stream.StreamRequest(ctx)
 	if err != nil {
 		return;
 	}
@@ -87,9 +94,7 @@ func (client *GRPCclient) SendSDP(desc *webrtc.SessionDescription) error {
 	req := packet.UserRequest{
 		Id: (int64) (client.requestCount),
 		Target: "SDP",
-		Headers: map[string]string{
-			"Authorization": "token",
-		},
+		Headers: map[string]string{},
 		Data: map[string]string{
 			"SDP": desc.SDP,
 			"Type": desc.Type.String(),
@@ -107,9 +112,7 @@ func (client *GRPCclient) SendICE(ice *webrtc.ICECandidateInit) error {
 	req := packet.UserRequest{
 		Id: (int64) (client.requestCount),
 		Target: "ICE",
-		Headers: map[string]string{
-			"Authorization": "token",
-		},
+		Headers: map[string]string{},
 		Data: map[string]string{
 			"Candidate":     ice.Candidate,
 			"SDPMid":        *ice.SDPMid,
