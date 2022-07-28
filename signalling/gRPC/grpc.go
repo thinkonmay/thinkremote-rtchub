@@ -43,7 +43,7 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 	// this is the critical step that includes your headers
 	ctx := metadata.NewOutgoingContext(
 		context.Background(),
-		metadata.Pairs("authorization","token"),
+		metadata.Pairs("authorization","server"),
 	);
 
 	ret.stream = packet.NewStreamServiceClient(ret.conn);
