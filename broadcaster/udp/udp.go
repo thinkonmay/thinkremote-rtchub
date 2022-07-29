@@ -43,8 +43,6 @@ func (udp *UDPBroadcaster) Write(packet *rtp.Packet) {
 		fmt.Printf("%v", err)
 	}
 
-	fmt.Printf("sent %dbyte to port %d\n", size, udp.port)
-	fmt.Printf("SENT %s\n", packet.String())
 
 	_,err = udp.conn.Write(udp.buffer[:size]);
 	if err != nil {
