@@ -1,6 +1,9 @@
 package config
 
-import "github.com/pion/webrtc/v3"
+import (
+
+	"github.com/pion/webrtc/v3"
+)
 
 type WebRTCConfig struct {
 	Ices []webrtc.ICEServer
@@ -14,6 +17,7 @@ type WebsocketConfig struct {
 type GrpcConfig struct {
 	Port          int
 	ServerAddress string
+	Token		  string
 }
 
 

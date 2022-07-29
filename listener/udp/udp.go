@@ -22,6 +22,10 @@ type UDPListener struct {
 	closed bool
 }
 
+type Buffer struct {
+	data []byte
+	size int
+}
 
 func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) {
 	udp.config = config;
@@ -44,30 +48,46 @@ func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) 
 func (udp *UDPListener)	Open() {
 	// Read RTP packets forever and send them to the WebRTC Client
 	udp.closed = false;
+
+	bufchan := make(chan Buffer);
+
 	go func() {
 		defer func(){
 			udp.closeChannel <- true;	
 		}();
 
 		for {
+			if udp.closed {
+				return;
+			}
+
 			size, _, err := udp.conn.ReadFrom(udp.buffer)
 			if err != nil {
 				fmt.Printf("udp error: %s\n",err)
 				continue;
 			}
-			if udp.closed {
-				return;
+
+			buf := make([]byte,size);
+			copy(buf,udp.buffer[:size])
+			bufchan <- Buffer{
+				buf,
+				size,
 			}
-			pk := rtp.Packet{}
-
-			pk.Unmarshal(udp.buffer[:size])
-
-			fmt.Printf("got %dbyte from port %d\n", size, udp.port)
-			fmt.Printf("GOT %s\n", pk.String())
-
-			udp.packetChannel <- &pk;
 		}
 	}();
+
+	depay := func(){
+		for {
+			buf := <-bufchan;
+			pk := rtp.Packet{}
+			pk.Unmarshal(buf.data[:buf.size])
+			udp.packetChannel <- &pk;
+		}
+	};
+
+	go depay();
+	go depay();
+	go depay();
 }
 
 func (udp *UDPListener) Read() *rtp.Packet {

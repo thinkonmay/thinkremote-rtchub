@@ -13,11 +13,21 @@ func main() {
 	grpc := config.GrpcConfig{
 		Port:          8000,
 		ServerAddress: "localhost",
+		Token: "server",		
 	}
 	rtc := config.WebRTCConfig{
-		Ices: []webrtc.ICEServer{webrtc.ICEServer{
-			URLs: []string{"stun:stun.l.google.com:19302"},
-		}},
+		Ices: []webrtc.ICEServer{
+		webrtc.ICEServer{
+			URLs: []string{
+				"stun:stun.l.google.com:19302",
+			},
+		},
+		webrtc.ICEServer{
+			URLs: []string{
+				"stun:workstation.thinkmay.net:3478",
+			},
+		},
+	},
 	}
 	br := []*config.BroadcasterConfig{
 
@@ -37,7 +47,7 @@ func main() {
 
 	
 	chans := config.DataChannelConfig {
-		Offer: false,
+		Offer: true,
 		Confs : map[string]*struct{Send chan string; Recv chan string}{
 			"test" : &struct{Send chan string; Recv chan string}{
 				Send: make(chan string),

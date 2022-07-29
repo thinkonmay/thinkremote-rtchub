@@ -13,10 +13,14 @@ func main() {
 	grpc := config.GrpcConfig{
 		Port:          8000,
 		ServerAddress: "localhost",
+		Token: "client",		
 	}
 	rtc := config.WebRTCConfig{
 		Ices: []webrtc.ICEServer{webrtc.ICEServer{
-			URLs: []string{"stun:stun.l.google.com:19302"},
+			URLs: []string{
+				"stun:stun.l.google.com:19302",
+				"stun:workstation.thinkmay.net:3478",
+			},
 		}},
 	}
 	br := []*config.BroadcasterConfig{
@@ -31,19 +35,10 @@ func main() {
 		},
 	}
 	lis := []*config.ListenerConfig{
-		// &config.ListenerConfig{
-		// 	Port: 6001,
-		// 	Protocol: "udp",
-		// 	BufferSize: 10000,
-
-		// 	Type: "video",
-		// 	Name: "rtp",
-		// 	Codec: webrtc.MimeTypeH264,
-		// },
 	};
 
 	chans := config.DataChannelConfig {
-		Offer: true,
+		Offer: false,
 		Confs : map[string]*struct{Send chan string; Recv chan string}{
 			"test" : &struct{Send chan string; Recv chan string}{
 				Send: make(chan string),

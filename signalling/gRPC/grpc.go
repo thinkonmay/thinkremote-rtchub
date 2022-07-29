@@ -43,7 +43,7 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 	// this is the critical step that includes your headers
 	ctx := metadata.NewOutgoingContext(
 		context.Background(),
-		metadata.Pairs("authorization","server"),
+		metadata.Pairs("authorization",conf.Token),
 	);
 
 	ret.stream = packet.NewStreamServiceClient(ret.conn);
@@ -56,7 +56,10 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 	go func() {
 		for {
 			res,err := ret.client.Recv()
-			if err != nil || len(res.Error) != 0 {
+			if err != nil {
+				fmt.Println(err.Error());
+			}
+			if len(res.Error) != 0 {
 				fmt.Println(res.Error);
 			}
 			if res.Data["Target"] == "SDP" {
