@@ -49,14 +49,12 @@ func (queue *RtpQueue) Start(){
 		}
 	}()
 
-	trans:= func() {
-		for {
-			queue.transform()
-		}	
-	}
-
 	for i := 0; i < queue.Threadnum; i++ {
-		go trans();	
+		go func() {
+			for {
+				queue.transform()
+			}	
+		}()
 	}
 }
 

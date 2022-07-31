@@ -17,14 +17,8 @@ type UDPListener struct {
 
 	queue *queue.RtpQueue
 	packetChannel chan *rtp.Packet
-
-	closed bool
 }
 
-type Buffer struct {
-	data []byte
-	size int
-}
 
 func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) {
 	udp.config = config;
@@ -36,21 +30,20 @@ func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) 
 	if err != nil {
 		return;
 	}
+
 	udp.packetChannel = make(chan *rtp.Packet);
-	udp.closed = true;
+	udp.queue = &queue.RtpQueue{
+		Outqueue: udp.packetChannel,
+		Source: udp.conn,
+		Threadnum: 15, // TODO (evaluation point)
+		Bufsize: udp.config.BufferSize,
+	}
+
 	return;
 }
 
 func (udp *UDPListener)	Open() {
 	// Read RTP packets forever and send them to the WebRTC Client
-	udp.closed = false;
-	udp.queue = &queue.RtpQueue{
-		Outqueue: udp.packetChannel,
-		Source: udp.conn,
-		Threadnum: 3,
-		Bufsize: udp.config.BufferSize,
-	}
-
 	udp.queue.Start();
 }
 
