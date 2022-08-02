@@ -22,7 +22,6 @@ type WebRTCClient struct {
 
 	mediaTracks []webrtc.TrackLocal
 
-	dataChannels map[string]*webrtc.DataChannel
 
 	fromSdpChannel chan (*webrtc.SessionDescription)
 	fromIceChannel chan (*webrtc.ICECandidateInit)
@@ -31,22 +30,21 @@ type WebRTCClient struct {
 	toIceChannel chan (*webrtc.ICECandidateInit)
 
 	onTrack   OnTrackFunc
-	connected chan bool
+
+	connectionState chan webrtc.ICEConnectionState
+	gatherState		chan webrtc.ICEGathererState
 }
 
 func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebRTCClient, err error) {
 	client = &WebRTCClient{}
-	client.toSdpChannel = make(chan *webrtc.SessionDescription)
-	client.fromSdpChannel = make(chan *webrtc.SessionDescription)
-	client.toIceChannel = make(chan *webrtc.ICECandidateInit)
-	client.fromIceChannel = make(chan *webrtc.ICECandidateInit)
-
-	client.dataChannels = make(map[string]*webrtc.DataChannel)
-	client.connected = make(chan bool)
-
-	client.mediaTracks = make([]webrtc.TrackLocal, 0)
-
+	client.toSdpChannel = 		make(chan *webrtc.SessionDescription)
+	client.fromSdpChannel = 	make(chan *webrtc.SessionDescription)
+	client.toIceChannel = 		make(chan *webrtc.ICECandidateInit)
+	client.fromIceChannel = 	make(chan *webrtc.ICECandidateInit)
+	client.mediaTracks = 		make([]webrtc.TrackLocal, 0)
 	client.mut = &sync.Mutex{}
+
+
 	client.onTrack = track
 	client.conn, err = webrtc.NewPeerConnection(webrtc.Configuration{
 		ICEServers: conf.Ices,
@@ -75,17 +73,12 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		client.toSdpChannel <- &offer
 	})
 	client.conn.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		fmt.Printf("Connection State has changed %s \n", connectionState.String())
-		if connectionState == webrtc.ICEConnectionStateFailed {
-			if closeErr := client.conn.Close(); closeErr != nil {
-				panic(closeErr)
-			}
-		} else if connectionState == webrtc.ICEConnectionStateConnected {
-			client.connected <- true
-		}
+		fmt.Printf("Connection state has changed %s \n", connectionState.String())
+		client.connectionState<-connectionState;
 	})
-	client.conn.OnICEGatheringStateChange(func(is webrtc.ICEGathererState) {
-		fmt.Printf("%s\n", is.String())
+	client.conn.OnICEGatheringStateChange(func(gatherState webrtc.ICEGathererState) {
+		fmt.Printf("Gather state has changed %s\n", gatherState.String())
+		client.gatherState<-gatherState;
 	})
 
 	client.conn.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
@@ -207,7 +200,6 @@ func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 				continue;
 			}
 
-			fmt.Printf("added track\n")
 			rtpSender, err = client.conn.AddTrack(track)
 			if err != nil {
 				fmt.Printf("error add track %s\n", err.Error())
@@ -224,76 +216,46 @@ func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 	}
 }
 
-func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig) {
-	chanMutx := &sync.Mutex{}
-	confMutx := &sync.Mutex{}
+func ondataChannel(channel *webrtc.DataChannel, chans *config.DataChannelConfig) {
+	chans.Mutext.Lock();
+	conf := chans.Confs[channel.Label()]
+	conf.Channel = channel;
+	chans.Mutext.Unlock();
 
+	channel.OnMessage(func(msg webrtc.DataChannelMessage) {
+		conf.Recv <- string(msg.Data)
+	})
+	channel.OnClose(func() {
+		chans.Mutext.Lock();
+		delete(chans.Confs, channel.Label())
+		chans.Mutext.Unlock();
+	})
+	go func() {
+		for {
+			msg := <-conf.Send
+			channel.SendText(msg)
+		}
+	}()
+};
+
+
+
+func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig) {
+	chans.Mutext = &sync.Mutex{}
 	if !chans.Offer {
 		client.conn.OnDataChannel(func(channel *webrtc.DataChannel) {
 			fmt.Printf("new datachannel\n")
-			channel.OnOpen(func() {
-				chanMutx.Lock()
-				client.dataChannels[channel.Label()] = channel
-				chanMutx.Unlock()
-
-				confMutx.Lock()
-				conf := chans.Confs[channel.Label()]
-				confMutx.Unlock()
-
-				channel.OnMessage(func(msg webrtc.DataChannelMessage) {
-					conf.Recv <- string(msg.Data)
-				})
-				channel.OnClose(func() {
-					chanMutx.Lock()
-					delete(client.dataChannels, channel.Label())
-					chanMutx.Unlock()
-				})
-				go func() {
-					for {
-						msg := <-conf.Send
-						channel.SendText(msg)
-					}
-				}()
-			})
+			channel.OnOpen(func() {ondataChannel(channel,chans)})
 		})
-
 	} else {
-		confMutx.Lock()
-		for Name, channelconf := range chans.Confs {
-			chanMutx.Lock()
-			if client.dataChannels[Name] != nil {
-				chanMutx.Unlock()
-				continue
-			}
-			chanMutx.Unlock()
-
+		for Name,_ := range chans.Confs {
 			channel, err := client.conn.CreateDataChannel(Name, nil)
 			if err != nil {
 				fmt.Printf("unable to add data channel %s: %s", Name, err.Error())
 				continue
 			}
-			channel.OnOpen(func() {
-				chanMutx.Lock()
-				client.dataChannels[Name] = channel
-				chanMutx.Unlock()
-
-				channel.OnMessage(func(msg webrtc.DataChannelMessage) {
-					channelconf.Recv <- string(msg.Data)
-				})
-				channel.OnClose(func() {
-					chanMutx.Lock()
-					delete(client.dataChannels, Name)
-					chanMutx.Unlock()
-				})
-				go func() {
-					for {
-						msg := <-channelconf.Send
-						channel.SendText(msg)
-					}
-				}()
-			})
+			channel.OnOpen(func() {ondataChannel(channel,chans)})
 		}
-		confMutx.Unlock()
 	}
 }
 
@@ -336,10 +298,23 @@ func writeLoop(br broadcaster.Broadcaster, track *webrtc.TrackRemote) {
 	}
 }
 
-func (client *WebRTCClient) WaitConnected() {
-	<-client.connected
+func (client *WebRTCClient) GatherStateChange() webrtc.ICEGathererState{
+	return <-client.gatherState
+}
+func (client *WebRTCClient) ConnectionStateChange() webrtc.ICEConnectionState{
+	return <-client.connectionState
 }
 
+func (client *WebRTCClient) Close() {
+	err := client.conn.Close(); 
+	if err != nil {
+		
+	}
+}
+
+
+
+		
 func (webrtc *WebRTCClient) OnIncominSDP(sdp *webrtc.SessionDescription) {
 	webrtc.fromSdpChannel <- sdp
 }

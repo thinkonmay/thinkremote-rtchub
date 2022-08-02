@@ -44,10 +44,12 @@ func main() {
 		Confs: map[string]*struct {
 			Send chan string
 			Recv chan string
+			Channel *webrtc.DataChannel
 		}{
 			"test": {
 				Send: make(chan string),
 				Recv: make(chan string),
+				Channel: nil,
 			},
 		},
 	}

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"sync"
+
 	"github.com/pion/webrtc/v3"
 )
 
@@ -40,8 +42,10 @@ type BroadcasterConfig struct {
 
 type DataChannelConfig struct {
 	Offer bool
+	Mutext *sync.Mutex
 	Confs map[string]*struct {
 		Send chan string
 		Recv chan string
+		Channel *webrtc.DataChannel
 	}
 }
