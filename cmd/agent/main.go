@@ -34,7 +34,7 @@ func main() {
 			DataType:  "sample",
 
 			MediaType: "video",
-			Name:      "cpuGstreamer",
+			Name:      "gpuGstreamer",
 			Codec:     webrtc.MimeTypeH264,
 		},
 	}
@@ -80,7 +80,9 @@ func main() {
 	for {
 		prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, lis)
 		if err != nil {
-			panic(err)
+			fmt.Printf("failed to init webrtc proxy, try again in 2 second\n")
+			time.Sleep(2*time.Second);
+			continue;
 		}
 		<-prox.Shutdown
 	}
