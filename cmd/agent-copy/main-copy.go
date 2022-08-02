@@ -27,9 +27,9 @@ func main() {
 		&config.BroadcasterConfig{
 			Port: 5000,
 			Protocol: "udp",
-			BufferSize: 100000,
 
 			Type: "video",
+			
 			Name: "rtp",
 			Codec: webrtc.MimeTypeH264,
 		},

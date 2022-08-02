@@ -9,6 +9,7 @@ import (
 
 	// datachannel "github.com/pigeatgarlic/webrtc-proxy/data-channel"
 	"github.com/pigeatgarlic/webrtc-proxy/listener"
+	gst "github.com/pigeatgarlic/webrtc-proxy/listener/gstreamer"
 	"github.com/pigeatgarlic/webrtc-proxy/listener/udp"
 
 	"github.com/pigeatgarlic/webrtc-proxy/signalling"
@@ -26,84 +27,89 @@ type Proxy struct {
 	// datachannels []datachannel.Datachannel
 
 	signallingClient signalling.Signalling
-	webrtcClient *webrtc.WebRTCClient
-	started bool
+	webrtcClient     *webrtc.WebRTCClient
+	started          bool
 }
 
-
-
 func InitWebRTCProxy(sock *config.WebsocketConfig,
-					 grpc_conf *config.GrpcConfig,
-					 webrtc_conf *config.WebRTCConfig,
-					 br_conf []*config.BroadcasterConfig,
-					 chan_conf *config.DataChannelConfig,
-					 lis  []*config.ListenerConfig) (proxy *Proxy, err error) {
-	proxy = &Proxy{}	
-	proxy.chan_conf = chan_conf;
-	proxy.started = false;
-	for _,lis_conf := range lis {
-		if lis_conf.Protocol == "udp" {
-			var udpLis udp.UDPListener;
-			udpLis,err = udp.NewUDPListener(lis_conf);
+	grpc_conf *config.GrpcConfig,
+	webrtc_conf *config.WebRTCConfig,
+	br_conf []*config.BroadcasterConfig,
+	chan_conf *config.DataChannelConfig,
+	lis []*config.ListenerConfig) (proxy *Proxy, err error) {
+	proxy = &Proxy{}
+	proxy.chan_conf = chan_conf
+	proxy.started = false
+
+	fmt.Printf("added listener\n")
+	for _, lis_conf := range lis {
+
+		var Lis listener.Listener
+		if lis_conf.Source == "udp" {
+			udpLis, err := udp.NewUDPListener(lis_conf)
+			Lis = &udpLis;
 			if err != nil {
-				return;	
+				fmt.Printf("%s\n",err.Error())
+				continue;
 			}
-			fmt.Printf("added listener\n");
-			proxy.listeners = append(proxy.listeners, &udpLis);
-		}else if lis_conf.Protocol == "tpc" {
-			err = fmt.Errorf("Unimplemented");
-			return;
+		} else if lis_conf.Source == "gstreamer" {
+			Lis = gst.CreatePipeline(lis_conf)
+		} else {
+				fmt.Printf("Unimplemented listener\n");
+			continue;
 		}
+
+		proxy.listeners = append(proxy.listeners, Lis)
 	}
 
 	if grpc_conf != nil {
-		var rpc grpc.GRPCclient;
-		rpc, err = grpc.InitGRPCClient(grpc_conf);
+		var rpc grpc.GRPCclient
+		rpc, err = grpc.InitGRPCClient(grpc_conf)
 		if err != nil {
-			return;	
+			return
 		}
-		proxy.signallingClient = &rpc;
+		proxy.signallingClient = &rpc
 	} else if sock != nil {
-		err = fmt.Errorf("Unimplemented");
-		return;
+		err = fmt.Errorf("Unimplemented")
+		return
 	} else {
-		err = fmt.Errorf("Unimplemented");
-		return;
+		err = fmt.Errorf("Unimplemented")
+		return
 	}
 
-	proxy.webrtcClient,err = webrtc.InitWebRtcClient(func(tr *webrtclib.TrackRemote) (br broadcaster.Broadcaster, err error) {
-		for _,conf := range br_conf {
+	proxy.webrtcClient, err = webrtc.InitWebRtcClient(func(tr *webrtclib.TrackRemote) (br broadcaster.Broadcaster, err error) {
+		for _, conf := range br_conf {
 			if tr.Codec().MimeType == conf.Codec {
 				if conf.Protocol == "udp" {
-					br,err = udpbr.NewUDPBroadcaster(conf);
+					br, err = udpbr.NewUDPBroadcaster(conf)
 					if err != nil {
-						fmt.Printf("%s\n",err.Error());
+						fmt.Printf("%s\n", err.Error())
 					}
-					return;
-				}else if conf.Protocol == "file" {
-					br,err = file.NewUDPBroadcaster(conf);
+					return
+				} else if conf.Protocol == "file" {
+					br, err = file.NewUDPBroadcaster(conf)
 					if err != nil {
-						fmt.Printf("%s\n",err.Error());
+						fmt.Printf("%s\n", err.Error())
 					}
-					return;
+					return
 				}
 			}
 		}
 
-		err = fmt.Errorf("unimplemented broadcaster");
-		return;
-	},*webrtc_conf);
+		err = fmt.Errorf("unimplemented broadcaster")
+		return
+	}, *webrtc_conf)
 	if err != nil {
-		panic(err);
+		panic(err)
 	}
 
-	go func ()  {
+	go func() {
 		proxy.signallingClient.WaitForStart()
 		if !proxy.started {
 			proxy.Start()
 		}
 	}()
-	go func ()  {
+	go func() {
 		proxy.webrtcClient.WaitConnected()
 		if !proxy.started {
 			proxy.Start()
@@ -112,25 +118,25 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 	go func() {
 		for {
-			proxy.signallingClient.SendICE(proxy.webrtcClient.OnLocalICE())		
-		}	
+			proxy.signallingClient.SendICE(proxy.webrtcClient.OnLocalICE())
+		}
 	}()
 	go func() {
 		for {
-			proxy.signallingClient.SendSDP(proxy.webrtcClient.OnLocalSDP())	
-		}	
+			proxy.signallingClient.SendSDP(proxy.webrtcClient.OnLocalSDP())
+		}
 	}()
 	proxy.signallingClient.OnICE(func(i *webrtclib.ICECandidateInit) {
-		proxy.webrtcClient.OnIncomingICE(i);
+		proxy.webrtcClient.OnIncomingICE(i)
 	})
 	proxy.signallingClient.OnSDP(func(i *webrtclib.SessionDescription) {
-		proxy.webrtcClient.OnIncominSDP(i);
+		proxy.webrtcClient.OnIncominSDP(i)
 	})
-	return;
+	return
 }
 
 func (prox *Proxy) Start() {
-	prox.started = true;
+	prox.started = true
 	prox.webrtcClient.RegisterDataChannel(prox.chan_conf)
-	prox.webrtcClient.ListenRTP(prox.listeners);	
+	prox.webrtcClient.Listen(prox.listeners)
 }

@@ -54,7 +54,7 @@ func NewUDPBroadcaster(config *config.BroadcasterConfig) (udp *FileSaver, err er
 	
 	udp = &FileSaver{}
 	udp.config = config;
-	udp.bufferSize = config.BufferSize;
+	udp.bufferSize = 10000;
 
 	udp.writter, err = ivfwriter.NewWith(udp.ffmpegIn);
 	if err != nil {

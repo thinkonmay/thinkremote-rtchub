@@ -13,67 +13,62 @@ func main() {
 	grpc := config.GrpcConfig{
 		Port:          8000,
 		ServerAddress: "localhost",
-		Token: "server",		
+		Token:         "server",
 	}
 	rtc := config.WebRTCConfig{
-		Ices: []webrtc.ICEServer{
-		webrtc.ICEServer{
-			URLs: []string{
-				"stun:stun.l.google.com:19302",
+		Ices: []webrtc.ICEServer{{
+				URLs: []string{
+					"stun:stun.l.google.com:19302",
+				},
+			}, {
+				URLs: []string{
+					"stun:workstation.thinkmay.net:3478",
+				},
 			},
 		},
-		webrtc.ICEServer{
-			URLs: []string{
-				"stun:workstation.thinkmay.net:3478",
-			},
-		},
-	},
 	}
-	br := []*config.BroadcasterConfig{
+	br := []*config.BroadcasterConfig{}
+	lis := []*config.ListenerConfig{{
+			Source:   "gstreamer",
 
-	}
-	lis := []*config.ListenerConfig{
-		&config.ListenerConfig{
-			Port: 6000,
-			Protocol: "udp",
-			BufferSize: 100000,
+			DataType:  "sample",
 
-			Type: "video",
-			Name: "rtp2",
-			Codec: webrtc.MimeTypeH264,
+			MediaType: "video",
+			Name:      "gstreamer",
+			Codec:     webrtc.MimeTypeH264,
 		},
-	}	
+	}
 
-
-	
-	chans := config.DataChannelConfig {
+	chans := config.DataChannelConfig{
 		Offer: true,
-		Confs : map[string]*struct{Send chan string; Recv chan string}{
-			"test" : &struct{Send chan string; Recv chan string}{
+		Confs: map[string]*struct {
+			Send chan string
+			Recv chan string
+		}{
+			"test": {
 				Send: make(chan string),
 				Recv: make(chan string),
 			},
 		},
 	}
-		
 
 	go func() {
 		for {
-			time.Sleep(1 * time.Second);
-			chans.Confs["test"].Send <-"test";
-		}	
+			time.Sleep(1 * time.Second)
+			chans.Confs["test"].Send <- "test"
+		}
 	}()
 	go func() {
 		for {
 			str := <-chans.Confs["test"].Recv
-			fmt.Printf("%s\n",str);
-		}	
+			fmt.Printf("%s\n", str)
+		}
 	}()
 
-	_,err := proxy.InitWebRTCProxy(nil,&grpc,&rtc,br,&chans,lis);
+	_, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, lis)
 	if err != nil {
-		panic(err);
+		panic(err)
 	}
 	shut := make(chan bool)
-	<- shut
+	<-shut
 }

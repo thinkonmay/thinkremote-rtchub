@@ -1,7 +1,6 @@
 package config
 
 import (
-
 	"github.com/pion/webrtc/v3"
 )
 
@@ -17,31 +16,27 @@ type WebsocketConfig struct {
 type GrpcConfig struct {
 	Port          int
 	ServerAddress string
-	Token		  string
+	Token         string
 }
 
-
 type ListenerConfig struct {
-	Port       int
-	Protocol   string
-	BufferSize int
+	Source	   string
 
-	Type  string
-	Name  string
-	Codec string
+	DataType  string
+
+	MediaType string
+	Name      string
+	Codec     string
 }
 
 type BroadcasterConfig struct {
 	Port       int
 	Protocol   string
-	BufferSize int
 
 	Type  string
 	Name  string
 	Codec string
 }
-
-
 
 type DataChannelConfig struct {
 	Offer bool

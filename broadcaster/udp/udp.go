@@ -61,7 +61,7 @@ func (loop *writeLoop)runloop(){
 func NewUDPBroadcaster(config *config.BroadcasterConfig) (udp *UDPBroadcaster, err error) {
 	udp = &UDPBroadcaster{}
 	udp.config = config;
-	udp.bufferSize = config.BufferSize;
+	udp.bufferSize = 10000;
 	udp.port = config.Port;
 	if err != nil {
 		return;

@@ -2,18 +2,21 @@ package udp
 
 import (
 	"net"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pigeatgarlic/webrtc-proxy/listener"
 	"github.com/pigeatgarlic/webrtc-proxy/util/config"
 	"github.com/pigeatgarlic/webrtc-proxy/util/queue"
 	"github.com/pion/rtp"
+	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 type UDPListener struct {
 	config *config.ListenerConfig
 	conn *net.UDPConn
-	port int
+	port int64
 
 	queue *queue.RtpQueue
 	packetChannel chan *rtp.Packet
@@ -22,10 +25,13 @@ type UDPListener struct {
 
 func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) {
 	udp.config = config;
-	udp.port = config.Port;
+	udp.port, err = strconv.ParseInt(strings.Split(config.Source, ":")[1],10,8);
+	if err != nil {
+		return;
+	}
 	udp.conn,err = net.ListenUDP("udp", &net.UDPAddr {
 		IP: net.ParseIP("localhost"), 
-		Port: udp.port, 
+		Port: int(udp.port), 
 	});
 	if err != nil {
 		return;
@@ -36,7 +42,7 @@ func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) 
 		Outqueue: udp.packetChannel,
 		Source: udp.conn,
 		Threadnum: 15, // TODO (evaluation point)
-		Bufsize: udp.config.BufferSize,
+		Bufsize: 10000,
 	}
 
 	return;
@@ -47,8 +53,12 @@ func (udp *UDPListener)	Open() {
 	udp.queue.Start();
 }
 
-func (udp *UDPListener) Read() *rtp.Packet {
+func (udp *UDPListener) ReadRTP() *rtp.Packet {
 	return <-udp.packetChannel;
+}
+func (udp *UDPListener) ReadSample() *media.Sample {
+	block := make(chan *media.Sample)
+	return <-block;
 }
 
 func (udp *UDPListener)	Close() {
