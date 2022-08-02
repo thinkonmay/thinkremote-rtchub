@@ -34,7 +34,7 @@ func main() {
 			DataType:  "sample",
 
 			MediaType: "video",
-			Name:      "gstreamer",
+			Name:      "cpuGstreamer",
 			Codec:     webrtc.MimeTypeH264,
 		},
 	}
@@ -57,20 +57,31 @@ func main() {
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
-			chans.Confs["test"].Send <- "test"
+			channel := chans.Confs["test"]
+			if channel != nil {
+				channel.Send <- "test"
+			} else {
+				return;
+			}
 		}
 	}()
 	go func() {
 		for {
-			str := <-chans.Confs["test"].Recv
-			fmt.Printf("%s\n", str)
+			channel := chans.Confs["test"]
+			if channel != nil {
+				str := <-chans.Confs["test"].Recv
+				fmt.Printf("%s\n", str)
+			} else {
+				return;
+			}
 		}
 	}()
 
-	_, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, lis)
-	if err != nil {
-		panic(err)
+	for {
+		prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, lis)
+		if err != nil {
+			panic(err)
+		}
+		<-prox.Shutdown
 	}
-	shut := make(chan bool)
-	<-shut
 }

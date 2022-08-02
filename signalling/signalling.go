@@ -12,6 +12,7 @@ type Signalling interface {
 	OnICE(OnIceFunc);
 	OnSDP(OnSDPFunc);
 	WaitForStart();
+	Stop();
 }
 
 

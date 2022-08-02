@@ -59,6 +59,7 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 			res,err := ret.client.Recv()
 			if err != nil {
 				fmt.Println(err.Error());
+				return;
 			}
 			if len(res.Error) != 0 {
 				fmt.Println(res.Error);
@@ -152,4 +153,7 @@ func (client *GRPCclient) OnSDP(fun signalling.OnSDPFunc) {
 
 func (client *GRPCclient) WaitForStart(){
 	<- client.startChan;
+}
+func (client *GRPCclient) Stop(){
+	client.conn.Close()
 }

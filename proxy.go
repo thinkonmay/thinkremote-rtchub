@@ -28,6 +28,8 @@ type Proxy struct {
 
 	signallingClient signalling.Signalling
 	webrtcClient     *webrtc.WebRTCClient
+
+	Shutdown		 chan bool
 }
 
 func InitWebRTCProxy(sock *config.WebsocketConfig,
@@ -38,6 +40,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	lis []*config.ListenerConfig) (proxy *Proxy, err error) {
 	proxy = &Proxy{}
 	proxy.chan_conf = chan_conf
+	proxy.Shutdown = make(chan bool)
 
 	fmt.Printf("added listener\n")
 	for _, lis_conf := range lis {
@@ -111,6 +114,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 			switch state {
 			case webrtclib.ICEGathererStateGathering:
 			case webrtclib.ICEGathererStateComplete:
+			case webrtclib.ICEGathererStateClosed:
 			}
 		}
 	}()
@@ -120,12 +124,11 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 			switch state {
 			case webrtclib.ICEConnectionStateConnected:
-			break
 			case webrtclib.ICEConnectionStateClosed:
-			proxy.webrtcClient = nil;
 			break
 			case webrtclib.ICEConnectionStateFailed:
-			proxy.webrtcClient.Close()
+			case webrtclib.ICEConnectionStateDisconnected:
+			proxy.Stop()
 			break
 			}
 		}
@@ -153,4 +156,13 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 func (prox *Proxy) Start() {
 	prox.webrtcClient.RegisterDataChannel(prox.chan_conf)
 	prox.webrtcClient.Listen(prox.listeners)
+}
+
+func (prox *Proxy) Stop() {
+	prox.webrtcClient.Close()
+	prox.signallingClient.Stop()
+	for _,lis := range prox.listeners {
+		lis.Close()
+	}
+	prox.Shutdown <- true;
 }
