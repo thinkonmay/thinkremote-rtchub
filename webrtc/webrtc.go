@@ -18,18 +18,15 @@ type OnTrackFunc func(*webrtc.TrackRemote) (broadcaster.Broadcaster, error)
 
 type WebRTCClient struct {
 	conn *webrtc.PeerConnection
-	mut  *sync.Mutex
 
+	onTrack   OnTrackFunc
 	mediaTracks []webrtc.TrackLocal
-
 
 	fromSdpChannel chan (*webrtc.SessionDescription)
 	fromIceChannel chan (*webrtc.ICECandidateInit)
 
 	toSdpChannel chan (*webrtc.SessionDescription)
 	toIceChannel chan (*webrtc.ICECandidateInit)
-
-	onTrack   OnTrackFunc
 
 	connectionState chan webrtc.ICEConnectionState
 	gatherState		chan webrtc.ICEGathererState
@@ -41,8 +38,9 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 	client.fromSdpChannel = 	make(chan *webrtc.SessionDescription)
 	client.toIceChannel = 		make(chan *webrtc.ICECandidateInit)
 	client.fromIceChannel = 	make(chan *webrtc.ICECandidateInit)
+	client.connectionState = 	make(chan webrtc.ICEConnectionState)
+	client.gatherState = 		make(chan webrtc.ICEGathererState)
 	client.mediaTracks = 		make([]webrtc.TrackLocal, 0)
-	client.mut = &sync.Mutex{}
 
 
 	client.onTrack = track
