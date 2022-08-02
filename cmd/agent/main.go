@@ -11,8 +11,8 @@ import (
 
 func main() {
 	grpc := config.GrpcConfig{
-		Port:          8000,
-		ServerAddress: "localhost",
+		Port:          443,
+		ServerAddress: "grpc.signaling.thinkmay.net",
 		Token:         "server",
 	}
 	rtc := config.WebRTCConfig{

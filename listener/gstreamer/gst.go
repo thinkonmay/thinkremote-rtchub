@@ -43,7 +43,7 @@ const (
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	DIRECTX_PAD := "video/x-raw(memory:D3D11Memory)"
 	QUEUE := "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3" 
-	pipelineStr := fmt.Sprintf("d3d11screencapturesrc ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc ! %s ! appsink name=appsink",DIRECTX_PAD,QUEUE,DIRECTX_PAD,QUEUE,QUEUE);
+	pipelineStr := fmt.Sprintf("d3d11screencapturesrc blocksize=8192 show-cursor=true ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc bitrate=5000 rc-mode=0 low-latency=true ref=1 quality-vs-speed=0 ! %s ! appsink name=appsink",DIRECTX_PAD,QUEUE,DIRECTX_PAD,QUEUE,QUEUE);
 	// temp := fmt.Sprintf("videotestsrc ! video/x-raw,format=I420 ! x264enc speed-preset=ultrafast tune=zerolatency key-int-max=20 ! video/x-h264,stream-format=byte-stream ! appsink name=appsink")
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
