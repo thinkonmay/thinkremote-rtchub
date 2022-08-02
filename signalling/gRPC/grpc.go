@@ -49,6 +49,7 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 	ret.stream = packet.NewStreamServiceClient(ret.conn);
 	ret.client,err = ret.stream.StreamRequest(ctx)
 	if err != nil {
+		fmt.Printf("fail to request stream: %s\n",err.Error());
 		return;
 	}
 

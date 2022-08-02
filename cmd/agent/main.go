@@ -11,7 +11,7 @@ import (
 
 func main() {
 	grpc := config.GrpcConfig{
-		Port:          443,
+		Port:          30000,
 		ServerAddress: "grpc.signaling.thinkmay.net",
 		Token:         "server",
 	}
