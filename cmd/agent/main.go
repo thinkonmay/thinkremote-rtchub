@@ -10,9 +10,14 @@ import (
 )
 
 func main() {
+	// grpc := config.GrpcConfig{
+	// 	Port:          30000,
+	// 	ServerAddress: "grpc.signaling.thinkmay.net",
+	// 	Token:         "server",
+	// }
 	grpc := config.GrpcConfig{
-		Port:          30000,
-		ServerAddress: "grpc.signaling.thinkmay.net",
+		Port:          8000,
+		ServerAddress: "localhost",
 		Token:         "server",
 	}
 	rtc := config.WebRTCConfig{
@@ -34,7 +39,7 @@ func main() {
 			DataType:  "sample",
 
 			MediaType: "video",
-			Name:      "gpuGstreamer",
+			Name:      "cpuGstreamer",
 			Codec:     webrtc.MimeTypeH264,
 		},
 	}
@@ -55,15 +60,9 @@ func main() {
 	}
 
 	go func() {
-		for {
-			time.Sleep(1 * time.Second)
-			channel := chans.Confs["test"]
-			if channel != nil {
-				channel.Send <- "test"
-			} else {
-				return;
-			}
-		}
+		// for {
+		// 		channel.Send <- "test"
+		// }
 	}()
 	go func() {
 		for {
@@ -71,6 +70,7 @@ func main() {
 			if channel != nil {
 				str := <-chans.Confs["test"].Recv
 				fmt.Printf("%s\n", str)
+				ParseHIDInput(str);
 			} else {
 				return;
 			}

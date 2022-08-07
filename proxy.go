@@ -22,9 +22,7 @@ import (
 type Proxy struct {
 	listeners []listener.Listener
 
-	// TODO
 	chan_conf *config.DataChannelConfig
-	// datachannels []datachannel.Datachannel
 
 	signallingClient signalling.Signalling
 	webrtcClient     *webrtc.WebRTCClient
