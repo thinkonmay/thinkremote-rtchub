@@ -51,7 +51,7 @@ func main() {
 			Recv chan string
 			Channel *webrtc.DataChannel
 		}{
-			"test": {
+			"hid": {
 				Send: make(chan string),
 				Recv: make(chan string),
 				Channel: nil,
@@ -66,9 +66,9 @@ func main() {
 	}()
 	go func() {
 		for {
-			channel := chans.Confs["test"]
+			channel := chans.Confs["hid"]
 			if channel != nil {
-				str := <-chans.Confs["test"].Recv
+				str := <-chans.Confs["hid"].Recv
 				fmt.Printf("%s\n", str)
 				ParseHIDInput(str);
 			} else {
