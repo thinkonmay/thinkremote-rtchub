@@ -26,7 +26,7 @@ const (
 
 type HIDMsg struct {
 	EventCode int			`json:"code"`
-	Data map[string]float32 `json:"data"`
+	Data map[string]interface{} `json:"data"`
 }
 
 func ParseHIDInput(data string) {
@@ -34,33 +34,36 @@ func ParseHIDInput(data string) {
 	var route string;
 	var out []byte;
 
-	bodymap := make(map[string]float32)
-	var bodystr float32
-	bodystr = 0;
+	bodymap := make(map[string]float64)
+	var bodyfloat float64
+	var bodystring string 
+	bodyfloat = -1;
+	bodystring = "";
 
 	var msg HIDMsg;
+	json.Unmarshal([]byte(data),&msg);
 	json.Unmarshal([]byte(data),&msg);
 	switch msg.EventCode {
 	case mouseWheel:
 		route = "Mouse/Wheel"
-		bodystr = msg.Data["deltaY"];
+		bodyfloat = msg.Data["deltaY"].(float64);
 	case mouseBtnUp:
 		route = "Mouse/Up"
-		bodystr = msg.Data["button"];
+		bodyfloat = msg.Data["button"].(float64);
 	case mouseBtnDown:
 		route = "Mouse/Down"
-		bodystr = msg.Data["button"];
+		bodyfloat = msg.Data["button"].(float64);
 	case mouseMove:
 		route = "Mouse/Move"
-		bodymap["X"] = msg.Data["dX"];
-		bodymap["Y"] = msg.Data["dY"];
+		bodymap["X"] = msg.Data["dX"].(float64);
+		bodymap["Y"] = msg.Data["dY"].(float64);
 
 	case keyUp:
 		route = "Keyboard/Up"
-		bodystr = msg.Data["key"];
+		bodystring = msg.Data["key"].(string);
 	case keyDown:
 		route = "Keyboard/Down"
-		bodystr = msg.Data["key"];
+		bodystring = msg.Data["key"].(string);
 
 	case keyReset:
 		route = "Keyboard/Reset"
@@ -69,8 +72,10 @@ func ParseHIDInput(data string) {
 	}
 
 	
-	if bodystr != 0 {
-		out,err = json.Marshal(bodystr)
+	if bodyfloat != -1 {
+		out,err = json.Marshal(bodyfloat)
+	} else if bodystring != "" {
+		out = []byte(bodystring)
 	} else if len(bodymap) != 0 {
 		out,err = json.Marshal(bodymap)
 	} else {
@@ -81,12 +86,9 @@ func ParseHIDInput(data string) {
 		fmt.Printf("fail to marshal output: %s\n",err.Error());
 	}
 	fmt.Printf("req: %s\n",string(out));
-	res,err := http.Post(fmt.Sprintf("http://%s/%s",HIDproxyEndpoint,route),
+	_,err = http.Post(fmt.Sprintf("http://%s/%s",HIDproxyEndpoint,route),
 		"application/json",bytes.NewBuffer(out));
 	if err != nil {
 		fmt.Printf("fail to forward input: %s\n",err.Error());
 	}
-	buf := make([]byte,100);
-	res.Body.Read(buf);
-	fmt.Printf("res: %s\n",string(buf));
 }
