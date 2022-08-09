@@ -247,6 +247,7 @@ func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig)
 		})
 	} else {
 		for Name,_ := range chans.Confs {
+			fmt.Printf("new datachannel\n")
 			channel, err := client.conn.CreateDataChannel(Name, nil)
 			if err != nil {
 				fmt.Printf("unable to add data channel %s: %s", Name, err.Error())

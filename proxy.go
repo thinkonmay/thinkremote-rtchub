@@ -123,11 +123,10 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 			switch state {
 			case webrtclib.ICEConnectionStateConnected:
 			case webrtclib.ICEConnectionStateClosed:
-			break
 			case webrtclib.ICEConnectionStateFailed:
+			proxy.Stop()
 			case webrtclib.ICEConnectionStateDisconnected:
 			proxy.Stop()
-			break
 			}
 		}
 	}()

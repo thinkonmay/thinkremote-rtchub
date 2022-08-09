@@ -26,7 +26,7 @@ const (
 
 type HIDMsg struct {
 	EventCode int			`json:"code"`
-	Data map[string]string	`json:"data"`
+	Data map[string]float32 `json:"data"`
 }
 
 func ParseHIDInput(data string) {
@@ -34,8 +34,9 @@ func ParseHIDInput(data string) {
 	var route string;
 	var out []byte;
 
-	bodymap := make(map[string]string)
-	bodystr := "";
+	bodymap := make(map[string]float32)
+	var bodystr float32
+	bodystr = 0;
 
 	var msg HIDMsg;
 	json.Unmarshal([]byte(data),&msg);
@@ -68,8 +69,8 @@ func ParseHIDInput(data string) {
 	}
 
 	
-	if bodystr != "" {
-		out = []byte(bodystr);
+	if bodystr != 0 {
+		out,err = json.Marshal(bodystr)
 	} else if len(bodymap) != 0 {
 		out,err = json.Marshal(bodymap)
 	} else {
@@ -77,8 +78,15 @@ func ParseHIDInput(data string) {
 	}
 
 	if err != nil {
-		fmt.Printf("fail to marshal output: %s",err.Error());
+		fmt.Printf("fail to marshal output: %s\n",err.Error());
 	}
-	http.Post(fmt.Sprintf("http://%s/%s",HIDproxyEndpoint,route),
+	fmt.Printf("req: %s\n",string(out));
+	res,err := http.Post(fmt.Sprintf("http://%s/%s",HIDproxyEndpoint,route),
 		"application/json",bytes.NewBuffer(out));
+	if err != nil {
+		fmt.Printf("fail to forward input: %s\n",err.Error());
+	}
+	buf := make([]byte,100);
+	res.Body.Read(buf);
+	fmt.Printf("res: %s\n",string(buf));
 }

@@ -10,16 +10,16 @@ import (
 )
 
 func main() {
-	// grpc := config.GrpcConfig{
-	// 	Port:          30000,
-	// 	ServerAddress: "grpc.signaling.thinkmay.net",
-	// 	Token:         "server",
-	// }
 	grpc := config.GrpcConfig{
-		Port:          8000,
-		ServerAddress: "localhost",
+		Port:          30000,
+		ServerAddress: "grpc.signaling.thinkmay.net",
 		Token:         "server",
 	}
+	// grpc := config.GrpcConfig{
+	// 	Port:          8000,
+	// 	ServerAddress: "localhost",
+	// 	Token:         "server",
+	// }
 	rtc := config.WebRTCConfig{
 		Ices: []webrtc.ICEServer{{
 				URLs: []string{
@@ -39,45 +39,41 @@ func main() {
 			DataType:  "sample",
 
 			MediaType: "video",
-			Name:      "cpuGstreamer",
+			Name:      "gpuGstreamer",
 			Codec:     webrtc.MimeTypeH264,
 		},
 	}
 
-	chans := config.DataChannelConfig{
-		Offer: true,
-		Confs: map[string]*struct {
-			Send chan string
-			Recv chan string
-			Channel *webrtc.DataChannel
-		}{
-			"hid": {
-				Send: make(chan string),
-				Recv: make(chan string),
-				Channel: nil,
-			},
-		},
-	}
-
-	go func() {
-		// for {
-		// 		channel.Send <- "test"
-		// }
-	}()
-	go func() {
-		for {
-			channel := chans.Confs["hid"]
-			if channel != nil {
-				str := <-chans.Confs["hid"].Recv
-				fmt.Printf("%s\n", str)
-				ParseHIDInput(str);
-			} else {
-				return;
-			}
-		}
-	}()
 
 	for {
+		chans := config.DataChannelConfig{
+			Offer: true,
+			Confs: map[string]*struct {
+				Send chan string
+				Recv chan string
+				Channel *webrtc.DataChannel
+			}{
+				"hid": {
+					Send: make(chan string),
+					Recv: make(chan string),
+					Channel: nil,
+				},
+			},
+		}
+
+		go func() {
+			for {
+				channel := chans.Confs["hid"]
+				if channel != nil {
+					str := <-chans.Confs["hid"].Recv
+					fmt.Printf("%s\n", str)
+					go ParseHIDInput(str);
+				} else {
+					return;
+				}
+			}
+		}()
+
 		prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, lis)
 		if err != nil {
 			fmt.Printf("failed to init webrtc proxy, try again in 2 second\n")
