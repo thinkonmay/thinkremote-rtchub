@@ -145,3 +145,10 @@ void gstreamer_audio_start_pipeline(GstElement *pipeline) {
 void gstreamer_audio_stop_pipeline(GstElement *pipeline) {
   gst_element_set_state(pipeline, GST_STATE_NULL);
 }
+
+
+int           
+string_get_length(void* string)
+{
+  return strlen(string);
+}

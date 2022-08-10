@@ -35,5 +35,7 @@ void          gstreamer_audio_start_mainloop      (void);
 
 void*         set_media_device();
 
+int           
+string_get_length(void* string);
 #endif
 
