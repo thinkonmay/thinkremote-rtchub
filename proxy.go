@@ -9,6 +9,7 @@ import (
 
 	// datachannel "github.com/pigeatgarlic/webrtc-proxy/data-channel"
 	"github.com/pigeatgarlic/webrtc-proxy/listener"
+	"github.com/pigeatgarlic/webrtc-proxy/listener/audio"
 	gst "github.com/pigeatgarlic/webrtc-proxy/listener/gstreamer"
 	"github.com/pigeatgarlic/webrtc-proxy/listener/udp"
 
@@ -44,7 +45,9 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	for _, lis_conf := range lis {
 
 		var Lis listener.Listener
-		if lis_conf.Source == "udp" {
+		if lis_conf.MediaType == "audio" {
+			Lis = audio.CreatePipeline(lis_conf)
+		} else if lis_conf.Source == "udp" {
 			udpLis, err := udp.NewUDPListener(lis_conf)
 			Lis = &udpLis;
 			if err != nil {

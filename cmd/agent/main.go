@@ -42,6 +42,15 @@ func main() {
 			Name:      "gpuGstreamer",
 			Codec:     webrtc.MimeTypeH264,
 		},
+		{
+			Source:   "gstreamer",
+
+			DataType:  "sample",
+
+			MediaType: "audio",
+			Name:      "gpuGstreamer",
+			Codec:     webrtc.MimeTypeH264,
+		},
 	}
 
 

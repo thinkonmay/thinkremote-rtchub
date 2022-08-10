@@ -65,17 +65,14 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 
 //export goHandlePipelineBuffer
 func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
+	defer C.free(buffer)
+
 	c_byte := C.GoBytes(buffer, bufferLen)
-	c_byteCopy := make([]byte, len(c_byte))
-	copy(c_byteCopy, c_byte)
-	
 	sample := media.Sample{
-		Data: c_byteCopy, 
+		Data: c_byte, 
 		Duration: time.Duration(duration),
 	}
-
 	pipeline.sampchan <- &sample;	
-	C.free(buffer)
 }
 
 func (p *Pipeline)ReadConfig() *config.ListenerConfig{
