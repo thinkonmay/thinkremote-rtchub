@@ -8,6 +8,73 @@ void gstreamer_audio_start_mainloop(void) {
   g_main_loop_run(gstreamer_audio_main_loop);
 }
 
+
+static void
+device_foreach(GstDevice* device, 
+               gpointer data)
+{
+    MediaDevice* source = (MediaDevice*) data;
+
+    gchar* name = gst_device_get_display_name(device);
+    gchar* class = gst_device_get_device_class(device);
+    GstCaps* cap = gst_device_get_caps(device);
+    GstStructure* cap_structure = gst_caps_get_structure (cap, 0);
+    GstStructure* device_structure = gst_device_get_properties(device);
+    gchar* cap_name = gst_structure_get_name (cap_structure);
+    gchar* api = gst_structure_get_string(device_structure,"device.api");
+
+    
+    if(!g_strcmp0(api,"wasapi2"))
+    {
+        gboolean is_default;
+        gchar* id;
+
+        id = gst_structure_get_string(device_structure,"device.strid");
+        id = id ? id : gst_structure_get_string(device_structure,"device.id");
+        gst_structure_get_boolean(device_structure,"device.default",&is_default);
+
+        if(!g_strcmp0(class,"Audio/Source") &&
+           !g_strcmp0(cap_name,"audio/x-raw"))
+        {
+            if(g_str_has_prefix(name,"CABLE Input"))
+                memcpy(source->sound_output_device_id,id,strlen(id));
+            else if(is_default && !g_str_has_prefix(name,"Default Audio Capture"))
+                memcpy(source->backup_sound_output_device_id,id,strlen(id));
+        }
+
+        if(!g_strcmp0(class,"Audio/Sink") &&
+           !g_strcmp0(cap_name,"audio/x-raw"))
+        {
+            if(g_str_has_prefix(name,"CABLE"))
+                memcpy(source->sound_capture_device_id,id,strlen(id));
+            else if(is_default)
+                memcpy(source->backup_sound_capture_device_id,id,strlen(id));
+        }
+    }
+
+    gst_caps_unref(cap);
+    g_object_unref(device);
+}
+
+
+void*
+set_media_device()
+{
+    static MediaDevice dev = {0};
+
+    
+    GstDeviceMonitor* monitor = gst_device_monitor_new();
+    if(!gst_device_monitor_start(monitor)) {
+        return NULL;
+    }
+
+    GList* device_list = gst_device_monitor_get_devices(monitor);
+    g_list_foreach(device_list,(GFunc)device_foreach,&dev);
+
+    MediaDevice* source = &dev;
+    return source->sound_capture_device_id ? source->sound_capture_device_id : source->backup_sound_capture_device_id;
+}
+
 static gboolean gstreamer_audio_bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
   switch (GST_MESSAGE_TYPE(msg)) {
 
@@ -60,9 +127,12 @@ GstElement *gstreamer_audio_create_pipeline(char *pipeline) {
 }
 
 void gstreamer_audio_start_pipeline(GstElement *pipeline) {
+
+  
   GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
   gst_bus_add_watch(bus, gstreamer_audio_bus_call, NULL);
   gst_object_unref(bus);
+
 
   GstElement *appsink = gst_bin_get_by_name(GST_BIN(pipeline), "appsink");
   g_object_set(appsink, "emit-signals", TRUE, NULL);
