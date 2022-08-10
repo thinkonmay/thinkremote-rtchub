@@ -48,8 +48,8 @@ func main() {
 			DataType:  "sample",
 
 			MediaType: "audio",
-			Name:      "gpuGstreamer",
-			Codec:     webrtc.MimeTypeH264,
+			Name:      "audioGstreamer",
+			Codec:     webrtc.MimeTypeOpus,
 		},
 	}
 
