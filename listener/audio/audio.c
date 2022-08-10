@@ -120,10 +120,15 @@ GstFlowReturn gstreamer_audio_new_sample_handler(GstElement *object, gpointer us
   return GST_FLOW_OK;
 }
 
-GstElement *gstreamer_audio_create_pipeline(char *pipeline) {
+GstElement *gstreamer_audio_create_pipeline(char *pipeline,
+                                            char* device) 
+{
   gst_init(NULL, NULL);
   GError *error = NULL;
-  return gst_parse_launch(pipeline, &error);
+  GstElement * ret = gst_parse_launch(pipeline, &error);
+  GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), "source");
+  g_object_set(src,"device",device);
+  return ret;
 }
 
 void gstreamer_audio_start_pipeline(GstElement *pipeline) {

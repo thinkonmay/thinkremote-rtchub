@@ -43,7 +43,7 @@ const (
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	dev := C.set_media_device();
 	bytes := C.GoBytes(dev,C.string_get_length(dev));
-	fmt.Printf("%s\n",string(bytes));
+	fmt.Printf("audio device id: %s\n",string(bytes));
 
 	QUEUE := "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3"
 	pipelineStr := fmt.Sprintf("wasapisrc name=source loopback=true ! %s ! audioconvert ! %s ! audioresample ! %s ! opusenc ! %s ! appsink name=appsink", QUEUE, QUEUE, QUEUE, QUEUE)
@@ -51,7 +51,7 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
 	pipeline = &Pipeline{
-		Pipeline: C.gstreamer_audio_create_pipeline(pipelineStrUnsafe),
+		Pipeline: C.gstreamer_audio_create_pipeline(pipelineStrUnsafe,dev),
 		sampchan: make(chan *media.Sample),
 		config:   config,
 	}

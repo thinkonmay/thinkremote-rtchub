@@ -1,5 +1,5 @@
-#ifndef GST_H
-#define GST_H
+#ifndef AUDIO_H
+#define AUDIO_H
 
 #include <glib.h>
 #include <gst/gst.h>
