@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	HIDproxyEndpoint = "localhost:4000"
+	HIDproxyEndpoint = "localhost:5000"
 )
 
 const (
@@ -75,7 +75,7 @@ func ParseHIDInput(data string) {
 	if bodyfloat != -1 {
 		out,err = json.Marshal(bodyfloat)
 	} else if bodystring != "" {
-		out = []byte(bodystring)
+		out,err = json.Marshal(bodystring)
 	} else if len(bodymap) != 0 {
 		out,err = json.Marshal(bodymap)
 	} else {
