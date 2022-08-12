@@ -126,8 +126,8 @@ GstElement *gstreamer_audio_create_pipeline(char *pipeline,
   gst_init(NULL, NULL);
   GError *error = NULL;
   GstElement * ret = gst_parse_launch(pipeline, &error);
-  GstElement *src = gst_bin_get_by_name(GST_BIN(pipeline), "source");
-  g_object_set(src,"device",device);
+  GstElement *src = gst_bin_get_by_name(GST_BIN(ret), "source");
+  g_object_set(src,"device",device,NULL);
   return ret;
 }
 

@@ -39,7 +39,7 @@ func main() {
 			DataType:  "sample",
 
 			MediaType: "video",
-			Name:      "cpuGstreamer",
+			Name:      "gpuGstreamer",
 			Codec:     webrtc.MimeTypeH264,
 		},
 		{

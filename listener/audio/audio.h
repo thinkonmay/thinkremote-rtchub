@@ -25,7 +25,8 @@ extern void   goHandlePipelineBufferAudio             (void *buffer,
                                                   int bufferLen, 
                                                   int samples);
 
-GstElement *  gstreamer_audio_create_pipeline     (char *pipeline);
+GstElement *  gstreamer_audio_create_pipeline     (char *pipeline,
+                                                   char* device);
 
 void          gstreamer_audio_start_pipeline      (GstElement *pipeline);
 
