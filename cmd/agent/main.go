@@ -75,7 +75,6 @@ func main() {
 				channel := chans.Confs["hid"]
 				if channel != nil {
 					str := <-chans.Confs["hid"].Recv
-					fmt.Printf("%s\n", str)
 					go ParseHIDInput(str);
 				} else {
 					return;

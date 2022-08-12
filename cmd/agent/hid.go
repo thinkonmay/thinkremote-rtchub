@@ -85,7 +85,6 @@ func ParseHIDInput(data string) {
 	if err != nil {
 		fmt.Printf("fail to marshal output: %s\n",err.Error());
 	}
-	fmt.Printf("req: %s\n",string(out));
 	_,err = http.Post(fmt.Sprintf("http://%s/%s",HIDproxyEndpoint,route),
 		"application/json",bytes.NewBuffer(out));
 	if err != nil {
