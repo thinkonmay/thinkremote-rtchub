@@ -37,26 +37,28 @@ static gboolean gstreamer_send_bus_call(GstBus *bus, GstMessage *msg, gpointer d
 GstFlowReturn gstreamer_send_new_sample_handler(GstElement *object, gpointer user_data) {
   GstSample *sample = NULL;
   GstBuffer *buffer = NULL;
-  gpointer copy = NULL;
   gsize copy_size = 0;
+  char copy[500] = {0};
 
   g_signal_emit_by_name (object, "pull-sample", &sample);
   if (sample) {
     buffer = gst_sample_get_buffer(sample);
     if (buffer) {
-      gst_buffer_extract_dup(buffer, 0, gst_buffer_get_size(buffer), &copy, &copy_size);
-      goHandlePipelineBuffer(copy, copy_size, GST_BUFFER_DURATION(buffer));
+      copy_size = gst_buffer_get_size(buffer);
+      gst_buffer_extract(buffer, 0, (gpointer)copy, copy_size);
+      if(copy || copy_size)
+        goHandlePipelineBuffer(copy, copy_size, GST_BUFFER_DURATION(buffer));
     }
     gst_sample_unref (sample);
   }
-
   return GST_FLOW_OK;
 }
 
 GstElement *gstreamer_send_create_pipeline(char *pipeline) {
   gst_init(NULL, NULL);
   GError *error = NULL;
-  return gst_parse_launch(pipeline, &error);
+  GstElement* el = gst_parse_launch(pipeline, &error);
+  return el;
 }
 
 void gstreamer_send_start_pipeline(GstElement *pipeline) {

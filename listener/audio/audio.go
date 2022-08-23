@@ -61,8 +61,6 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 
 //export goHandlePipelineBufferAudio
 func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
-	defer C.free(buffer)
-
 	c_byte := C.GoBytes(buffer, bufferLen)
 	sample := media.Sample{
 		Data:     c_byte,
