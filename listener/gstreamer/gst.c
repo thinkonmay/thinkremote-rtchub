@@ -38,16 +38,18 @@ GstFlowReturn gstreamer_send_new_sample_handler(GstElement *object, gpointer use
   GstSample *sample = NULL;
   GstBuffer *buffer = NULL;
   gsize copy_size = 0;
-  char copy[500] = {0};
 
   g_signal_emit_by_name (object, "pull-sample", &sample);
   if (sample) {
     buffer = gst_sample_get_buffer(sample);
     if (buffer) {
       copy_size = gst_buffer_get_size(buffer);
-      gst_buffer_extract(buffer, 0, (gpointer)copy, copy_size);
-      if(copy || copy_size)
+      if(copy_size) {
+        gpointer copy = malloc(copy_size);
+        gst_buffer_extract(buffer, 0, (gpointer)copy, copy_size); // linking gstreamer to go limited available stack frame // very dangerous to modify
         goHandlePipelineBuffer(copy, copy_size, GST_BUFFER_DURATION(buffer));
+        free(copy);
+      }
     }
     gst_sample_unref (sample);
   }
