@@ -2,10 +2,12 @@ module github.com/pigeatgarlic/webrtc-proxy
 
 go 1.18
 
+require github.com/gorilla/websocket v1.5.0
+
 require (
+	github.com/Oneplay-Internet/screencoder v0.0.0-20220823014144-8b623c1cfe44 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/gorilla/websocket v1.5.0
 	github.com/pion/datachannel v1.5.2 // indirect
 	github.com/pion/dtls/v2 v2.1.5 // indirect
 	github.com/pion/ice/v2 v2.2.6 // indirect
