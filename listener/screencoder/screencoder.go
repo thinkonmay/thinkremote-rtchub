@@ -1,9 +1,9 @@
 package screencoder
 
 import (
+	"github.com/OnePlay-Internet/webrtc-proxy/listener"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	appsink "github.com/Oneplay-Internet/screencoder/sink/appsink/go"
-	"github.com/pigeatgarlic/webrtc-proxy/listener"
-	"github.com/pigeatgarlic/webrtc-proxy/util/config"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
 )

@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/pigeatgarlic/webrtc-proxy/signalling"
-	"github.com/pigeatgarlic/webrtc-proxy/signalling/gRPC/packet"
-	"github.com/pigeatgarlic/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
+	"github.com/OnePlay-Internet/webrtc-proxy/signalling/gRPC/packet"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/webrtc/v3"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 type GRPCclient struct {

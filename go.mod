@@ -1,4 +1,4 @@
-module github.com/pigeatgarlic/webrtc-proxy
+module github.com/OnePlay-Internet/webrtc-proxy
 
 go 1.18
 

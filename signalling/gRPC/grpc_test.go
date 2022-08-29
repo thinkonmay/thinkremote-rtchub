@@ -5,46 +5,46 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pigeatgarlic/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/webrtc/v3"
 )
 
 func TestClient(t *testing.T) {
 	conf := config.GrpcConfig{
 		ServerAddress: "localhost",
-		Port: 8000,
+		Port:          8000,
 	}
-	client, err := InitGRPCClient(&conf);
+	client, err := InitGRPCClient(&conf)
 	if err != nil {
-		t.Error(err);
+		t.Error(err)
 	}
-	shutdown_channel := make(chan bool);
+	shutdown_channel := make(chan bool)
 	client.OnSDP(func(i *webrtc.SessionDescription) {
-		json,_ := json.Marshal(i)
-		fmt.Printf("%s\n",json);
+		json, _ := json.Marshal(i)
+		fmt.Printf("%s\n", json)
 		// shutdown_channel<-true;
 	})
 	client.OnICE(func(i *webrtc.ICECandidateInit) {
-		json,_ := json.Marshal(i)
-		fmt.Printf("%s\n",json);
+		json, _ := json.Marshal(i)
+		fmt.Printf("%s\n", json)
 		// shutdown_channel<-true;
 	})
 	test := "test"
 	var test_num uint16
-	test_num = 0;
+	test_num = 0
 
 	err = client.SendICE(&webrtc.ICECandidateInit{
-		Candidate: test,
-		SDPMid: &test,
+		Candidate:     test,
+		SDPMid:        &test,
 		SDPMLineIndex: &test_num,
-	});
+	})
 	if err != nil {
-		t.Error(err);
+		t.Error(err)
 	}
-	err = client.SendSDP(&webrtc.SessionDescription{ });
+	err = client.SendSDP(&webrtc.SessionDescription{})
 	if err != nil {
-		t.Error(err);
+		t.Error(err)
 	}
 
-	<-shutdown_channel;
+	<-shutdown_channel
 }

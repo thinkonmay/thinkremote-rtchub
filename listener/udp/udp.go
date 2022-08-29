@@ -6,74 +6,73 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pigeatgarlic/webrtc-proxy/listener"
-	"github.com/pigeatgarlic/webrtc-proxy/util/config"
-	"github.com/pigeatgarlic/webrtc-proxy/util/queue"
+	"github.com/OnePlay-Internet/webrtc-proxy/listener"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/queue"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 type UDPListener struct {
 	config *config.ListenerConfig
-	conn *net.UDPConn
-	port int64
+	conn   *net.UDPConn
+	port   int64
 
-	queue *queue.RtpQueue
+	queue         *queue.RtpQueue
 	packetChannel chan *rtp.Packet
 }
 
-
 func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) {
-	udp.config = config;
-	udp.port, err = strconv.ParseInt(strings.Split(config.Source, ":")[1],10,8);
+	udp.config = config
+	udp.port, err = strconv.ParseInt(strings.Split(config.Source, ":")[1], 10, 8)
 	if err != nil {
-		return;
+		return
 	}
-	udp.conn,err = net.ListenUDP("udp", &net.UDPAddr {
-		IP: net.ParseIP("localhost"), 
-		Port: int(udp.port), 
-	});
+	udp.conn, err = net.ListenUDP("udp", &net.UDPAddr{
+		IP:   net.ParseIP("localhost"),
+		Port: int(udp.port),
+	})
 	if err != nil {
-		return;
+		return
 	}
 
-	udp.packetChannel = make(chan *rtp.Packet);
+	udp.packetChannel = make(chan *rtp.Packet)
 	udp.queue = &queue.RtpQueue{
-		Outqueue: udp.packetChannel,
-		Source: udp.conn,
+		Outqueue:  udp.packetChannel,
+		Source:    udp.conn,
 		Threadnum: 15, // TODO (evaluation point)
-		Bufsize: 10000,
+		Bufsize:   10000,
 	}
 
-	return;
+	return
 }
 
-func (udp *UDPListener)	Open() {
+func (udp *UDPListener) Open() {
 	// Read RTP packets forever and send them to the WebRTC Client
-	udp.queue.Start();
+	udp.queue.Start()
 }
 
 func (udp *UDPListener) ReadRTP() *rtp.Packet {
-	return <-udp.packetChannel;
+	return <-udp.packetChannel
 }
 func (udp *UDPListener) ReadSample() *media.Sample {
 	block := make(chan *media.Sample)
-	return <-block;
+	return <-block
 }
 
-func (udp *UDPListener)	Close() {
-	udp.queue.Closed = true;
+func (udp *UDPListener) Close() {
+	udp.queue.Closed = true
 }
 
-func (udp *UDPListener)	OnClose(fun listener.OnCloseFunc) {
+func (udp *UDPListener) OnClose(fun listener.OnCloseFunc) {
 	go func() {
 		if udp.queue.Closed {
-			fun(udp);	
+			fun(udp)
 		}
 		time.Sleep(100 * time.Millisecond)
 	}()
 }
- 
-func (udp *UDPListener)	ReadConfig() *config.ListenerConfig{
-	return udp.config;
+
+func (udp *UDPListener) ReadConfig() *config.ListenerConfig {
+	return udp.config
 }

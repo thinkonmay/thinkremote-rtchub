@@ -3,16 +3,16 @@ package proxy
 import (
 	"fmt"
 
-	"github.com/pigeatgarlic/webrtc-proxy/broadcaster"
-	"github.com/pigeatgarlic/webrtc-proxy/broadcaster/file"
-	udpbr "github.com/pigeatgarlic/webrtc-proxy/broadcaster/udp"
+	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
+	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/file"
+	udpbr "github.com/OnePlay-Internet/webrtc-proxy/broadcaster/udp"
 
-	// datachannel "github.com/pigeatgarlic/webrtc-proxy/data-channel"
-	"github.com/pigeatgarlic/webrtc-proxy/listener"
-	"github.com/pigeatgarlic/webrtc-proxy/signalling"
-	grpc "github.com/pigeatgarlic/webrtc-proxy/signalling/gRPC"
-	"github.com/pigeatgarlic/webrtc-proxy/util/config"
-	"github.com/pigeatgarlic/webrtc-proxy/webrtc"
+	// datachannel "github.com/OnePlay-Internet/webrtc-proxy/data-channel"
+	"github.com/OnePlay-Internet/webrtc-proxy/listener"
+	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
+	grpc "github.com/OnePlay-Internet/webrtc-proxy/signalling/gRPC"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/webrtc"
 	webrtclib "github.com/pion/webrtc/v3"
 )
 
@@ -24,7 +24,7 @@ type Proxy struct {
 	signallingClient signalling.Signalling
 	webrtcClient     *webrtc.WebRTCClient
 
-	Shutdown		 chan bool
+	Shutdown chan bool
 }
 
 func InitWebRTCProxy(sock *config.WebsocketConfig,
@@ -103,9 +103,9 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 			case webrtclib.ICEConnectionStateConnected:
 			case webrtclib.ICEConnectionStateClosed:
 			case webrtclib.ICEConnectionStateFailed:
-			proxy.Stop()
+				proxy.Stop()
 			case webrtclib.ICEConnectionStateDisconnected:
-			proxy.Stop()
+				proxy.Stop()
 			}
 		}
 	}()
@@ -137,8 +137,8 @@ func (prox *Proxy) Start() {
 func (prox *Proxy) Stop() {
 	prox.webrtcClient.Close()
 	prox.signallingClient.Stop()
-	for _,lis := range prox.listeners {
+	for _, lis := range prox.listeners {
 		lis.Close()
 	}
-	prox.Shutdown <- true;
+	prox.Shutdown <- true
 }

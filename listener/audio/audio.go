@@ -13,8 +13,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/pigeatgarlic/webrtc-proxy/listener"
-	"github.com/pigeatgarlic/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/listener"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
@@ -41,9 +41,9 @@ const (
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
-	dev := C.set_media_device();
-	bytes := C.GoBytes(dev,C.string_get_length(dev));
-	fmt.Printf("audio device id: %s\n",string(bytes));
+	dev := C.set_media_device()
+	bytes := C.GoBytes(dev, C.string_get_length(dev))
+	fmt.Printf("audio device id: %s\n", string(bytes))
 
 	QUEUE := "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3"
 	pipelineStr := fmt.Sprintf("wasapi2src name=source loopback=true ! %s ! audioconvert ! %s ! audioresample ! %s ! opusenc ! %s ! appsink name=appsink", QUEUE, QUEUE, QUEUE, QUEUE)
@@ -51,7 +51,7 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
 	pipeline = &Pipeline{
-		Pipeline: C.gstreamer_audio_create_pipeline(pipelineStrUnsafe,C.CString(string(bytes))),
+		Pipeline: C.gstreamer_audio_create_pipeline(pipelineStrUnsafe, C.CString(string(bytes))),
 		sampchan: make(chan *media.Sample),
 		config:   config,
 	}

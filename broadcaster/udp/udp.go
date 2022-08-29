@@ -4,99 +4,90 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/pigeatgarlic/webrtc-proxy/broadcaster"
-	"github.com/pigeatgarlic/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/rtp"
 )
 
 type UDPBroadcaster struct {
 	config *config.BroadcasterConfig
-	conn net.Conn
-	port int
+	conn   net.Conn
+	port   int
 
-	buffer []byte
+	buffer     []byte
 	bufferSize int
 
-	closeChannel chan bool
+	closeChannel  chan bool
 	packetChannel chan *rtp.Packet
 }
 
-type loop func ();
+type loop func()
 
 type writeLoop struct {
-	conn net.Conn
+	conn  net.Conn
 	chann *chan *rtp.Packet
-
 
 	lop loop
 	buf []byte
 }
 
-func newloop(conn net.Conn, channel chan *rtp.Packet) ( writeloop *writeLoop ) {
+func newloop(conn net.Conn, channel chan *rtp.Packet) (writeloop *writeLoop) {
 	writeloop = &writeLoop{}
 	writeloop.conn = conn
-	writeloop.chann = &channel;
-	writeloop.buf = make([]byte, 10000);
-	return;
+	writeloop.chann = &channel
+	writeloop.buf = make([]byte, 10000)
+	return
 }
 
-func (loop *writeLoop)runloop(){
+func (loop *writeLoop) runloop() {
 	loop.lop = func() {
-		packet := <- *loop.chann;
+		packet := <-*loop.chann
 		size, err := packet.MarshalTo(loop.buf)
 		if err != nil {
 			fmt.Printf("%v", err)
 		}
-		_,err = loop.conn.Write(loop.buf[:size]);
+		_, err = loop.conn.Write(loop.buf[:size])
 		if err != nil {
-			fmt.Printf("%s\n",err.Error());	
+			fmt.Printf("%s\n", err.Error())
 		}
-	};
-	go loop.lop();
+	}
+	go loop.lop()
 }
-
-
-
 
 func NewUDPBroadcaster(config *config.BroadcasterConfig) (udp *UDPBroadcaster, err error) {
 	udp = &UDPBroadcaster{}
-	udp.config = config;
-	udp.bufferSize = 10000;
-	udp.port = config.Port;
+	udp.config = config
+	udp.bufferSize = 10000
+	udp.port = config.Port
 	if err != nil {
-		return;
+		return
 	}
-	udp.buffer = make([]byte, udp.bufferSize);
-	udp.closeChannel = make(chan bool);
-	udp.packetChannel = make(chan *rtp.Packet);
-	udp.conn,err = net.Dial("udp",fmt.Sprintf("localhost:%d",config.Port));
+	udp.buffer = make([]byte, udp.bufferSize)
+	udp.closeChannel = make(chan bool)
+	udp.packetChannel = make(chan *rtp.Packet)
+	udp.conn, err = net.Dial("udp", fmt.Sprintf("localhost:%d", config.Port))
 
-
-	newloop(udp.conn,udp.packetChannel).runloop();
-	newloop(udp.conn,udp.packetChannel).runloop();
-	newloop(udp.conn,udp.packetChannel).runloop();
-	return;
+	newloop(udp.conn, udp.packetChannel).runloop()
+	newloop(udp.conn, udp.packetChannel).runloop()
+	newloop(udp.conn, udp.packetChannel).runloop()
+	return
 }
-
-
 
 func (udp *UDPBroadcaster) Write(packet *rtp.Packet) {
-	udp.packetChannel <- packet;
+	udp.packetChannel <- packet
 }
 
-func (udp *UDPBroadcaster)	Close() {
-	udp.closeChannel <- true;
+func (udp *UDPBroadcaster) Close() {
+	udp.closeChannel <- true
 }
 
-func (udp *UDPBroadcaster)	OnClose(fun broadcaster.OnCloseFunc) {
+func (udp *UDPBroadcaster) OnClose(fun broadcaster.OnCloseFunc) {
 	go func() {
-		<-udp.closeChannel;
-		fun(udp);	
+		<-udp.closeChannel
+		fun(udp)
 	}()
 }
- 
 
-
-func (udp *UDPBroadcaster)	ReadConfig() *config.BroadcasterConfig{
-	return udp.config;
+func (udp *UDPBroadcaster) ReadConfig() *config.BroadcasterConfig {
+	return udp.config
 }

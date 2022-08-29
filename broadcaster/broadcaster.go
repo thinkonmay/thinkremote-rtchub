@@ -1,7 +1,7 @@
 package broadcaster
 
 import (
-	"github.com/pigeatgarlic/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/rtp"
 )
 
