@@ -2,24 +2,39 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	proxy "github.com/pigeatgarlic/webrtc-proxy"
+	"github.com/pigeatgarlic/webrtc-proxy/listener"
+	"github.com/pigeatgarlic/webrtc-proxy/listener/audio"
+	gst "github.com/pigeatgarlic/webrtc-proxy/listener/gstreamer"
+	"github.com/pigeatgarlic/webrtc-proxy/listener/udp"
 	"github.com/pigeatgarlic/webrtc-proxy/util/config"
 	"github.com/pion/webrtc/v3"
 )
 
 func main() {
+	var token string;
+	args := os.Args[1:]
+	for i,arg := range args {
+		if arg == "--token" {
+			token = args[i+1];
+		} else if arg == "--help" {
+			fmt.Printf("--token |  server token\n");
+			return;
+		}
+	}
+
+	if token == ""{
+		return;
+	}
+
 	grpc := config.GrpcConfig{
 		Port:          30000,
 		ServerAddress: "grpc.signaling.thinkmay.net",
-		Token:         "server",
+		Token:         token,
 	}
-	// grpc := config.GrpcConfig{
-	// 	Port:          8000,
-	// 	ServerAddress: "localhost",
-	// 	Token:         "server",
-	// }
 	rtc := config.WebRTCConfig{
 		Ices: []webrtc.ICEServer{{
 				URLs: []string{
@@ -80,9 +95,33 @@ func main() {
 					return;
 				}
 			}
-		}()
+		}()		
+		
+		Lists := make([]listener.Listener, 0)
+		for _, lis_conf := range lis {
+			var Lis listener.Listener
+			if lis_conf.MediaType == "audio" {
+				Lis = audio.CreatePipeline(lis_conf)
+			} else if lis_conf.Source == "udp" {
+				udpLis, err := udp.NewUDPListener(lis_conf)
+				Lis = &udpLis;
+				if err != nil {
+					fmt.Printf("%s\n",err.Error())
+					continue;
+				}
+			} else if lis_conf.Source == "gstreamer" {
+				Lis = gst.CreatePipeline(lis_conf)
+			} else {
+					fmt.Printf("Unimplemented listener\n");
+				continue;
+			}
 
-		prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, lis)
+			Lists = append(Lists, Lis)
+		}
+
+
+
+		prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists)
 		if err != nil {
 			fmt.Printf("failed to init webrtc proxy, try again in 2 second\n")
 			time.Sleep(2*time.Second);

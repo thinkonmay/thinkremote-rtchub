@@ -9,10 +9,6 @@ import (
 
 	// datachannel "github.com/pigeatgarlic/webrtc-proxy/data-channel"
 	"github.com/pigeatgarlic/webrtc-proxy/listener"
-	"github.com/pigeatgarlic/webrtc-proxy/listener/audio"
-	gst "github.com/pigeatgarlic/webrtc-proxy/listener/gstreamer"
-	"github.com/pigeatgarlic/webrtc-proxy/listener/udp"
-
 	"github.com/pigeatgarlic/webrtc-proxy/signalling"
 	grpc "github.com/pigeatgarlic/webrtc-proxy/signalling/gRPC"
 	"github.com/pigeatgarlic/webrtc-proxy/util/config"
@@ -36,33 +32,13 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	webrtc_conf *config.WebRTCConfig,
 	br_conf []*config.BroadcasterConfig,
 	chan_conf *config.DataChannelConfig,
-	lis []*config.ListenerConfig) (proxy *Proxy, err error) {
+	lis []listener.Listener) (proxy *Proxy, err error) {
 	proxy = &Proxy{}
 	proxy.chan_conf = chan_conf
+	proxy.listeners = lis
+
 	proxy.Shutdown = make(chan bool)
-
 	fmt.Printf("added listener\n")
-	for _, lis_conf := range lis {
-
-		var Lis listener.Listener
-		if lis_conf.MediaType == "audio" {
-			Lis = audio.CreatePipeline(lis_conf)
-		} else if lis_conf.Source == "udp" {
-			udpLis, err := udp.NewUDPListener(lis_conf)
-			Lis = &udpLis;
-			if err != nil {
-				fmt.Printf("%s\n",err.Error())
-				continue;
-			}
-		} else if lis_conf.Source == "gstreamer" {
-			Lis = gst.CreatePipeline(lis_conf)
-		} else {
-				fmt.Printf("Unimplemented listener\n");
-			continue;
-		}
-
-		proxy.listeners = append(proxy.listeners, Lis)
-	}
 
 	if grpc_conf != nil {
 		var rpc grpc.GRPCclient
