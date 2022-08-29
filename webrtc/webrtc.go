@@ -255,7 +255,6 @@ func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig)
 }
 
 func readLoopSample(listener listener.Listener, track *webrtc.TrackLocalStaticSample) {
-	listener.Open()
 	for {
 		pk := listener.ReadSample()
 		if err := track.WriteSample(*pk); err != nil {
@@ -269,7 +268,6 @@ func readLoopSample(listener listener.Listener, track *webrtc.TrackLocalStaticSa
 }
 
 func readLoopRTP(listener listener.Listener, track *webrtc.TrackLocalStaticRTP) {
-	listener.Open()
 	for {
 		pk := listener.ReadRTP()
 		if err := track.WriteRTP(pk); err != nil {

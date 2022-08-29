@@ -32,7 +32,7 @@ func main() {
 
 	grpc := config.GrpcConfig{
 		Port:          30000,
-		ServerAddress: "grpc.signaling.thinkmay.net",
+		ServerAddress: "54.169.49.176",
 		Token:         token,
 	}
 	rtc := config.WebRTCConfig{
@@ -49,14 +49,14 @@ func main() {
 	}
 	br := []*config.BroadcasterConfig{}
 	lis := []*config.ListenerConfig{{
-		Source: "gstreamer",
+			Source: "gstreamer",
 
-		DataType: "sample",
+			DataType: "sample",
 
-		MediaType: "video",
-		Name:      "gpuGstreamer",
-		Codec:     webrtc.MimeTypeH264,
-	},
+			MediaType: "video",
+			Name:      "gpuGstreamer",
+			Codec:     webrtc.MimeTypeH264,
+		},
 		{
 			Source: "gstreamer",
 

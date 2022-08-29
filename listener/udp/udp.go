@@ -4,9 +4,6 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/queue"
 	"github.com/pion/rtp"
@@ -44,13 +41,11 @@ func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) 
 		Bufsize:   10000,
 	}
 
+	// Read RTP packets forever and send them to the WebRTC Client
+	udp.queue.Start()
 	return
 }
 
-func (udp *UDPListener) Open() {
-	// Read RTP packets forever and send them to the WebRTC Client
-	udp.queue.Start()
-}
 
 func (udp *UDPListener) ReadRTP() *rtp.Packet {
 	return <-udp.packetChannel
@@ -64,14 +59,6 @@ func (udp *UDPListener) Close() {
 	udp.queue.Closed = true
 }
 
-func (udp *UDPListener) OnClose(fun listener.OnCloseFunc) {
-	go func() {
-		if udp.queue.Closed {
-			fun(udp)
-		}
-		time.Sleep(100 * time.Millisecond)
-	}()
-}
 
 func (udp *UDPListener) ReadConfig() *config.ListenerConfig {
 	return udp.config

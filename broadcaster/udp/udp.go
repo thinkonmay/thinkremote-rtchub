@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/rtp"
 )
@@ -17,7 +16,6 @@ type UDPBroadcaster struct {
 	buffer     []byte
 	bufferSize int
 
-	closeChannel  chan bool
 	packetChannel chan *rtp.Packet
 }
 
@@ -63,7 +61,6 @@ func NewUDPBroadcaster(config *config.BroadcasterConfig) (udp *UDPBroadcaster, e
 		return
 	}
 	udp.buffer = make([]byte, udp.bufferSize)
-	udp.closeChannel = make(chan bool)
 	udp.packetChannel = make(chan *rtp.Packet)
 	udp.conn, err = net.Dial("udp", fmt.Sprintf("localhost:%d", config.Port))
 
@@ -78,15 +75,8 @@ func (udp *UDPBroadcaster) Write(packet *rtp.Packet) {
 }
 
 func (udp *UDPBroadcaster) Close() {
-	udp.closeChannel <- true
 }
 
-func (udp *UDPBroadcaster) OnClose(fun broadcaster.OnCloseFunc) {
-	go func() {
-		<-udp.closeChannel
-		fun(udp)
-	}()
-}
 
 func (udp *UDPBroadcaster) ReadConfig() *config.BroadcasterConfig {
 	return udp.config

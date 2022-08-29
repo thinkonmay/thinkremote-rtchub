@@ -4,10 +4,8 @@ import (
 	"fmt"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
-	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/file"
 	udpbr "github.com/OnePlay-Internet/webrtc-proxy/broadcaster/udp"
 
-	// datachannel "github.com/OnePlay-Internet/webrtc-proxy/data-channel"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
 	grpc "github.com/OnePlay-Internet/webrtc-proxy/signalling/gRPC"
@@ -64,13 +62,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 						fmt.Printf("%s\n", err.Error())
 					}
 					return
-				} else if conf.Protocol == "file" {
-					br, err = file.NewUDPBroadcaster(conf)
-					if err != nil {
-						fmt.Printf("%s\n", err.Error())
-					}
-					return
-				}
+				} 
 			}
 		}
 

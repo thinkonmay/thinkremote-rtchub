@@ -14,7 +14,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
@@ -29,7 +28,6 @@ type Pipeline struct {
 	Pipeline *C.GstElement
 	sampchan chan *media.Sample
 	config   *config.ListenerConfig
-	fun      listener.OnCloseFunc
 }
 
 var pipeline *Pipeline
@@ -60,6 +58,7 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 		config:   config,
 	}
 
+	C.gstreamer_send_start_pipeline(pipeline.Pipeline)
 	return pipeline
 }
 
@@ -84,12 +83,6 @@ func (p *Pipeline) ReadRTP() *rtp.Packet {
 	return <-block
 }
 
-func (p *Pipeline) Open() {
-	C.gstreamer_send_start_pipeline(p.Pipeline)
-}
 func (p *Pipeline) Close() {
 	C.gstreamer_send_stop_pipeline(p.Pipeline)
-}
-func (p *Pipeline) OnClose(fun listener.OnCloseFunc) {
-	p.fun = fun
 }
