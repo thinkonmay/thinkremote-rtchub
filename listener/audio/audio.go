@@ -5,7 +5,7 @@ package audio
 #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
 #cgo LDFLAGS: ${SRCDIR}/../../lib/libshared.a 
 
-#include "audio.h"
+#include "webrtc_audio.h"
 
 */
 import "C"

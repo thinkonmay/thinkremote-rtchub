@@ -5,7 +5,7 @@ package gst
 #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
 #cgo LDFLAGS: ${SRCDIR}/../../lib/libshared.a 
 
-#include "gst.h"
+#include "webrtc_video.h"
 
 */
 import "C"
