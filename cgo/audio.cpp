@@ -1,4 +1,4 @@
-#include "audio.h"
+#include <webrtc_audio.h>
 
 #include <gst/app/gstappsrc.h>
 
@@ -16,12 +16,12 @@ device_foreach(GstDevice* device,
     MediaDevice* source = (MediaDevice*) data;
 
     gchar* name = gst_device_get_display_name(device);
-    gchar* class = gst_device_get_device_class(device);
+    gchar* klass = gst_device_get_device_class(device);
     GstCaps* cap = gst_device_get_caps(device);
     GstStructure* cap_structure = gst_caps_get_structure (cap, 0);
     GstStructure* device_structure = gst_device_get_properties(device);
-    gchar* cap_name = gst_structure_get_name (cap_structure);
-    gchar* api = gst_structure_get_string(device_structure,"device.api");
+    gchar* cap_name = (gchar*)gst_structure_get_name(cap_structure);
+    gchar* api = (gchar*)gst_structure_get_string(device_structure,"device.api");
 
     
     if(!g_strcmp0(api,"wasapi2"))
@@ -29,11 +29,11 @@ device_foreach(GstDevice* device,
         gboolean is_default;
         gchar* id;
 
-        id = gst_structure_get_string(device_structure,"device.strid");
-        id = id ? id : gst_structure_get_string(device_structure,"device.id");
+        id = (gchar*)gst_structure_get_string(device_structure,"device.strid");
+        id = id ? id : (gchar*)gst_structure_get_string(device_structure,"device.id");
         gst_structure_get_boolean(device_structure,"device.default",&is_default);
 
-        if(!g_strcmp0(class,"Audio/Source") &&
+        if(!g_strcmp0(klass,"Audio/Source") &&
            !g_strcmp0(cap_name,"audio/x-raw"))
         {
             if(g_str_has_prefix(name,"CABLE Input"))
@@ -42,7 +42,7 @@ device_foreach(GstDevice* device,
                 memcpy(source->backup_sound_output_device_id,id,strlen(id));
         }
 
-        if(!g_strcmp0(class,"Audio/Sink") &&
+        if(!g_strcmp0(klass,"Audio/Sink") &&
            !g_strcmp0(cap_name,"audio/x-raw"))
         {
             if(g_str_has_prefix(name,"CABLE"))
@@ -158,5 +158,5 @@ void gstreamer_audio_stop_pipeline(GstElement *pipeline) {
 int           
 string_get_length(void* string)
 {
-  return strlen(string);
+  return strlen((char*)string);
 }

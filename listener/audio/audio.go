@@ -55,7 +55,6 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 		config:   config,
 	}
 
-	C.gstreamer_audio_start_pipeline(pipeline.Pipeline)
 	return pipeline
 }
 
@@ -69,7 +68,8 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 	pipeline.sampchan <- &sample
 }
 
-func (p *Pipeline) ReadConfig() *config.ListenerConfig {
+func (p *Pipeline) Open() *config.ListenerConfig {
+	C.gstreamer_audio_start_pipeline(pipeline.Pipeline)
 	return p.config
 }
 func (p *Pipeline) ReadSample() *media.Sample {

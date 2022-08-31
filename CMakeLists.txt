@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 2.20.0)
-project(personal-cloud-computing C)
 
 
 set(CMAKE_PREFIX_PATH C:/gstreamer/1.0/msvc_x86_64)
@@ -32,7 +31,7 @@ pkg_check_modules(VIDEO REQUIRED gstreamer-video-1.0)
 
 
 file(GLOB SOURCE_LIST 
-${CMAKE_SOURCE_DIR}/cgo/*.c
+${CMAKE_SOURCE_DIR}/cgo/*.cpp
 )
 
 add_library(shared STATIC ${SOURCE_LIST})

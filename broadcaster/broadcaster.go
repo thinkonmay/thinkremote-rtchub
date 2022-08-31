@@ -5,9 +5,8 @@ import (
 	"github.com/pion/rtp"
 )
 
-
 type Broadcaster interface {
-	ReadConfig() *config.BroadcasterConfig
+	Open() *config.BroadcasterConfig
 	Write(pk *rtp.Packet)
 	Close()
 }

@@ -78,6 +78,6 @@ func (udp *UDPBroadcaster) Close() {
 }
 
 
-func (udp *UDPBroadcaster) ReadConfig() *config.BroadcasterConfig {
+func (udp *UDPBroadcaster) Open() *config.BroadcasterConfig {
 	return udp.config
 }

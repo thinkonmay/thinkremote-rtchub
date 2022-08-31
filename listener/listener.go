@@ -7,7 +7,7 @@ import (
 )
 
 type Listener interface {
-	ReadConfig() *config.ListenerConfig
+	Open() *config.ListenerConfig
 	ReadRTP() *rtp.Packet
 	ReadSample() *media.Sample
 	Close()

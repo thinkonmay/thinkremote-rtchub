@@ -94,7 +94,7 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 			panic(err)
 		}
 
-		fmt.Printf("new track: %s\n\n", br.ReadConfig().Name)
+		fmt.Printf("new track: %s\n\n", br.Open().Name)
 		go writeLoop(br, track)
 	})
 
@@ -167,7 +167,7 @@ func handleRTCP(rtpSender *webrtc.RTPSender) {
 func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 	for _, lis := range listeners {
 		var rtpSender *webrtc.RTPSender
-		listenerConfig := lis.ReadConfig()
+		listenerConfig := lis.Open()
 		var localTrack webrtc.TrackLocal
 
 		fmt.Printf("added track\n")

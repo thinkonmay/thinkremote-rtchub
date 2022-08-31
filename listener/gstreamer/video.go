@@ -46,7 +46,7 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 		QUEUE := "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3"
 		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc bitrate=5000 rc-mode=0 low-latency=true ref=1 quality-vs-speed=0 ! %s ! appsink name=appsink", DIRECTX_PAD, QUEUE, DIRECTX_PAD, QUEUE, QUEUE)
 	} else if config.Name == "cpuGstreamer" {
-		pipelineStr = fmt.Sprintf("videotestsrc ! queue ! openh264enc ! video/x-h264,stream-format=byte-stream ! queue ! appsink name=appsink")
+		pipelineStr = "videotestsrc ! queue ! openh264enc ! video/x-h264,stream-format=byte-stream ! queue ! appsink name=appsink";
 	}
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
@@ -58,7 +58,6 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 		config:   config,
 	}
 
-	C.gstreamer_send_start_pipeline(pipeline.Pipeline)
 	return pipeline
 }
 
@@ -72,7 +71,8 @@ func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.i
 	pipeline.sampchan <- &sample
 }
 
-func (p *Pipeline) ReadConfig() *config.ListenerConfig {
+func (p *Pipeline) Open() *config.ListenerConfig {
+	C.gstreamer_send_start_pipeline(pipeline.Pipeline)
 	return p.config
 }
 func (p *Pipeline) ReadSample() *media.Sample {
@@ -82,7 +82,6 @@ func (p *Pipeline) ReadRTP() *rtp.Packet {
 	block := make(chan *rtp.Packet)
 	return <-block
 }
-
 func (p *Pipeline) Close() {
 	C.gstreamer_send_stop_pipeline(p.Pipeline)
 }

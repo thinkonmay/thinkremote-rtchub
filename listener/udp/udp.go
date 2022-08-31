@@ -33,16 +33,14 @@ func NewUDPListener(config *config.ListenerConfig) (udp UDPListener, err error) 
 		return
 	}
 
-	udp.packetChannel = make(chan *rtp.Packet)
+	udp.packetChannel = make(chan *rtp.Packet,1000)
 	udp.queue = &queue.RtpQueue{
 		Outqueue:  udp.packetChannel,
 		Source:    udp.conn,
-		Threadnum: 15, // TODO (evaluation point)
+		Threadnum: 1, // TODO (evaluation point)
 		Bufsize:   10000,
 	}
 
-	// Read RTP packets forever and send them to the WebRTC Client
-	udp.queue.Start()
 	return
 }
 
@@ -59,7 +57,8 @@ func (udp *UDPListener) Close() {
 	udp.queue.Closed = true
 }
 
-
-func (udp *UDPListener) ReadConfig() *config.ListenerConfig {
+func (udp *UDPListener) Open() *config.ListenerConfig {
+	// Read RTP packets forever and send them to the WebRTC Client
+	udp.queue.Start()
 	return udp.config
 }

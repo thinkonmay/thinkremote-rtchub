@@ -1,4 +1,4 @@
-#include "gst.h"
+#include <webrtc_video.h>
 
 #include <gst/app/gstappsrc.h>
 
