@@ -1,5 +1,6 @@
+extern "C" {
 #include <webrtc_audio.h>
-
+}
 #include <gst/app/gstappsrc.h>
 
 GMainLoop *gstreamer_audio_main_loop = NULL;
@@ -62,7 +63,6 @@ set_media_device()
 {
     static MediaDevice dev = {0};
 
-    
     GstDeviceMonitor* monitor = gst_device_monitor_new();
     if(!gst_device_monitor_start(monitor)) {
         return NULL;
@@ -123,7 +123,7 @@ GstFlowReturn gstreamer_audio_new_sample_handler(GstElement *object, gpointer us
   return GST_FLOW_OK;
 }
 
-GstElement *gstreamer_audio_create_pipeline(char *pipeline,
+void* gstreamer_audio_create_pipeline(char *pipeline,
                                             char* device) 
 {
   gst_init(NULL, NULL);
@@ -134,7 +134,7 @@ GstElement *gstreamer_audio_create_pipeline(char *pipeline,
   return ret;
 }
 
-void gstreamer_audio_start_pipeline(GstElement *pipeline) {
+void gstreamer_audio_start_pipeline(void* pipeline) {
 
   
   GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
@@ -147,11 +147,11 @@ void gstreamer_audio_start_pipeline(GstElement *pipeline) {
   g_signal_connect(appsink, "new-sample", G_CALLBACK(gstreamer_audio_new_sample_handler), NULL);
   gst_object_unref(appsink);
 
-  gst_element_set_state(pipeline, GST_STATE_PLAYING);
+  gst_element_set_state((GstElement*)pipeline, GST_STATE_PLAYING);
 }
 
-void gstreamer_audio_stop_pipeline(GstElement *pipeline) {
-  gst_element_set_state(pipeline, GST_STATE_NULL);
+void gstreamer_audio_stop_pipeline(void* pipeline) {
+  gst_element_set_state((GstElement*)pipeline, GST_STATE_NULL);
 }
 
 

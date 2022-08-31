@@ -1,14 +1,6 @@
 // Package gst provides an easy API to create an appsink pipeline
-package gst
+package video 
 
-/*
-#cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
-#cgo LDFLAGS: ${SRCDIR}/../../lib/libshared.a 
-
-#include "webrtc_video.h"
-
-*/
-import "C"
 import (
 	"fmt"
 	"time"
@@ -18,6 +10,10 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
+// #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
+// #cgo LDFLAGS: ${SRCDIR}/../../build/libshared.a 
+// #include "webrtc_video.h"
+import "C"
 
 func init() {
 	go C.gstreamer_send_start_mainloop()
@@ -25,7 +21,7 @@ func init() {
 
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
-	Pipeline *C.GstElement
+	Pipeline unsafe.Pointer
 	sampchan chan *media.Sample
 	config   *config.ListenerConfig
 }

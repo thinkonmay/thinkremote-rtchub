@@ -1,8 +1,5 @@
-#ifndef AUDIO_H
-#define AUDIO_H
-
-#include <glib.h>
-#include <gst/gst.h>
+#ifndef __WEBRTC_AUDIO_H__
+#define __WEBRTC_AUDIO_H__
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -21,22 +18,22 @@ typedef struct _MediaDevice
     char backup_monitor_name[100];
 }MediaDevice;
 
-extern void   goHandlePipelineBufferAudio             (void *buffer, 
-                                                  int bufferLen, 
-                                                  int samples);
+extern void   goHandlePipelineBufferAudio         (void *buffer, 
+                                                   int bufferLen, 
+                                                   int samples);
 
-GstElement *  gstreamer_audio_create_pipeline     (char *pipeline,
+void*  gstreamer_audio_create_pipeline            (char *pipeline,
                                                    char* device);
 
-void          gstreamer_audio_start_pipeline      (GstElement *pipeline);
+void          gstreamer_audio_start_pipeline      (void* pipeline);
 
-void          gstreamer_audio_stop_pipeline       (GstElement *pipeline);
+void          gstreamer_audio_stop_pipeline       (void* pipeline);
 
 void          gstreamer_audio_start_mainloop      (void);
 
 void*         set_media_device();
 
-int           
-string_get_length(void* string);
-#endif
+int           string_get_length(void* string);
 
+
+#endif

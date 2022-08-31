@@ -8,7 +8,7 @@ import (
 	proxy "github.com/OnePlay-Internet/webrtc-proxy"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener/audio"
-	gst "github.com/OnePlay-Internet/webrtc-proxy/listener/gstreamer"
+	"github.com/OnePlay-Internet/webrtc-proxy/listener/video"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener/udp"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/webrtc/v3"
@@ -109,7 +109,7 @@ func main() {
 					continue
 				}
 			} else if lis_conf.Source == "gstreamer" {
-				Lis = gst.CreatePipeline(lis_conf)
+				Lis = video.CreatePipeline(lis_conf)
 			} else {
 				fmt.Printf("Unimplemented listener\n")
 				continue

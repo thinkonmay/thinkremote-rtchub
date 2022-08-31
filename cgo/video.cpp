@@ -1,6 +1,10 @@
+extern "C" {
 #include <webrtc_video.h>
+}
 
 #include <gst/app/gstappsrc.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 GMainLoop *gstreamer_send_main_loop = NULL;
 void gstreamer_send_start_mainloop(void) {
@@ -56,14 +60,15 @@ GstFlowReturn gstreamer_send_new_sample_handler(GstElement *object, gpointer use
   return GST_FLOW_OK;
 }
 
-GstElement *gstreamer_send_create_pipeline(char *pipeline) {
+void* 
+gstreamer_send_create_pipeline(char *pipeline) {
   gst_init(NULL, NULL);
   GError *error = NULL;
   GstElement* el = gst_parse_launch(pipeline, &error);
-  return el;
+  return (void*)el;
 }
 
-void gstreamer_send_start_pipeline(GstElement *pipeline) {
+void gstreamer_send_start_pipeline(void* pipeline) {
   GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
   gst_bus_add_watch(bus, gstreamer_send_bus_call, NULL);
   gst_object_unref(bus);
@@ -73,9 +78,9 @@ void gstreamer_send_start_pipeline(GstElement *pipeline) {
   g_signal_connect(appsink, "new-sample", G_CALLBACK(gstreamer_send_new_sample_handler), NULL);
   gst_object_unref(appsink);
 
-  gst_element_set_state(pipeline, GST_STATE_PLAYING);
+  gst_element_set_state((GstElement*)pipeline, GST_STATE_PLAYING);
 }
 
-void gstreamer_send_stop_pipeline(GstElement *pipeline) {
-  gst_element_set_state(pipeline, GST_STATE_NULL);
+void gstreamer_send_stop_pipeline(void* pipeline) {
+  gst_element_set_state((GstElement*)pipeline, GST_STATE_NULL);
 }

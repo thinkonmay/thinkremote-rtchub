@@ -5,3 +5,5 @@ ninja
 cd ..
 mkdir lib
 robocopy build lib libshared.a
+
+go build ./cmd/agent
