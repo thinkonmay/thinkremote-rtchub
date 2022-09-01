@@ -10,7 +10,7 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
-// #cgo LDFLAGS: ${SRCDIR}/../../build/libshared.a 
+// #cgo LDFLAGS: ${SRCDIR}/../../lib/libshared.a 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
 // #include "webrtc_audio.h"
 import "C"
