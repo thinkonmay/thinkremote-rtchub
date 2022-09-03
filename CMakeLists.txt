@@ -6,9 +6,6 @@ project(WebrtcProxy)
 set(CMAKE_PREFIX_PATH C:/gstreamer/1.0/msvc_x86_64)
 set(INCLUDE_LIBRARY C:/gstreamer/1.0/msvc_x86_64/lib)
 
-enable_language(RC)
-set(CMAKE_RC_COMPILER windres)
-
 foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
     string( TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG )
     set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_SOURCE_DIR}/bin )
@@ -69,10 +66,6 @@ target_link_libraries(shared PUBLIC
     ${WEBRTC_LIBRARIES}
     ${VIDEO_LIBRARIES}
 )
-
-set_target_properties(shared PROPERTIES CXX_STANDARD 17
-                               VERSION ${PROJECT_VERSION}
-                               SOVERSION ${PROJECT_VERSION_MAJOR})
 
 
 

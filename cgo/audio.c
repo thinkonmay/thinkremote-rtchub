@@ -1,6 +1,4 @@
-extern "C" {
 #include <webrtc_audio.h>
-}
 #include <gst/app/gstappsrc.h>
 
 GMainLoop *gstreamer_audio_main_loop = NULL;
