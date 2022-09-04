@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	HIDproxyEndpoint = "localhost:5000"
+	HIDdefaultEndpoint = "localhost:5000"
+
 	mouseWheel = 0
 	mouseMove = 1
 	mouseBtnUp = 2
@@ -26,6 +27,7 @@ const (
 type HIDSingleton struct {
 	channel chan *HIDMsg
 	client *http.Client
+	URL string
 }
 
 type HIDMsg struct {
@@ -34,8 +36,9 @@ type HIDMsg struct {
 }
 
 
-func NewHIDSingleton() *HIDSingleton{
+func NewHIDSingleton(URL string) *HIDSingleton{
 	ret := HIDSingleton{
+		URL: URL,
 		channel: make(chan *HIDMsg,100),
 		client: &http.Client{
 			Timeout:   time.Second,
@@ -49,6 +52,10 @@ func NewHIDSingleton() *HIDSingleton{
 				return http.ErrUseLastResponse
 			},
 		},
+	}
+
+	if ret.URL == "" {
+		ret.URL = HIDdefaultEndpoint	
 	}
 
 	go func ()  {
@@ -102,7 +109,7 @@ func NewHIDSingleton() *HIDSingleton{
 
 			if err != nil { continue; }
 			ctx,_ := context.WithTimeout(context.Background(), time.Second)
-			req,_ := http.NewRequest("POST", fmt.Sprintf("http://%s/%s",HIDproxyEndpoint,route),bytes.NewBuffer(out));
+			req,_ := http.NewRequest("POST", fmt.Sprintf("http://%s/%s",ret.URL,route),bytes.NewBuffer(out));
 			req = req.WithContext(ctx);
 			ret.client.Do(req);
 		}	

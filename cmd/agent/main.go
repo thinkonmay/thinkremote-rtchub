@@ -17,12 +17,17 @@ import (
 
 func main() {
 	var token string
+	URL := "localhost:5000"
+
 	args := os.Args[1:]
 	for i, arg := range args {
 		if arg == "--token" {
 			token = args[i+1]
+		} else if arg == "--hid" {
+			URL = args[i+1]
 		} else if arg == "--help" {
 			fmt.Printf("--token |  server token\n")
+			fmt.Printf("--hid   |  HID server URL (example: localhost:5000)\n")
 			return
 		}
 	}
@@ -55,7 +60,7 @@ func main() {
 			DataType: "sample",
 
 			MediaType: "video",
-			Name:      "gpuGstreamer",
+			Name:      "cpuGstreamer",
 			Codec:     webrtc.MimeTypeH264,
 		},
 		{
@@ -85,7 +90,7 @@ func main() {
 			},
 		}
 
-		sing := hid.NewHIDSingleton()
+		sing := hid.NewHIDSingleton(URL);
 		go func() {
 			for {
 				channel := chans.Confs["hid"]
