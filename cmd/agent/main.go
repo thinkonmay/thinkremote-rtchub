@@ -6,6 +6,7 @@ import (
 	"time"
 
 	proxy "github.com/OnePlay-Internet/webrtc-proxy"
+	"github.com/OnePlay-Internet/webrtc-proxy/hid"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener/audio"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener/video"
@@ -84,12 +85,13 @@ func main() {
 			},
 		}
 
+		sing := hid.NewHIDSingleton()
 		go func() {
 			for {
 				channel := chans.Confs["hid"]
 				if channel != nil {
 					str := <-chans.Confs["hid"].Recv
-					go ParseHIDInput(str)
+					sing.ParseHIDInput(str)
 				} else {
 					return
 				}

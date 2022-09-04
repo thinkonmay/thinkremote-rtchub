@@ -1,0 +1,117 @@
+package hid
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net"
+	"net/http"
+	"time"
+)
+
+const (
+	HIDproxyEndpoint = "localhost:5000"
+	mouseWheel = 0
+	mouseMove = 1
+	mouseBtnUp = 2
+	mouseBtnDown = 3
+	
+	keyUp = 4
+	keyDown = 5
+	keyPress = 6
+	keyReset = 7
+)
+
+type HIDSingleton struct {
+	channel chan *HIDMsg
+	client *http.Client
+}
+
+type HIDMsg struct {
+	EventCode int			`json:"code"`
+	Data map[string]interface{} `json:"data"`
+}
+
+
+func NewHIDSingleton() *HIDSingleton{
+	ret := HIDSingleton{
+		channel: make(chan *HIDMsg,100),
+		client: &http.Client{
+			Timeout:   time.Second,
+			Transport: &http.Transport{
+				Dial: (&net.Dialer{
+					Timeout: time.Second,
+				}).Dial,
+				TLSHandshakeTimeout: time.Second,
+			},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+	}
+
+	go func ()  {
+		var err error;
+		var route string;
+		var out []byte;
+
+
+		for {
+			bodyfloat := -1.0;
+			bodystring := "";
+			bodymap := make(map[string]float64)
+
+			msg :=<-ret.channel;
+			switch msg.EventCode {
+			case mouseWheel:
+				route = "Mouse/Wheel"
+				bodyfloat = msg.Data["deltaY"].(float64);
+			case mouseBtnUp:
+				route = "Mouse/Up"
+				bodyfloat = msg.Data["button"].(float64);
+			case mouseBtnDown:
+				route = "Mouse/Down"
+				bodyfloat = msg.Data["button"].(float64);
+			case mouseMove:
+				route = "Mouse/Move"
+				bodymap["X"] = msg.Data["dX"].(float64);
+				bodymap["Y"] = msg.Data["dY"].(float64);
+			case keyUp:
+				route = "Keyboard/Up"
+				bodystring = msg.Data["key"].(string);
+			case keyDown:
+				route = "Keyboard/Down"
+				bodystring = msg.Data["key"].(string);
+			case keyReset:
+				route = "Keyboard/Reset"
+			case keyPress:
+				route = "Keyboard/Press"
+			}
+
+			
+			if bodyfloat != -1 {
+				out,err = json.Marshal(bodyfloat)
+			} else if bodystring != "" {
+				out,err = json.Marshal(bodystring)
+			} else if len(bodymap) != 0 {
+				out,err = json.Marshal(bodymap)
+			} else {
+				out = []byte("");
+			}
+
+			if err != nil { continue; }
+			ctx,_ := context.WithTimeout(context.Background(), time.Second)
+			req,_ := http.NewRequest("POST", fmt.Sprintf("http://%s/%s",HIDproxyEndpoint,route),bytes.NewBuffer(out));
+			req = req.WithContext(ctx);
+			ret.client.Do(req);
+		}	
+	}();
+	return &ret;
+}
+
+func (hid *HIDSingleton)ParseHIDInput(data string) {
+	var msg HIDMsg
+	json.Unmarshal([]byte(data),&msg);
+	hid.channel <- &msg;
+}
