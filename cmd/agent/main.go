@@ -18,6 +18,7 @@ import (
 func main() {
 	var token string
 	URL := "localhost:5000"
+	env := "prod"
 
 	args := os.Args[1:]
 	for i, arg := range args {
@@ -25,9 +26,9 @@ func main() {
 			token = args[i+1]
 		} else if arg == "--hid" {
 			URL = args[i+1]
+		} else if arg == "--env" {
+			env = args[i+1]
 		} else if arg == "--help" {
-			fmt.Printf("--token |  server token\n")
-			fmt.Printf("--hid   |  HID server URL (example: localhost:5000)\n")
 			return
 		}
 	}
@@ -35,6 +36,17 @@ func main() {
 	if token == "" {
 		return
 	}
+
+	engine := func () string {
+		switch env {
+		case "dev":
+			return "cpuGstreamer"
+		case "prod":
+			return "gpuGstreamer"
+		default:
+			return "gpuGstreamer"
+		}	
+	}()
 
 	grpc := config.GrpcConfig{
 		Port:          30000,
@@ -60,7 +72,7 @@ func main() {
 			DataType: "sample",
 
 			MediaType: "video",
-			Name:      "cpuGstreamer",
+			Name:      engine,
 			Codec:     webrtc.MimeTypeH264,
 		},
 		{

@@ -2,7 +2,6 @@ package hid
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -108,10 +107,8 @@ func NewHIDSingleton(URL string) *HIDSingleton{
 			}
 
 			if err != nil { continue; }
-			ctx,_ := context.WithTimeout(context.Background(), time.Second)
-			req,_ := http.NewRequest("POST", fmt.Sprintf("http://%s/%s",ret.URL,route),bytes.NewBuffer(out));
-			req = req.WithContext(ctx);
-			ret.client.Do(req);
+			http.Post(fmt.Sprintf("http://%s/%s",ret.URL,route),
+				"application/json",bytes.NewBuffer(out));
 		}	
 	}();
 	return &ret;
