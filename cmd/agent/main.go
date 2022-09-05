@@ -86,63 +86,61 @@ func main() {
 		},
 	}
 
-	for {
-		chans := config.DataChannelConfig{
-			Offer: true,
-			Confs: map[string]*struct {
-				Send    chan string
-				Recv    chan string
-				Channel *webrtc.DataChannel
-			}{
-				"hid": {
-					Send:    make(chan string),
-					Recv:    make(chan string),
-					Channel: nil,
-				},
+	chans := config.DataChannelConfig{
+		Offer: true,
+		Confs: map[string]*struct {
+			Send    chan string
+			Recv    chan string
+			Channel *webrtc.DataChannel
+		}{
+			"hid": {
+				Send:    make(chan string),
+				Recv:    make(chan string),
+				Channel: nil,
 			},
-		}
-
-		sing := hid.NewHIDSingleton(URL);
-		go func() {
-			for {
-				channel := chans.Confs["hid"]
-				if channel != nil {
-					str := <-chans.Confs["hid"].Recv
-					sing.ParseHIDInput(str)
-				} else {
-					return
-				}
-			}
-		}()
-
-		Lists := make([]listener.Listener, 0)
-		for _, lis_conf := range lis {
-			var Lis listener.Listener
-			if lis_conf.MediaType == "audio" {
-				Lis = audio.CreatePipeline(lis_conf)
-			} else if lis_conf.Source == "udp" {
-				udpLis, err := udp.NewUDPListener(lis_conf)
-				Lis = &udpLis
-				if err != nil {
-					fmt.Printf("%s\n", err.Error())
-					continue
-				}
-			} else if lis_conf.Source == "gstreamer" {
-				Lis = video.CreatePipeline(lis_conf)
-			} else {
-				fmt.Printf("Unimplemented listener\n")
-				continue
-			}
-
-			Lists = append(Lists, Lis)
-		}
-
-		prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists)
-		if err != nil {
-			fmt.Printf("failed to init webrtc proxy, try again in 2 second\n")
-			time.Sleep(2 * time.Second)
-			continue
-		}
-		<-prox.Shutdown
+		},
 	}
+
+	sing := hid.NewHIDSingleton(URL);
+	go func() {
+		for {
+			channel := chans.Confs["hid"]
+			if channel != nil {
+				str := <-chans.Confs["hid"].Recv
+				sing.ParseHIDInput(str)
+			} else {
+				return
+			}
+		}
+	}()
+
+	Lists := make([]listener.Listener, 0)
+	for _, lis_conf := range lis {
+		var Lis listener.Listener
+		if lis_conf.MediaType == "audio" {
+			Lis = audio.CreatePipeline(lis_conf)
+		} else if lis_conf.Source == "udp" {
+			udpLis, err := udp.NewUDPListener(lis_conf)
+			Lis = &udpLis
+			if err != nil {
+				fmt.Printf("%s\n", err.Error())
+				return
+			}
+		} else if lis_conf.Source == "gstreamer" {
+			Lis = video.CreatePipeline(lis_conf)
+		} else {
+			fmt.Printf("Unimplemented listener\n")
+			return
+		}
+
+		Lists = append(Lists, Lis)
+	}
+
+	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists)
+	if err != nil {
+		fmt.Printf("failed to init webrtc proxy, try again in 2 second\n")
+		time.Sleep(2 * time.Second)
+		return
+	}
+	<-prox.Shutdown
 }

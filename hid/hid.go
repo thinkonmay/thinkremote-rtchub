@@ -57,7 +57,7 @@ func NewHIDSingleton(URL string) *HIDSingleton{
 		ret.URL = HIDdefaultEndpoint	
 	}
 
-	go func ()  {
+	process := func ()  {
 		var err error;
 		var route string;
 		var out []byte;
@@ -107,10 +107,12 @@ func NewHIDSingleton(URL string) *HIDSingleton{
 			}
 
 			if err != nil { continue; }
-			http.Post(fmt.Sprintf("http://%s/%s",ret.URL,route),
+			go http.Post(fmt.Sprintf("http://%s/%s",ret.URL,route),
 				"application/json",bytes.NewBuffer(out));
 		}	
-	}();
+	};
+
+	go process();
 	return &ret;
 }
 
