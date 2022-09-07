@@ -38,9 +38,16 @@ const (
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	var pipelineStr string
 	if config.Name == "gpuGstreamer" {
+		doDownload := true
 		DIRECTX_PAD := "video/x-raw(memory:D3D11Memory)"
 		QUEUE := "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3"
-		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc bitrate=5000 rc-mode=0 low-latency=true ref=1 quality-vs-speed=0 ! %s ! appsink name=appsink", DIRECTX_PAD, QUEUE, DIRECTX_PAD, QUEUE, QUEUE)
+		MFH264PROP := "bitrate=3000 rc-mode=0 low-latency=true ref=1 quality-vs-speed=0"
+		MFH264PROPSW := "bitrate=2000 threads=16 gop-size=0 adaptive-mode=1 ref=1 rc-mode=0 low-latency=true ref=1 quality-vs-speed=0"
+		if doDownload == true {
+			pipelineStr = fmt.Sprintf("d3d11screencapturesrc ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! d3d11download ! %s ! mfh264enc %s ! %s ! appsink name=appsink", DIRECTX_PAD, QUEUE, DIRECTX_PAD, QUEUE ,QUEUE, MFH264PROPSW, QUEUE)
+		} else {
+			pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc %s ! %s ! appsink name=appsink", DIRECTX_PAD, QUEUE, DIRECTX_PAD, QUEUE, MFH264PROP, QUEUE)
+		}
 	} else if config.Name == "cpuGstreamer" {
 		pipelineStr = "videotestsrc ! queue ! openh264enc ! video/x-h264,stream-format=byte-stream ! queue ! appsink name=appsink";
 	}
