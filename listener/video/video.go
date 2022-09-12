@@ -57,7 +57,7 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 
 	pipeline = &Pipeline{
 		Pipeline: C.gstreamer_send_create_pipeline(pipelineStrUnsafe),
-		sampchan: make(chan *media.Sample),
+		sampchan: make(chan *media.Sample,1000),
 		config:   config,
 	}
 
