@@ -27,7 +27,7 @@ handle_gstreamer_bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
         gst_message_parse_error(msg, &error, &debug);
         g_free(debug);
 
-        g_printerr("Error: %s\n", error->message);
+        g_printerr("Audio pipeline error: %s\n", error->message);
         g_error_free(error);
         exit(1);
     }
@@ -63,13 +63,13 @@ handle_audio_buffer(GstElement *object, gpointer user_data) {
 
 void* 
 create_audio_pipeline(char *pipeline,
-                                char* device) 
+                      char* device) 
 {
     gst_init(NULL, NULL);
     GError *error = NULL;
     GstElement * ret = gst_parse_launch(pipeline, &error);
-    GstElement *src = gst_bin_get_by_name(GST_BIN(ret), "source");
-    g_object_set(src,"device",device,NULL);
+    // GstElement *src = gst_bin_get_by_name(GST_BIN(ret), "source");
+    // g_object_set(src,"device",device,NULL);
     return ret;
 }
 

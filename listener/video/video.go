@@ -1,8 +1,9 @@
 // Package gst provides an easy API to create an appsink pipeline
-package video 
+package video
 
 import (
 	"fmt"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -10,8 +11,9 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
+
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
-// #cgo LDFLAGS: ${SRCDIR}/../../lib/libshared.a 
+// #cgo LDFLAGS: ${SRCDIR}/../../lib/libshared.a
 // #include "webrtc_video.h"
 import "C"
 
@@ -32,24 +34,26 @@ const (
 	videoClockRate = 90000
 	audioClockRate = 48000
 	pcmClockRate   = 8000
+
+	DIRECTX_PAD = "video/x-raw(memory:D3D11Memory)"
+	QUEUE = "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3"
+	MFH264PROP = "bitrate=3000 rc-mode=0 low-latency=true ref=1 quality-vs-speed=0"
+	MFH264PROPSW = "bitrate=2000"
 )
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	var pipelineStr string
-	if config.Name == "gpuGstreamer" {
-		doDownload := true
-		DIRECTX_PAD := "video/x-raw(memory:D3D11Memory)"
-		QUEUE := "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3"
-		MFH264PROP := "bitrate=3000 rc-mode=0 low-latency=true ref=1 quality-vs-speed=0"
-		MFH264PROPSW := "bitrate=2000 threads=16 gop-size=0 adaptive-mode=1 ref=1 rc-mode=0 low-latency=true ref=1 quality-vs-speed=0"
-		if doDownload == true {
-			pipelineStr = fmt.Sprintf("d3d11screencapturesrc ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! d3d11download ! %s ! mfh264enc %s ! %s ! appsink name=appsink", DIRECTX_PAD, QUEUE, DIRECTX_PAD, QUEUE ,QUEUE, MFH264PROPSW, QUEUE)
-		} else {
-			pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc %s ! %s ! appsink name=appsink", DIRECTX_PAD, QUEUE, DIRECTX_PAD, QUEUE, MFH264PROP, QUEUE)
-		}
-	} else if config.Name == "cpuGstreamer" {
-		pipelineStr = "videotestsrc ! queue ! openh264enc ! video/x-h264,stream-format=byte-stream ! queue ! appsink name=appsink";
+	
+
+	if strings.Contains(config.VideoSource.Adapter, "Intel") {
+		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s ! d3d11download ! %s ! openh264enc %s ! 		 %s ! appsink name=appsink", 
+														   				  DIRECTX_PAD, 	   	  QUEUE, 			   QUEUE,				QUEUE, 		   MFH264PROPSW, QUEUE)
+	} else if strings.Contains(config.VideoSource.Adapter, "Nvidia") {
+		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc %s ! 			%s ! appsink name=appsink", 
+																		  DIRECTX_PAD, 		  QUEUE, 			  DIRECTX_PAD, 	   QUEUE, 		  MFH264PROP, 	QUEUE)
+	} else {
+
 	}
 
 	pipelineStrUnsafe := C.CString(pipelineStr)

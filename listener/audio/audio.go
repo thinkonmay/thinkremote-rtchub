@@ -37,12 +37,13 @@ const (
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	QUEUE := "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3"
-	pipelineStr := fmt.Sprintf("wasapi2src name=source loopback=true ! %s ! audioconvert ! %s ! audioresample ! %s ! opusenc ! %s ! appsink name=appsink", QUEUE, QUEUE, QUEUE, QUEUE)
+
+	pipelineStr := fmt.Sprintf("wasapisrc name=source loopback=true ! %s ! audioconvert ! %s ! audioresample ! %s ! opusenc ! %s ! appsink name=appsink", QUEUE, QUEUE, QUEUE, QUEUE)
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
 	pipeline = &Pipeline{
-		Pipeline: C.create_audio_pipeline(pipelineStrUnsafe, C.CString(config.Source)),
+		Pipeline: C.create_audio_pipeline(pipelineStrUnsafe, C.CString(config.AudioSource.DeviceID)),
 		sampchan: make(chan *media.Sample),
 		config:   config,
 	}

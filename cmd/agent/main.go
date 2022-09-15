@@ -10,13 +10,13 @@ import (
 	"github.com/OnePlay-Internet/webrtc-proxy/hid"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener/audio"
-	"github.com/OnePlay-Internet/webrtc-proxy/listener/udp"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener/video"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/webrtc/v3"
 )
 
 func main() {
+	device := tool.GetDevice();
 	var token string
 	URL := "localhost:5000"
 	env := "prod"
@@ -34,9 +34,10 @@ func main() {
 		}
 	}
 
-	if token == "" {
-		return
-	}
+	// if token == "" {
+	// 	return
+	// }
+	token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZXJ2ZXJJRCI6MTY2MzEyMjIwMjk3MSwiaWF0IjoxNjYzMjYyMjMzfQ.vD0Bh7gB6H_sKBTgSl0XYDeyThxIzVZTi3q_lP418Mw";
 
 	engine := func () string {
 		switch env {
@@ -71,19 +72,18 @@ func main() {
 	br := []*config.BroadcasterConfig{}
 
 	lis := []*config.ListenerConfig{{
-			Source: "gstreamer",
+			VideoSource: device.Monitors[0],
+
 
 			DataType: "sample",
-
 			MediaType: "video",
 			Name:      engine,
 			Codec:     webrtc.MimeTypeH264,
 		},
 		{
-			Source: "gstreamer",
+			AudioSource: device.Soundcards[0],
 
 			DataType: "sample",
-
 			MediaType: "audio",
 			Name:      "audioGstreamer",
 			Codec:     webrtc.MimeTypeOpus,
@@ -119,19 +119,12 @@ func main() {
 	}()
 
 	Lists := make([]listener.Listener, 0)
-	for _, lis_conf := range lis {
+	for _, conf := range lis {
 		var Lis listener.Listener
-		if lis_conf.MediaType == "audio" {
-			Lis = audio.CreatePipeline(lis_conf)
-		} else if lis_conf.Source == "udp" {
-			udpLis, err := udp.NewUDPListener(lis_conf)
-			Lis = &udpLis
-			if err != nil {
-				fmt.Printf("%s\n", err.Error())
-				return
-			}
-		} else if lis_conf.Source == "gstreamer" {
-			Lis = video.CreatePipeline(lis_conf)
+		if conf.MediaType == "audio" {
+			Lis = audio.CreatePipeline(conf)
+		} else if conf.MediaType == "video" {
+			Lis = video.CreatePipeline(conf)
 		} else {
 			fmt.Printf("Unimplemented listener\n")
 			return

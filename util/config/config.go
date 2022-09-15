@@ -3,6 +3,7 @@ package config
 import (
 	"sync"
 
+	"github.com/OnePlay-Internet/webrtc-proxy/cmd/tool"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -22,11 +23,11 @@ type GrpcConfig struct {
 }
 
 type ListenerConfig struct {
-	Source	   string
+	MediaType string
+	VideoSource tool.Monitor
+	AudioSource tool.Soundcard
 
 	DataType  string
-
-	MediaType string
 	Name      string
 	Codec     string
 }
