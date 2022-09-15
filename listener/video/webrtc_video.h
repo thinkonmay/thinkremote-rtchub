@@ -4,9 +4,9 @@
 
 extern void goHandlePipelineBuffer(void *buffer, int bufferLen, int samples);
 
-void*gstreamer_send_create_pipeline(char *pipeline);
-void gstreamer_send_start_pipeline(void*pipeline);
-void gstreamer_send_stop_pipeline(void*pipeline);
-void gstreamer_send_start_mainloop(void);
+void*create_video_pipeline(char *pipeline);
+void start_video_pipeline(void*pipeline);
+void stop_video_pipeline(void*pipeline);
+void start_video_mainloop(void);
 
 #endif

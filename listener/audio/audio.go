@@ -16,7 +16,7 @@ import (
 import "C"
 
 func init() {
-	go C.gstreamer_audio_start_mainloop()
+	go C.start_audio_mainloop()
 }
 
 // Pipeline is a wrapper for a GStreamer Pipeline
@@ -36,17 +36,13 @@ const (
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
-	dev := C.set_media_device()
-	bytes := C.GoBytes(dev, C.string_get_length(dev))
-	fmt.Printf("audio device id: %s\n", string(bytes))
-
 	QUEUE := "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3"
 	pipelineStr := fmt.Sprintf("wasapi2src name=source loopback=true ! %s ! audioconvert ! %s ! audioresample ! %s ! opusenc ! %s ! appsink name=appsink", QUEUE, QUEUE, QUEUE, QUEUE)
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
 	pipeline = &Pipeline{
-		Pipeline: C.gstreamer_audio_create_pipeline(pipelineStrUnsafe, C.CString(string(bytes))),
+		Pipeline: C.create_audio_pipeline(pipelineStrUnsafe, C.CString(config.Source)),
 		sampchan: make(chan *media.Sample),
 		config:   config,
 	}
@@ -65,7 +61,7 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 }
 
 func (p *Pipeline) Open() *config.ListenerConfig {
-	C.gstreamer_audio_start_pipeline(pipeline.Pipeline)
+	C.start_audio_pipeline(pipeline.Pipeline)
 	return p.config
 }
 func (p *Pipeline) ReadSample() *media.Sample {
@@ -77,5 +73,5 @@ func (p *Pipeline) ReadRTP() *rtp.Packet {
 }
 
 func (p *Pipeline) Close() {
-	C.gstreamer_audio_stop_pipeline(p.Pipeline)
+	C.stop_audio_pipeline(p.Pipeline)
 }

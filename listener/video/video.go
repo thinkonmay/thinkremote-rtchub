@@ -16,7 +16,7 @@ import (
 import "C"
 
 func init() {
-	go C.gstreamer_send_start_mainloop()
+	go C.start_video_mainloop()
 }
 
 // Pipeline is a wrapper for a GStreamer Pipeline
@@ -56,7 +56,7 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
 	pipeline = &Pipeline{
-		Pipeline: C.gstreamer_send_create_pipeline(pipelineStrUnsafe),
+		Pipeline: C.create_video_pipeline(pipelineStrUnsafe),
 		sampchan: make(chan *media.Sample,1000),
 		config:   config,
 	}
@@ -75,7 +75,7 @@ func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.i
 }
 
 func (p *Pipeline) Open() *config.ListenerConfig {
-	C.gstreamer_send_start_pipeline(pipeline.Pipeline)
+	C.start_video_pipeline(pipeline.Pipeline)
 	return p.config
 }
 func (p *Pipeline) ReadSample() *media.Sample {
@@ -86,5 +86,5 @@ func (p *Pipeline) ReadRTP() *rtp.Packet {
 	return <-block
 }
 func (p *Pipeline) Close() {
-	C.gstreamer_send_stop_pipeline(p.Pipeline)
+	C.stop_video_pipeline(p.Pipeline)
 }
