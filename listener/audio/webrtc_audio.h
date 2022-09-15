@@ -9,7 +9,8 @@ extern void   goHandlePipelineBufferAudio         (void *buffer,
                                                    int samples);
 
 void*  create_audio_pipeline            (char *pipeline,
-                                                   char* device);
+                                         char* device,
+                                         void** err);
 
 void          start_audio_pipeline      (void* pipeline);
 

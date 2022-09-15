@@ -63,13 +63,23 @@ handle_audio_buffer(GstElement *object, gpointer user_data) {
 
 void* 
 create_audio_pipeline(char *pipeline,
-                      char* device) 
+                      char* device,
+                      void** err) 
 {
     gst_init(NULL, NULL);
+    
+    *err = NULL;
     GError *error = NULL;
     GstElement * ret = gst_parse_launch(pipeline, &error);
-    // GstElement *src = gst_bin_get_by_name(GST_BIN(ret), "source");
-    // g_object_set(src,"device",device,NULL);
+    if (error) {
+        *err = error->message;
+        return NULL;
+    }
+    
+
+
+    GstElement *src = gst_bin_get_by_name(GST_BIN(ret), "source");
+    g_object_set(src,"device",device,NULL);
     return ret;
 }
 

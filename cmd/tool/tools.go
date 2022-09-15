@@ -74,3 +74,9 @@ func GetDevice() *MediaDevice{
 
 
 
+func ToGoString(str unsafe.Pointer) string {
+	if str == nil {
+		return ""
+	}
+	return string(C.GoBytes(str,C.int(C.string_get_length(str))));
+}

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	proxy "github.com/OnePlay-Internet/webrtc-proxy"
 	"github.com/OnePlay-Internet/webrtc-proxy/cmd/tool"
@@ -120,14 +119,19 @@ func main() {
 
 	Lists := make([]listener.Listener, 0)
 	for _, conf := range lis {
+		var err error
 		var Lis listener.Listener
 		if conf.MediaType == "audio" {
-			Lis = audio.CreatePipeline(conf)
+			Lis,err = audio.CreatePipeline(conf)
 		} else if conf.MediaType == "video" {
-			Lis = video.CreatePipeline(conf)
+			Lis,err = video.CreatePipeline(conf)
 		} else {
 			fmt.Printf("Unimplemented listener\n")
 			return
+		}
+
+		if err != nil {
+			fmt.Printf("Error initialize listener %s\n",err.Error())
 		}
 
 		Lists = append(Lists, Lis)
@@ -135,8 +139,7 @@ func main() {
 
 	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists)
 	if err != nil {
-		fmt.Printf("failed to init webrtc proxy, try again in 2 second\n")
-		time.Sleep(2 * time.Second)
+		fmt.Printf("failed to init webrtc proxy: %s\n",err.Error())
 		return
 	}
 	<-prox.Shutdown

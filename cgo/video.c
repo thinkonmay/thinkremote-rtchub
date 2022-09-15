@@ -3,6 +3,7 @@
 #include <gst/app/gstappsrc.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <glib.h>
 
 GMainLoop *gstreamer_video_main_loop = NULL;
 void 
@@ -62,10 +63,18 @@ handle_audio_sample(GstElement *object, gpointer user_data) {
 }
 
 void* 
-create_video_pipeline(char *pipeline) {
+create_video_pipeline(char *pipeline, 
+                      void** err) {
     gst_init(NULL, NULL);
+
+    *err = NULL;
     GError *error = NULL;
     GstElement* el = gst_parse_launch(pipeline, &error);
+    if (error) {
+        *err = error->message;
+        return NULL;
+    }
+
     return (void*)el;
 }
 

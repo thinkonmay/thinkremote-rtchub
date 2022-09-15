@@ -7,6 +7,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/OnePlay-Internet/webrtc-proxy/cmd/tool"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
@@ -42,10 +43,8 @@ const (
 )
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig) *Pipeline {
+func CreatePipeline(config *config.ListenerConfig) (*Pipeline,error) {
 	var pipelineStr string
-	
-
 	if strings.Contains(config.VideoSource.Adapter, "Intel") {
 		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s ! d3d11download ! %s ! openh264enc %s ! 		 %s ! appsink name=appsink", 
 														   				  DIRECTX_PAD, 	   	  QUEUE, 			   QUEUE,				QUEUE, 		   MFH264PROPSW, QUEUE)
@@ -53,19 +52,27 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc %s ! 			%s ! appsink name=appsink", 
 																		  DIRECTX_PAD, 		  QUEUE, 			  DIRECTX_PAD, 	   QUEUE, 		  MFH264PROP, 	QUEUE)
 	} else {
-
+		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s ! d3d11download ! %s ! openh264enc %s ! 		 %s ! appsink name=appsink", 
+														   				  DIRECTX_PAD, 	   	  QUEUE, 			   QUEUE,				QUEUE, 		   MFH264PROPSW, QUEUE)
 	}
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
+	var err unsafe.Pointer
 	pipeline = &Pipeline{
-		Pipeline: C.create_video_pipeline(pipelineStrUnsafe),
-		sampchan: make(chan *media.Sample,1000),
+		Pipeline: C.create_video_pipeline(pipelineStrUnsafe,&err),
+		sampchan: make(chan *media.Sample,2),
 		config:   config,
 	}
 
-	return pipeline
+	errStr := tool.ToGoString(err);
+	if len(errStr) != 0 {
+		return nil,fmt.Errorf("%s",errStr);
+	}
+
+	fmt.Printf("starting with monitor : %s\n",config.VideoSource.MonitorName);
+	return pipeline,nil;
 }
 
 //export goHandlePipelineBuffer
