@@ -4,14 +4,13 @@ import (
 	"fmt"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
-	udpbr "github.com/OnePlay-Internet/webrtc-proxy/broadcaster/udp"
+	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/udp"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
 	grpc "github.com/OnePlay-Internet/webrtc-proxy/signalling/gRPC"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/OnePlay-Internet/webrtc-proxy/webrtc"
-	"github.com/pion/rtp"
 	webrtclib "github.com/pion/webrtc/v3"
 )
 
@@ -57,15 +56,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	proxy.webrtcClient, err = webrtc.InitWebRtcClient(func(tr *webrtclib.TrackRemote) (br broadcaster.Broadcaster, err error) {
 		for _, conf := range br_conf {
 			if tr.Codec().MimeType == conf.Codec {
-				go func() {
-					for {
-						pkt,_,err :=  tr.ReadRTP()
-						if err != nil {
-							fmt.Printf("%s\n",err.Error());
-						}
-						fmt.Printf("%s\n",pkt.String());
-					}
-				}()
+				return udp.NewUDPBroadcaster(conf,)
 			}
 		}
 

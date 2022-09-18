@@ -13,6 +13,10 @@ import (
 func main() {
 	var token string
 
+	Turn :=		"turn:workstation.thinkmay.net:3478";
+	TurnUser 	 :=		"oneplay";
+	TurnPassword :=		"oneplay";
+
 	args := os.Args[1:]
 	for i, arg := range args {
 		if arg == "--token" {
@@ -41,10 +45,15 @@ func main() {
 			URLs: []string{
 				"stun:workstation.thinkmay.net:3478",
 			},
-		},
+		}, {
+				URLs: []string { Turn },
+				Username: TurnUser,
+				Credential: TurnPassword,
+				CredentialType: webrtc.ICECredentialTypePassword,
+			},
 		},
 	}
-	br := []*config.BroadcasterConfig{&config.BroadcasterConfig{
+	br := []*config.BroadcasterConfig{{
 		Name: "audio",
 		Codec: webrtc.MimeTypeH264,
 	}}

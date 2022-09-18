@@ -86,7 +86,14 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 				fmt.Printf("ICE received\n")
 				ret.iceChan <- &ice;
 			} else if res.Data["Target"] == "START" {
-				ret.startChan <- true;
+				req := packet.UserRequest{
+					Id: (int64) (ret.requestCount),
+					Target: "START",
+					Headers: map[string]string{ "":"", },
+					Data: map[string]string { "":"", },
+				}
+				ret.client.Send(&req); 
+				ret.requestCount++;
 			} else {
 				fmt.Println("Unknown packet");
 			}
