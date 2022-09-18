@@ -33,10 +33,6 @@ type ListenerConfig struct {
 }
 
 type BroadcasterConfig struct {
-	Port       int
-	Protocol   string
-
-	Type  string
 	Name  string
 	Codec string
 }
