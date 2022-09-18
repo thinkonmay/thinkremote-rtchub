@@ -95,7 +95,7 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 			return;
 		}
 
-		fmt.Printf("new track: %s\n\n", br.Open().Name)
+		fmt.Printf("new track %s\n", track.Codec().MimeType)
 		go writeLoop(br, track)
 	})
 

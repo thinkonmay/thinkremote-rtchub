@@ -41,16 +41,8 @@ func (loop *writeLoop) runloop() {
 	loop.lop = func() {
 		for {
 			packet := <-*loop.chann
-			fmt.Printf("%s\n", packet.String())
+			fmt.Printf("%d\n", packet.Header.SequenceNumber)
 		}
-		// size, err := packet.MarshalTo(loop.buf)
-		// if err != nil {
-		// 	fmt.Printf("%v", err)
-		// }
-		// _, err = loop.conn.Write(loop.buf[:size])
-		// if err != nil {
-		// 	fmt.Printf("%s\n", err.Error())
-		// }
 	}
 	go loop.lop()
 }

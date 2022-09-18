@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
+	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/dummy"
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/udp"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
@@ -56,8 +57,12 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	proxy.webrtcClient, err = webrtc.InitWebRtcClient(func(tr *webrtclib.TrackRemote) (br broadcaster.Broadcaster, err error) {
 		for _, conf := range br_conf {
 			if tr.Codec().MimeType == conf.Codec {
-				return udp.NewUDPBroadcaster(conf,)
+				return udp.NewUDPBroadcaster(conf)
+			} else {
+				fmt.Printf("no available codec handler, using dummy sink\n");
+				return dummy.NewDummyBroadcaster(conf)
 			}
+
 		}
 
 		err = fmt.Errorf("unimplemented broadcaster")
