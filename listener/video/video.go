@@ -48,7 +48,7 @@ func CreatePipeline(config *config.ListenerConfig) (*Pipeline,error) {
 	if strings.Contains(config.VideoSource.Adapter, "Intel") {
 		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s ! d3d11download ! %s ! openh264enc %s ! 		 %s ! appsink name=appsink", 
 														   				  DIRECTX_PAD, 	   	  QUEUE, 			   QUEUE,				QUEUE, 		   MFH264PROPSW, QUEUE)
-	} else if strings.Contains(config.VideoSource.Adapter, "Nvidia") {
+	} else if strings.Contains(config.VideoSource.Adapter, "NVIDIA") {
 		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc %s ! 			%s ! appsink name=appsink", 
 																		  DIRECTX_PAD, 		  QUEUE, 			  DIRECTX_PAD, 	   QUEUE, 		  MFH264PROP, 	QUEUE)
 	} else {
