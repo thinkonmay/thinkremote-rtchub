@@ -91,10 +91,11 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 
 		br, err := client.onTrack(track)
 		if err != nil {
-			panic(err)
+			fmt.Printf("unable to handle track: %s\n",err.Error());
+			return;
 		}
 
-		fmt.Printf("new track: %s\n\n", br.Open().Name)
+		fmt.Printf("new track %s\n", track.Codec().MimeType)
 		go writeLoop(br, track)
 	})
 

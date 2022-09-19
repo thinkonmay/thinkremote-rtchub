@@ -39,14 +39,9 @@ func newloop(conn net.Conn, channel chan *rtp.Packet) (writeloop *writeLoop) {
 
 func (loop *writeLoop) runloop() {
 	loop.lop = func() {
-		packet := <-*loop.chann
-		size, err := packet.MarshalTo(loop.buf)
-		if err != nil {
-			fmt.Printf("%v", err)
-		}
-		_, err = loop.conn.Write(loop.buf[:size])
-		if err != nil {
-			fmt.Printf("%s\n", err.Error())
+		for {
+			packet := <-*loop.chann
+			fmt.Printf("%d\n", packet.Header.SequenceNumber)
 		}
 	}
 	go loop.lop()
@@ -56,16 +51,14 @@ func NewUDPBroadcaster(config *config.BroadcasterConfig) (udp *UDPBroadcaster, e
 	udp = &UDPBroadcaster{}
 	udp.config = config
 	udp.bufferSize = 10000
-	udp.port = config.Port
+	udp.port = 6000
 	if err != nil {
 		return
 	}
 	udp.buffer = make([]byte, udp.bufferSize)
 	udp.packetChannel = make(chan *rtp.Packet)
-	udp.conn, err = net.Dial("udp", fmt.Sprintf("localhost:%d", config.Port))
+	udp.conn, err = net.Dial("udp", fmt.Sprintf("localhost:%d", udp.port))
 
-	newloop(udp.conn, udp.packetChannel).runloop()
-	newloop(udp.conn, udp.packetChannel).runloop()
 	newloop(udp.conn, udp.packetChannel).runloop()
 	return
 }
