@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 extern void goHandlePipelineBuffer(void *buffer, int bufferLen, int samples);
+extern void handleVideoStopOrError            ();
 
 void*create_video_pipeline(char *pipeline,void** err);
 void start_video_pipeline(void*pipeline);

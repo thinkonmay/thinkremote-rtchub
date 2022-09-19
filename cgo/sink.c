@@ -19,7 +19,7 @@ sink_bus_call(GstBus *bus,
 
   case GST_MESSAGE_EOS:
     g_print("End of stream\n");
-    exit(1);
+    handleSinkStopOrError();
     break;
 
   case GST_MESSAGE_ERROR: {
@@ -31,7 +31,7 @@ sink_bus_call(GstBus *bus,
 
     g_printerr("Error: %s\n", error->message);
     g_error_free(error);
-    exit(1);
+    handleSinkStopOrError();
   }
   default:
     break;

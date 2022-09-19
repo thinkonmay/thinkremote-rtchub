@@ -22,6 +22,8 @@ type VideoSink struct {
 	Pipeline *C.GstElement
 	config *config.BroadcasterConfig
 }
+var sink *VideoSink
+
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.BroadcasterConfig) (*VideoSink,error) {
 
@@ -30,12 +32,12 @@ func CreatePipeline(config *config.BroadcasterConfig) (*VideoSink,error) {
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
-	ret := &VideoSink {
+	sink = &VideoSink {
 		Pipeline: C.create_sink_pipeline(pipelineStrUnsafe),
 		config: config,
 	}
-	C.start_sink_pipeline(ret.Pipeline)
-	return ret,nil;
+	C.start_sink_pipeline(sink.Pipeline)
+	return sink,nil;
 }
 
 
@@ -47,6 +49,10 @@ func (p *VideoSink) Push(buffer []byte) {
 	C.push_sink_buffer(p.Pipeline, b, C.int(len(buffer)))
 }
 
+//export handleSinkStopOrError
+func handleSinkStopOrError() {
+	sink.Close()
+}
 
 
 

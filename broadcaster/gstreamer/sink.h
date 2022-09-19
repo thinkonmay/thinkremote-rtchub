@@ -17,6 +17,7 @@
 #include <stdlib.h>
 
 GstElement *create_sink_pipeline(char *pipeline);
+extern void handleSinkStopOrError            ();
 void start_sink_pipeline(GstElement *pipeline);
 void stop_sink_pipeline(GstElement *pipeline);
 void push_sink_buffer(GstElement *pipeline, void *buffer, int len);

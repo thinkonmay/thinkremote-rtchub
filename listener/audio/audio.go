@@ -70,6 +70,11 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 	pipeline.sampchan <- &sample
 }
 
+//export handleAudioStopOrError
+func handleAudioStopOrError() {
+	pipeline.Close()
+}
+
 func (p *Pipeline) Open() *config.ListenerConfig {
 	C.start_audio_pipeline(pipeline.Pipeline)
 	return p.config

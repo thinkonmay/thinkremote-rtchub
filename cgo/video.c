@@ -18,7 +18,7 @@ gstreamer_send_video_bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
 
     case GST_MESSAGE_EOS:
         g_print("End of stream\n");
-        exit(1);
+        handleVideoStopOrError();
         break;
 
     case GST_MESSAGE_ERROR: {
@@ -30,7 +30,7 @@ gstreamer_send_video_bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
 
         g_printerr("Video pipeline error: %s\n", error->message);
         g_error_free(error);
-        exit(1);
+        handleVideoStopOrError();
     }
     default:
         break;
