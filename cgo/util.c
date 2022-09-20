@@ -9,7 +9,6 @@
  * 
  */
 #include <util.h>
-#include <webrtc_audio.h>
 #include <gst/gst.h>
 #include <stdio.h>
 
@@ -27,8 +26,8 @@ typedef struct _Soundcard {
     char name[500];
     char api[50];
 
-    int isdefault;
-    int loopback;
+    gboolean isdefault;
+    gboolean loopback;
 
     int active;
 }Soundcard;
@@ -64,8 +63,10 @@ device_foreach(GstDevice* device,
     if(!g_strcmp0(klass,"Source/Monitor")) {
         GstStructure* device_structure = gst_device_get_properties(device);
         gchar* api = (gchar*)gst_structure_get_string(device_structure,"device.api");
-        if(g_strcmp0(api,"d3d11"))
+        if(g_strcmp0(api,"d3d11")) {
+            g_object_unref(device);
             return;
+        }
 
         int i = 0;
         while (source->monitors[i].active) { i++; }
@@ -115,7 +116,7 @@ device_foreach(GstDevice* device,
 
             gchar* strid = (gchar*)gst_structure_get_string(device_structure,"device.strid");
             memcpy(soundcard->device_id,strid,strlen(strid));
-        } else if (g_strcmp0(api,"wasapi2")) {
+        } else if (!g_strcmp0(api,"wasapi2")) {
             int i = 0;
             while (source->soundcards[i].active) { i++; }
             Soundcard* soundcard = &source->soundcards[i];
@@ -134,6 +135,7 @@ device_foreach(GstDevice* device,
             gchar* strid = (gchar*)gst_structure_get_string(device_structure,"device.strid");
             memcpy(soundcard->device_id,strid,strlen(strid));
         } else {
+            g_object_unref(device);
             return;
         }
     }
@@ -142,10 +144,11 @@ device_foreach(GstDevice* device,
     if(!g_strcmp0(klass,"Audio/Sink")) {
         GstStructure* device_structure = gst_device_get_properties(device);
         gchar* api = (gchar*)gst_structure_get_string(device_structure,"device.api");
-        if(g_strcmp0(api,"wasapi2") && g_strcmp0(api,"wasapi"))
+        if(g_strcmp0(api,"wasapi2") && g_strcmp0(api,"wasapi")) {
+            g_object_unref(device);
             return;
+        }
     }
-
     g_object_unref(device);
 }
 
