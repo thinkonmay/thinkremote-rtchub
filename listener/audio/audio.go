@@ -6,8 +6,9 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/cmd/tool"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/test"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
@@ -34,30 +35,28 @@ const (
 	videoClockRate = 90000
 	audioClockRate = 48000
 	pcmClockRate   = 8000
-	QUEUE = "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3"
 )
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig) (*Pipeline,error) {
-	pipelineStr := fmt.Sprintf("wasapisrc name=source ! %s ! audioconvert ! %s ! audioresample ! %s ! opusenc ! %s ! appsink name=appsink", 
-																	  QUEUE,			  QUEUE, 			   QUEUE, 		  QUEUE)
+func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
+	pipelineStr := gsttest.GstTestAudio(&config.AudioSource)
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
 	var err unsafe.Pointer
 	pipeline = &Pipeline{
-		Pipeline: C.create_audio_pipeline(pipelineStrUnsafe, C.CString(config.AudioSource.DeviceID),&err),
-		sampchan: make(chan *media.Sample,2),
+		Pipeline: C.create_audio_pipeline(pipelineStrUnsafe, C.CString(config.AudioSource.DeviceID), &err),
+		sampchan: make(chan *media.Sample, 2),
 		config:   config,
 	}
 
-	errStr := tool.ToGoString(err);
+	errStr := tool.ToGoString(err)
 	if len(errStr) != 0 {
-		return nil,fmt.Errorf("%s",errStr);
+		return nil, fmt.Errorf("%s", errStr)
 	}
 
-	fmt.Printf("starting with audio device : %s\n",config.AudioSource.Name);
-	return pipeline,nil
+	fmt.Printf("starting with audio device : %s\n", config.AudioSource.Name)
+	return pipeline, nil
 }
 
 //export goHandlePipelineBufferAudio

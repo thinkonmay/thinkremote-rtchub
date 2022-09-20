@@ -3,7 +3,7 @@ package config
 import (
 	"sync"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/cmd/tool"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/webrtc/v3"
 )
 

@@ -7,8 +7,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/cmd/tool"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
