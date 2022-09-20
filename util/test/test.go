@@ -17,6 +17,8 @@ func formatDeviceID(in string) string {
 
 	for index,byt := range byts {
 		if byts[index] == []byte("{")[0] || 
+		   byts[index] == []byte("?")[0] ||
+		   byts[index] == []byte("#")[0] ||
 		   byts[index] == []byte("}")[0] {
 			modified = append(modified, []byte("\\")[0]);	
 		}
@@ -35,6 +37,11 @@ func GstTestAudio(source *config.ListenerConfig) string{
 
 	for _,soundcard := range source.AudioSource {
 		if soundcard.Api == "wasapi" {
+			options = append(options,map[string]string { 
+				"element":"wasapisrc", 
+				"loopback": "false",
+				"device": formatDeviceID(soundcard.DeviceID),
+			})
 			options = append(options,map[string]string { 
 				"element":"wasapisrc", 
 				"loopback": "true",
