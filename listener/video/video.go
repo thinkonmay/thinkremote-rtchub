@@ -44,8 +44,9 @@ const (
 func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
 	var pipelineStr string
 	MFH264PROP   := fmt.Sprintf("bitrate=%d rc-mode=0 low-latency=true ref=1 quality-vs-speed=0",config.Bitrate);
-	MFH264PROPSW := fmt.Sprintf("bitrate=%d usage-type=1 slice-mode=1 rate-control=1 num-slices=1 multi-thread=8 gop-size=10 enable-frame-skip=true",config.Bitrate);
+	MFH264PROPSW := fmt.Sprintf("bitrate=%d usage-type=1 rate-control=1 multi-thread=8",config.Bitrate);
 
+	
 	if strings.Contains(config.VideoSource.Adapter, "NVIDIA") {
 		pipelineStr = fmt.Sprintf("d3d11screencapturesrc monitor-handle=%d blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc %s ! %s ! appsink name=appsink",
 			config.VideoSource.MonitorHandle	,DIRECTX_PAD, QUEUE, DIRECTX_PAD, QUEUE, MFH264PROP, QUEUE)
