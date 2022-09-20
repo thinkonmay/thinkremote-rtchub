@@ -38,22 +38,20 @@ const (
 
 	DIRECTX_PAD  = "video/x-raw(memory:D3D11Memory)"
 	QUEUE        = "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3"
-	MFH264PROP   = "bitrate=3000 rc-mode=0 low-latency=true ref=1 quality-vs-speed=0"
-	MFH264PROPSW = "bitrate=2000"
 )
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
 	var pipelineStr string
-	if strings.Contains(config.VideoSource.Adapter, "Intel") {
-		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s ! d3d11download ! %s ! openh264enc %s ! 		 %s ! appsink name=appsink",
-			DIRECTX_PAD, QUEUE, QUEUE, QUEUE, MFH264PROPSW, QUEUE)
-	} else if strings.Contains(config.VideoSource.Adapter, "NVIDIA") {
-		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc %s ! 			%s ! appsink name=appsink",
-			DIRECTX_PAD, QUEUE, DIRECTX_PAD, QUEUE, MFH264PROP, QUEUE)
+	MFH264PROP   := fmt.Sprintf("bitrate=%d rc-mode=0 low-latency=true ref=1 quality-vs-speed=0",config.Bitrate);
+	MFH264PROPSW := fmt.Sprintf("bitrate=%d usage-type=1 slice-mode=1 rate-control=1 num-slices=1 multi-thread=8 gop-size=10 enable-frame-skip=true",config.Bitrate);
+
+	if strings.Contains(config.VideoSource.Adapter, "NVIDIA") {
+		pipelineStr = fmt.Sprintf("d3d11screencapturesrc monitor-handle=%d blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc %s ! %s ! appsink name=appsink",
+			config.VideoSource.MonitorHandle	,DIRECTX_PAD, QUEUE, DIRECTX_PAD, QUEUE, MFH264PROP, QUEUE)
 	} else {
-		pipelineStr = fmt.Sprintf("d3d11screencapturesrc blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s ! d3d11download ! %s ! openh264enc %s ! 		 %s ! appsink name=appsink",
-			DIRECTX_PAD, QUEUE, QUEUE, QUEUE, MFH264PROPSW, QUEUE)
+		pipelineStr = fmt.Sprintf("d3d11screencapturesrc monitor-handle=%d blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s ! d3d11download ! %s ! openh264enc %s ! %s ! appsink name=appsink",
+			config.VideoSource.MonitorHandle	,DIRECTX_PAD, QUEUE, QUEUE, QUEUE, MFH264PROPSW, QUEUE)
 	}
 
 	pipelineStrUnsafe := C.CString(pipelineStr)

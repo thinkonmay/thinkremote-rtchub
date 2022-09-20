@@ -5,7 +5,9 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	childprocess "github.com/OnePlay-Internet/webrtc-proxy/util/child-process"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 )
 
@@ -30,7 +32,7 @@ func formatDeviceID(in string) string {
 }
 
 
-func GstTestAudio(source *tool.Soundcard) string{
+func GstTestAudio(source *config.ListenerConfig) string{
 	options := make([]map[string]string,0); 
 	options = append(options,map[string]string {
 		"loopback":"true",
@@ -39,7 +41,7 @@ func GstTestAudio(source *tool.Soundcard) string{
 		"loopback":"false",
 	})
 
-	str := formatDeviceID(source.DeviceID)
+	str := formatDeviceID(source.AudioSource.DeviceID)
 
 	result := false
 	var testcase *exec.Cmd
@@ -49,7 +51,7 @@ func GstTestAudio(source *tool.Soundcard) string{
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 							"audioconvert",
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
-							"opusenc",
+							"opusenc",fmt.Sprintf("bitrate=%d",source.Bitrate),
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 							"appsink")
 

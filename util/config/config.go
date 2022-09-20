@@ -24,6 +24,7 @@ type GrpcConfig struct {
 
 type ListenerConfig struct {
 	MediaType string
+	Bitrate int
 	VideoSource tool.Monitor
 	AudioSource tool.Soundcard
 
