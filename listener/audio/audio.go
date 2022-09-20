@@ -49,7 +49,7 @@ func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
 
 	var err unsafe.Pointer
 	pipeline = &Pipeline{
-		Pipeline: C.create_audio_pipeline(pipelineStrUnsafe, C.CString(config.AudioSource.DeviceID), &err),
+		Pipeline: C.create_audio_pipeline(pipelineStrUnsafe,&err),
 		sampchan: make(chan *media.Sample, 2),
 		config:   config,
 	}

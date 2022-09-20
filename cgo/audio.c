@@ -61,7 +61,6 @@ handle_audio_buffer(GstElement *object, gpointer user_data) {
 
 void* 
 create_audio_pipeline(char *pipeline,
-                      char* device,
                       void** err) 
 {
     gst_init(NULL, NULL);
@@ -73,11 +72,6 @@ create_audio_pipeline(char *pipeline,
         *err = error->message;
         return NULL;
     }
-    
-
-
-    GstElement *src = gst_bin_get_by_name(GST_BIN(ret), "source");
-    g_object_set(src,"device",device,NULL);
     return ret;
 }
 

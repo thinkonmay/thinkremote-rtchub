@@ -11,7 +11,6 @@ extern void   goHandlePipelineBufferAudio         (void *buffer,
 extern void          handleAudioStopOrError            ();
 
 void*  create_audio_pipeline            (char *pipeline,
-                                         char* device,
                                          void** err);
 
 void          start_audio_pipeline      (void* pipeline);

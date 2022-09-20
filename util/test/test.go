@@ -51,7 +51,7 @@ func GstTestAudio(source *config.ListenerConfig) string{
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 							"opusenc",fmt.Sprintf("bitrate=%d",source.Bitrate),
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
-							"appsink")
+							"appsink","name=appsink")
 
 		done := make(chan bool)
 		failed := make(chan bool)
