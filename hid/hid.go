@@ -21,6 +21,9 @@ const (
 	keyDown = 5
 	keyPress = 6
 	keyReset = 7
+
+    RelativeMouseOff = 8
+    RelativeMouseOn = 9
 )
 
 type HIDSingleton struct {
@@ -93,6 +96,10 @@ func NewHIDSingleton(URL string) *HIDSingleton{
 				route = "Keyboard/Reset"
 			case keyPress:
 				route = "Keyboard/Press"
+			case RelativeMouseOff:
+				route = "Mouse/Relative/Off"
+			case RelativeMouseOn:
+				route = "Mouse/Relative/On"
 			}
 
 			

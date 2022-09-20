@@ -81,8 +81,6 @@ device_foreach(GstDevice* device,
         gchar* device_name = (gchar*)gst_structure_get_string(device_structure,"device.name");
         memcpy(monitor->device_name,device_name,strlen(device_name));
 
-        printf(gst_structure_to_string(device_structure));
-
         int top, left, right, bottom = 0;
         gst_structure_get_int(device_structure,"display.coordinates.right",&right);
         gst_structure_get_int(device_structure,"display.coordinates.top",&top);
