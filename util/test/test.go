@@ -95,10 +95,8 @@ func GstTestAudio(source *config.ListenerConfig) string{
 	}
 
 	if result {
-		fmt.Printf("Found suitable audio pipeline\n");
 		return string(log)
 	} else {
-		fmt.Printf("Unable to find suitable audio pipeline\n");
 		return "";
 	}
 
