@@ -40,6 +40,10 @@ const (
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
 	pipelineStr := gsttest.GstTestAudio(&config.AudioSource)
+	if len(pipelineStr) != 0 {
+		return nil, fmt.Errorf("unable to find suitable pipeline");
+	}
+
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
