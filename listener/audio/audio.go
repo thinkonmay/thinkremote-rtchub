@@ -59,7 +59,7 @@ func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
 		return nil, fmt.Errorf("%s", errStr)
 	}
 
-	fmt.Printf("starting with audio device : %s\n", config.AudioSource.Name)
+	fmt.Printf("starting with audio pipeline : %s\n", pipelineStr)
 	return pipeline, nil
 }
 
