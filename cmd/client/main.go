@@ -7,6 +7,7 @@ import (
 	proxy "github.com/OnePlay-Internet/webrtc-proxy"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -17,10 +18,13 @@ func main() {
 	TurnUser 	 :=		"oneplay";
 	TurnPassword :=		"oneplay";
 
+	dev := tool.GetDevice()
 	args := os.Args[1:]
 	for i, arg := range args {
 		if arg == "--token" {
 			token = args[i+1]
+		} else if arg == "--device" {
+			fmt.Printf("%s\n",dev.Monitors[0].Adapter)
 		} else if arg == "--help" {
 			return
 		}

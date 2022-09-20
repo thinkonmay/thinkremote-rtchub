@@ -26,7 +26,7 @@ type ListenerConfig struct {
 	MediaType string
 	Bitrate int
 	VideoSource tool.Monitor
-	AudioSource tool.Soundcard
+	AudioSource []tool.Soundcard
 
 	DataType  string
 	Name      string

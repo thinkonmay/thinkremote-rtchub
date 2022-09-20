@@ -32,20 +32,36 @@ func formatDeviceID(in string) string {
 
 func GstTestAudio(source *config.ListenerConfig) string{
 	options := make([]map[string]string,0); 
-	options = append(options,map[string]string {
-		"loopback":"true",
-	})
-	options = append(options,map[string]string {
-		"loopback":"false",
-	})
 
-	str := formatDeviceID(source.AudioSource.DeviceID)
+	for _,soundcard := range source.AudioSource {
+		if soundcard.Api == "wasapi" {
+			options = append(options,map[string]string { 
+				"element":"wasapisrc", 
+				"loopback": "true",
+				"device": formatDeviceID(soundcard.DeviceID),
+			})
+		} else if soundcard.Api == "wasapi2" && soundcard.IsDefault {
+			var loopback string
+			if soundcard.IsLoopback { 
+				loopback = "true" 
+			} else { 
+				loopback = "false" 
+			}
+
+			options = append(options,map[string]string { 
+				"element":"wasapi2src", 
+				"loopback": loopback,
+				"device": formatDeviceID(soundcard.DeviceID),
+			})
+		}
+	}
+
 
 	result := false
 	var testcase *exec.Cmd
 	for _,i := range options{
 		testcase = exec.Command("gst-launch-1.0.exe", 
-							"wasapisrc", "name=source",fmt.Sprintf("loopback=%s",i["loopback"]),fmt.Sprintf("device=%s",str),
+							i["element"], "name=source",fmt.Sprintf("loopback=%s",i["loopback"]),fmt.Sprintf("device=%s",i["device"]),
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 							"audioconvert",
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",

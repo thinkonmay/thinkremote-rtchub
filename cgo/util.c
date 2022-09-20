@@ -25,14 +25,24 @@ string_get_length(void* string)
 typedef struct _Soundcard {
     char device_id[500];
     char name[500];
+    char api[50];
+
+    int isdefault;
+    int loopback;
+
     int active;
 }Soundcard;
 
 typedef struct _Monitor {
     guint64 monitor_handle;
+    int primary;
+
     char device_name[100];
     char adapter[100];
     char monitor_name[100];
+
+    int width, height;
+
     int active;
 }Monitor;
 
@@ -70,30 +80,64 @@ device_foreach(GstDevice* device,
 
         gchar* device_name = (gchar*)gst_structure_get_string(device_structure,"device.name");
         memcpy(monitor->device_name,device_name,strlen(device_name));
+
+        printf(gst_structure_to_string(device_structure));
+
+        int top, left, right, bottom = 0;
+        gst_structure_get_int(device_structure,"display.coordinates.right",&right);
+        gst_structure_get_int(device_structure,"display.coordinates.top",&top);
+        gst_structure_get_int(device_structure,"display.coordinates.left",&left);
+        gst_structure_get_int(device_structure,"display.coordinates.bottom",&bottom);
+
+        monitor->width =  right - left;
+        monitor->height = bottom - top;
         
          
         gst_structure_get_uint64(device_structure,"device.hmonitor",&monitor->monitor_handle);
+        gst_structure_get_boolean(device_structure,"device.primary",&monitor->primary);
     }
     
     // handle audio
     if(!g_strcmp0(klass,"Audio/Source")) {
         GstStructure* device_structure = gst_device_get_properties(device);
         gchar* api = (gchar*)gst_structure_get_string(device_structure,"device.api");
-        if(g_strcmp0(api,"wasapi"))
+        if(!g_strcmp0(api,"wasapi")) {
+            int i = 0;
+            while (source->soundcards[i].active) { i++; }
+            Soundcard* soundcard = &source->soundcards[i];
+
+            memcpy(soundcard->api,api,strlen(api));
+
+            gchar* name = gst_device_get_display_name(device);
+            memcpy(soundcard->name,name,strlen(name));
+            soundcard->active = TRUE;
+
+            gchar* device_name = (gchar*)gst_structure_get_string(device_structure,"wasapi.device.description");
+            memcpy(soundcard->name,device_name,strlen(device_name));
+
+            gchar* strid = (gchar*)gst_structure_get_string(device_structure,"device.strid");
+            memcpy(soundcard->device_id,strid,strlen(strid));
+        } else if (g_strcmp0(api,"wasapi2")) {
+            int i = 0;
+            while (source->soundcards[i].active) { i++; }
+            Soundcard* soundcard = &source->soundcards[i];
+
+            memcpy(soundcard->api,api,strlen(api));
+            gst_structure_get_boolean(device_structure,"device.default",&soundcard->isdefault);
+            gst_structure_get_boolean(device_structure,"wasapi2.device.loopback",&soundcard->loopback);
+
+            gchar* name = gst_device_get_display_name(device);
+            memcpy(soundcard->name,name,strlen(name));
+            soundcard->active = TRUE;
+
+            gchar* device_name = (gchar*)gst_structure_get_string(device_structure,"wasapi2.device.description");
+            memcpy(soundcard->name,device_name,strlen(device_name));
+
+            gchar* strid = (gchar*)gst_structure_get_string(device_structure,"device.strid");
+            memcpy(soundcard->device_id,strid,strlen(strid));
+        } else {
             return;
-
-        int i = 0;
-        while (source->soundcards[i].active) { i++; }
-        Soundcard* soundcard = &source->soundcards[i];
-        gchar* name = gst_device_get_display_name(device);
-        memcpy(soundcard->name,name,strlen(name));
-        soundcard->active = TRUE;
-
-        gchar* device_name = (gchar*)gst_structure_get_string(device_structure,"wasapi.device.description");
-        memcpy(soundcard->name,device_name,strlen(device_name));
-
-        gchar* strid = (gchar*)gst_structure_get_string(device_structure,"device.strid");
-        memcpy(soundcard->device_id,strid,strlen(strid));
+        }
     }
 
     // handle audio
@@ -144,6 +188,20 @@ get_monitor_name(void* data,
 }
 
 int
+get_monitor_width(void* data,
+                   int pos)
+{
+    MediaDevice* source = (MediaDevice*) data;
+    return (int)source->monitors[pos].width;
+}
+int
+get_monitor_height(void* data,
+                   int pos)
+{
+    MediaDevice* source = (MediaDevice*) data;
+    return (int)source->monitors[pos].height;
+}
+int
 get_monitor_handle(void* data,
                    int pos)
 {
@@ -158,6 +216,14 @@ get_monitor_adapter(void* data,
     MediaDevice* source = (MediaDevice*) data;
     return source->monitors[pos].adapter;
 }
+int   
+monitor_is_primary(void* data, 
+                  int pos)
+{
+    MediaDevice* source = (MediaDevice*) data;
+    return source->monitors[pos].primary;
+}
+
 
 int   
 monitor_is_active(void* data, 
@@ -174,7 +240,28 @@ soundcard_is_active(void* data,
     MediaDevice* source = (MediaDevice*) data;
     return source->soundcards[pos].active;
 }
+int   
+soundcard_is_default(void* data, 
+                  int pos)
+{
+    MediaDevice* source = (MediaDevice*) data;
+    return source->soundcards[pos].isdefault;
+}
+int   
+soundcard_is_loopback(void* data, 
+                  int pos)
+{
+    MediaDevice* source = (MediaDevice*) data;
+    return source->soundcards[pos].loopback;
+}
 
+void*
+get_soundcard_api(void* data, 
+                  int pos)
+{
+    MediaDevice* source = (MediaDevice*) data;
+    return source->soundcards[pos].api;
+}
 void*
 get_soundcard_name(void* data, 
                   int pos)
