@@ -116,24 +116,24 @@ device_foreach(GstDevice* device,
 
             gchar* strid = (gchar*)gst_structure_get_string(device_structure,"device.strid");
             memcpy(soundcard->device_id,strid,strlen(strid));
-        } else if (!g_strcmp0(api,"wasapi2")) {
-            int i = 0;
-            while (source->soundcards[i].active) { i++; }
-            Soundcard* soundcard = &source->soundcards[i];
+        // } else if (!g_strcmp0(api,"wasapi2")) {
+        //     int i = 0;
+        //     while (source->soundcards[i].active) { i++; }
+        //     Soundcard* soundcard = &source->soundcards[i];
 
-            memcpy(soundcard->api,api,strlen(api));
-            gst_structure_get_boolean(device_structure,"device.default",&soundcard->isdefault);
-            gst_structure_get_boolean(device_structure,"wasapi2.device.loopback",&soundcard->loopback);
+        //     memcpy(soundcard->api,api,strlen(api));
+        //     gst_structure_get_boolean(device_structure,"device.default",&soundcard->isdefault);
+        //     gst_structure_get_boolean(device_structure,"wasapi2.device.loopback",&soundcard->loopback);
 
-            gchar* name = gst_device_get_display_name(device);
-            memcpy(soundcard->name,name,strlen(name));
-            soundcard->active = TRUE;
+        //     gchar* name = gst_device_get_display_name(device);
+        //     memcpy(soundcard->name,name,strlen(name));
+        //     soundcard->active = TRUE;
 
-            gchar* device_name = (gchar*)gst_structure_get_string(device_structure,"wasapi2.device.description");
-            memcpy(soundcard->name,device_name,strlen(device_name));
+        //     gchar* device_name = (gchar*)gst_structure_get_string(device_structure,"wasapi2.device.description");
+        //     memcpy(soundcard->name,device_name,strlen(device_name));
 
-            gchar* strid = (gchar*)gst_structure_get_string(device_structure,"device.strid");
-            memcpy(soundcard->device_id,strid,strlen(strid));
+        //     gchar* strid = (gchar*)gst_structure_get_string(device_structure,"device.strid");
+        //     memcpy(soundcard->device_id,strid,strlen(strid));
         } else {
             g_object_unref(device);
             return;
