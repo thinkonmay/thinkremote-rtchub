@@ -3,11 +3,11 @@ package video
 
 import (
 	"fmt"
-	"strings"
 	"time"
 	"unsafe"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	gsttest "github.com/OnePlay-Internet/webrtc-proxy/util/test"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
@@ -43,17 +43,17 @@ const (
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
 	var pipelineStr string
-	MFH264PROP   := fmt.Sprintf("bitrate=%d rc-mode=0 low-latency=true ref=1 quality-vs-speed=0",config.Bitrate);
-	MFH264PROPSW := fmt.Sprintf("bitrate=%d usage-type=1 rate-control=1 multi-thread=8",config.Bitrate);
+
+	pipelineStr = gsttest.GstTestMediaFoundation(config);
+	if pipelineStr == "" {
+		pipelineStr = gsttest.GstTestNvCodec(config);
+		if pipelineStr == "" {
+			pipelineStr = gsttest.GstTestSoftwareEncoder(config);
+		}
+	}
+
 
 	
-	if strings.Contains(config.VideoSource.Adapter, "NVIDIA") {
-		pipelineStr = fmt.Sprintf("d3d11screencapturesrc monitor-handle=%d blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s,format=NV12 ! %s ! mfh264enc %s ! %s ! appsink name=appsink",
-			config.VideoSource.MonitorHandle	,DIRECTX_PAD, QUEUE, DIRECTX_PAD, QUEUE, MFH264PROP, QUEUE)
-	} else {
-		pipelineStr = fmt.Sprintf("d3d11screencapturesrc monitor-handle=%d blocksize=8192 ! %s,framerate=60/1 ! %s ! d3d11convert ! %s ! d3d11download ! %s ! openh264enc %s ! %s ! appsink name=appsink",
-			config.VideoSource.MonitorHandle	,DIRECTX_PAD, QUEUE, QUEUE, QUEUE, MFH264PROPSW, QUEUE)
-	}
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))

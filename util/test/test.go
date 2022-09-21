@@ -84,7 +84,7 @@ func GstTestAudio(source *config.ListenerConfig) string{
 			failed<-true;
 		}()
 		go func ()  {
-			time.Sleep(3 * time.Second);
+			time.Sleep(2 * time.Second);
 			success<-true;
 		}()
 		go func ()  {
@@ -112,15 +112,183 @@ func GstTestAudio(source *config.ListenerConfig) string{
 	}
 
 
-	log := make([]byte,0);
-	for _,i := range testcase.Args[1:] {
-		log = append(log, append([]byte(i),[]byte(" ")...)...);
-	}
 
 	if result {
+		log := make([]byte,0);
+		for _,i := range testcase.Args[1:] {
+			log = append(log, append([]byte(i),[]byte(" ")...)...);
+		}
 		return string(log)
 	} else {
 		return "";
 	}
 
+}
+
+
+func GstTestNvCodec(source *config.ListenerConfig) string{
+	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
+						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
+						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
+						"d3d11download",
+						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
+						"nvh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"zerolatency=true","rc-mode=2",
+						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
+						"appsink","name=appsink")
+
+	done := make(chan bool)
+	failed := make(chan bool)
+	success := make(chan bool)
+	go func ()  {
+		childprocess.HandleProcess(testcase);
+		failed<-true;
+	}()
+	go func ()  {
+		time.Sleep(2 * time.Second);
+		success<-true;
+	}()
+
+	var result bool;
+	go func ()  {
+		for {
+			select {
+			case <-success:
+				result = true;
+				done<-true;
+				return;
+			case <-failed:
+				result = false;
+				done<-true;
+				return;
+			}
+		}
+	}()
+	<-done
+	if testcase.Process != nil {
+		testcase.Process.Kill()
+	}
+
+
+	if result {
+		log := make([]byte,0);
+		for _,i := range testcase.Args[1:] {
+			log = append(log, append([]byte(i),[]byte(" ")...)...);
+		}
+		return string(log)
+	} else {
+		return "";
+	}
+}
+
+
+
+func GstTestMediaFoundation(source *config.ListenerConfig) string{
+	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
+						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
+						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
+						"d3d11convert",
+						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
+						"mfh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"rc-mode=0","low-latency=true","ref=1","quality-vs-speed=0",
+						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
+						"appsink","name=appsink")
+
+	done := make(chan bool)
+	failed := make(chan bool)
+	success := make(chan bool)
+	go func ()  {
+		childprocess.HandleProcess(testcase);
+		failed<-true;
+	}()
+	go func ()  {
+		time.Sleep(2 * time.Second);
+		success<-true;
+	}()
+
+	var result bool;
+	go func ()  {
+		for {
+			select {
+			case <-success:
+				result = true;
+				done<-true;
+				return;
+			case <-failed:
+				result = false;
+				done<-true;
+				return;
+			}
+		}
+	}()
+	<-done
+	if testcase.Process != nil {
+		testcase.Process.Kill()
+	}
+
+
+	if result {
+		log := make([]byte,0);
+		for _,i := range testcase.Args[1:] {
+			log = append(log, append([]byte(i),[]byte(" ")...)...);
+		}
+		return string(log)
+	} else {
+		return "";
+	}
+}
+
+
+func GstTestSoftwareEncoder(source *config.ListenerConfig) string{
+	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
+						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
+						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
+						"d3d11convert",
+						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
+						"d3d11download",
+						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
+						"openh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"usage-type=1","rate-control=1","multi-thread=8",
+						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
+						"appsink","name=appsink")
+
+	done := make(chan bool)
+	failed := make(chan bool)
+	success := make(chan bool)
+	go func ()  {
+		childprocess.HandleProcess(testcase);
+		failed<-true;
+	}()
+	go func ()  {
+		time.Sleep(2 * time.Second);
+		success<-true;
+	}()
+
+	var result bool;
+	go func ()  {
+		for {
+			select {
+			case <-success:
+				result = true;
+				done<-true;
+				return;
+			case <-failed:
+				result = false;
+				done<-true;
+				return;
+			}
+		}
+	}()
+	<-done
+	if testcase.Process != nil {
+		testcase.Process.Kill()
+	}
+
+
+	if result {
+		log := make([]byte,0);
+		for _,i := range testcase.Args[1:] {
+			log = append(log, append([]byte(i),[]byte(" ")...)...);
+		}
+		return string(log)
+	} else {
+		return "";
+	}
 }
