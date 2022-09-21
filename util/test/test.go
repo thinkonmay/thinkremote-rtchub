@@ -37,17 +37,18 @@ func GstTestAudio(source *config.ListenerConfig) string{
 
 	// wasapi2 has higher priority
 	for _,soundcard := range source.AudioSource {
-		if soundcard.Api == "wasapi2" && soundcard.IsDefault {
-			var loopback string
-			if soundcard.IsLoopback { 
-				loopback = "true" 
-			} else { 
-				loopback = "false" 
-			}
-
+		if soundcard.Api == "wasapi2" && soundcard.IsDefault && soundcard.IsLoopback{
 			options = append(options,map[string]string { 
 				"element":"wasapi2src", 
-				"loopback": loopback,
+				"device": formatDeviceID(soundcard.DeviceID),
+			})
+		}
+	}
+
+	for _,soundcard := range source.AudioSource {
+		if soundcard.Api == "wasapi2" && soundcard.IsLoopback{
+			options = append(options,map[string]string { 
+				"element":"wasapi2src", 
 				"device": formatDeviceID(soundcard.DeviceID),
 			})
 		}
@@ -57,12 +58,6 @@ func GstTestAudio(source *config.ListenerConfig) string{
 		if soundcard.Api == "wasapi" {
 			options = append(options,map[string]string { 
 				"element":"wasapisrc", 
-				"loopback": "false",
-				"device": formatDeviceID(soundcard.DeviceID),
-			})
-			options = append(options,map[string]string { 
-				"element":"wasapisrc", 
-				"loopback": "true",
 				"device": formatDeviceID(soundcard.DeviceID),
 			})
 		}
@@ -73,7 +68,7 @@ func GstTestAudio(source *config.ListenerConfig) string{
 	var testcase *exec.Cmd
 	for _,i := range options{
 		testcase = exec.Command("gst-launch-1.0.exe", 
-							i["element"], "name=source",fmt.Sprintf("loopback=%s",i["loopback"]),fmt.Sprintf("device=%s",i["device"]),
+							i["element"], "name=source","loopback=true",fmt.Sprintf("device=%s",i["device"]),
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 							"audioconvert",
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
