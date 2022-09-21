@@ -35,19 +35,9 @@ func formatDeviceID(in string) string {
 func GstTestAudio(source *config.ListenerConfig) string{
 	options := make([]map[string]string,0); 
 
+	// wasapi2 has higher priority
 	for _,soundcard := range source.AudioSource {
-		if soundcard.Api == "wasapi" {
-			options = append(options,map[string]string { 
-				"element":"wasapisrc", 
-				"loopback": "false",
-				"device": formatDeviceID(soundcard.DeviceID),
-			})
-			options = append(options,map[string]string { 
-				"element":"wasapisrc", 
-				"loopback": "true",
-				"device": formatDeviceID(soundcard.DeviceID),
-			})
-		} else if soundcard.Api == "wasapi2" && soundcard.IsDefault {
+		if soundcard.Api == "wasapi2" && soundcard.IsDefault {
 			var loopback string
 			if soundcard.IsLoopback { 
 				loopback = "true" 
@@ -58,6 +48,21 @@ func GstTestAudio(source *config.ListenerConfig) string{
 			options = append(options,map[string]string { 
 				"element":"wasapi2src", 
 				"loopback": loopback,
+				"device": formatDeviceID(soundcard.DeviceID),
+			})
+		}
+	}
+
+	for _,soundcard := range source.AudioSource {
+		if soundcard.Api == "wasapi" {
+			options = append(options,map[string]string { 
+				"element":"wasapisrc", 
+				"loopback": "false",
+				"device": formatDeviceID(soundcard.DeviceID),
+			})
+			options = append(options,map[string]string { 
+				"element":"wasapisrc", 
+				"loopback": "true",
 				"device": formatDeviceID(soundcard.DeviceID),
 			})
 		}
