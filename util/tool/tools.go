@@ -12,27 +12,27 @@ import "C"
 type DeviceQuery unsafe.Pointer
 
 type Monitor struct {
-    MonitorHandle int
-    MonitorName string
-    DeviceName string;
-    Adapter string;
-	Width int;
-	Height int;
-	IsPrimary bool;
+    MonitorHandle int   `json:"handle"`
+    MonitorName string	`json:"name"`
+    DeviceName string	`json:"device"`
+    Adapter string 		`json:"adapter"`
+	Width int 			`json:"width"`
+	Height int 			`json:"height"`
+	IsPrimary bool 		`json:"isPrimary"`
 };
 
 type Soundcard struct {
-    DeviceID string;
-    Name string;
-	Api string
+    DeviceID string 	`json:"id"`	
+    Name string 		`json:"name"`	
+	Api string			`json:"api"`	
 
-	IsDefault bool;
-	IsLoopback bool;
+	IsDefault bool 		`json:"isDefault"`
+	IsLoopback bool 	`json:"isLoopback"`
 };
 
 type MediaDevice struct {
-    Monitors []Monitor;
-    Soundcards []Soundcard;
+    Monitors []Monitor       `json:"monitors"`
+    Soundcards []Soundcard 	 `json:"soundcards"`
 };
 
 
