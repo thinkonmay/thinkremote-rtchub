@@ -11,6 +11,7 @@ import (
 	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
 	grpc "github.com/OnePlay-Internet/webrtc-proxy/signalling/gRPC"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/OnePlay-Internet/webrtc-proxy/webrtc"
 	webrtclib "github.com/pion/webrtc/v3"
 )
@@ -116,6 +117,19 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	})
 	proxy.signallingClient.OnSDP(func(i *webrtclib.SessionDescription) {
 		proxy.webrtcClient.OnIncominSDP(i)
+	})
+	proxy.signallingClient.OnDeviceSelect(func(monitor tool.Monitor,soundcard tool.Soundcard, bitrate int) {
+		for _,listener := range proxy.listeners {
+			conf := listener.GetConfig()
+			if conf.MediaType == "audio" {
+				conf.VideoSource = monitor;
+				conf.Bitrate = bitrate;
+				listener.UpdateConfig(conf);
+			} else if listener.GetConfig().MediaType == "audio" {
+				conf.AudioSource = soundcard;
+				listener.UpdateConfig(conf);
+			}
+		}
 	})
 	return
 }

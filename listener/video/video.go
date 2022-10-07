@@ -24,7 +24,7 @@ func init() {
 
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
-	Pipeline unsafe.Pointer
+	pipeline unsafe.Pointer
 	sampchan chan *media.Sample
 	config   *config.ListenerConfig
 }
@@ -35,9 +35,6 @@ const (
 	videoClockRate = 90000
 	audioClockRate = 48000
 	pcmClockRate   = 8000
-
-	DIRECTX_PAD  = "video/x-raw(memory:D3D11Memory)"
-	QUEUE        = "queue max-size-time=0 max-size-bytes=0 max-size-buffers=3"
 )
 
 // CreatePipeline creates a GStreamer Pipeline
@@ -60,7 +57,7 @@ func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
 
 	var err unsafe.Pointer
 	pipeline = &Pipeline{
-		Pipeline: C.create_video_pipeline(pipelineStrUnsafe, &err),
+		pipeline: C.create_video_pipeline(pipelineStrUnsafe, &err),
 		sampchan: make(chan *media.Sample, 2),
 		config:   config,
 	}
@@ -84,13 +81,50 @@ func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.i
 	pipeline.sampchan <- &sample
 }
 
+func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) {
+	if p.config.VideoSource.MonitorHandle == config.VideoSource.MonitorHandle {
+		return;
+	}
+	if p.config.Bitrate != config.Bitrate{
+		defer func ()  {
+			C.video_pipeline_set_bitrate(p.pipeline,C.int(config.Bitrate));
+		}()
+	}
+
+	pipelineStr := gsttest.GstTestMediaFoundation(config);
+	if pipelineStr == "" {
+		pipelineStr = gsttest.GstTestNvCodec(config);
+		if pipelineStr == "" {
+			pipelineStr = gsttest.GstTestSoftwareEncoder(config);
+		}
+	}
+
+	pipelineStrUnsafe := C.CString(pipelineStr)
+	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
+	
+	var err unsafe.Pointer
+	Pipeline := C.create_video_pipeline(pipelineStrUnsafe,&err);
+	if len(tool.ToGoString(err)) != 0 {
+		C.stop_video_pipeline(Pipeline)
+	}
+	
+	pipeline.Close()
+	pipeline.pipeline = Pipeline;
+	pipeline.config = config;
+}
+
 //export handleVideoStopOrError
 func handleVideoStopOrError() {
 	pipeline.Close()
+	pipeline.UpdateConfig(pipeline.config);
+	pipeline.Open()
 }
 
 func (p *Pipeline) Open() *config.ListenerConfig {
-	C.start_video_pipeline(pipeline.Pipeline)
+	C.start_video_pipeline(pipeline.pipeline)
+	return p.config
+}
+func (p *Pipeline) GetConfig() *config.ListenerConfig {
 	return p.config
 }
 func (p *Pipeline) ReadSample() *media.Sample {
@@ -101,5 +135,5 @@ func (p *Pipeline) ReadRTP() *rtp.Packet {
 	return <-block
 }
 func (p *Pipeline) Close() {
-	C.stop_video_pipeline(p.Pipeline)
+	C.stop_video_pipeline(p.pipeline)
 }

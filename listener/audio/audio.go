@@ -24,7 +24,7 @@ func init() {
 
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
-	Pipeline unsafe.Pointer
+	pipeline unsafe.Pointer
 	sampchan chan *media.Sample
 	config   *config.ListenerConfig
 }
@@ -49,7 +49,7 @@ func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
 
 	var err unsafe.Pointer
 	pipeline = &Pipeline{
-		Pipeline: C.create_audio_pipeline(pipelineStrUnsafe,&err),
+		pipeline: C.create_audio_pipeline(pipelineStrUnsafe,&err),
 		sampchan: make(chan *media.Sample, 2),
 		config:   config,
 	}
@@ -73,15 +73,51 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 	pipeline.sampchan <- &sample
 }
 
+func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) {
+	if p.config.AudioSource.DeviceID == config.AudioSource.DeviceID {
+		return;
+	}
+
+	if p.config.Bitrate != config.Bitrate{
+		defer func ()  {
+			C.audio_pipeline_set_bitrate(p.pipeline,C.int(config.Bitrate));
+		}()
+	}
+
+	pipelineStr := gsttest.GstTestAudio(config);
+	if pipelineStr == "" {
+		return;
+	}
+
+	pipelineStrUnsafe := C.CString(pipelineStr)
+	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
+	
+	var err unsafe.Pointer
+	Pipeline := C.create_audio_pipeline(pipelineStrUnsafe,&err);
+	if len(tool.ToGoString(err)) != 0 {
+		C.stop_audio_pipeline(Pipeline)
+	}
+	
+	pipeline.Close()
+	pipeline.pipeline = Pipeline;
+	pipeline.config = config;
+}
+
 //export handleAudioStopOrError
 func handleAudioStopOrError() {
 	pipeline.Close()
+	pipeline.UpdateConfig(pipeline.config);
+	pipeline.Open()
 }
 
 func (p *Pipeline) Open() *config.ListenerConfig {
-	C.start_audio_pipeline(pipeline.Pipeline)
+	C.start_audio_pipeline(pipeline.pipeline)
 	return p.config
 }
+func (p *Pipeline) GetConfig() *config.ListenerConfig {
+	return p.config
+}
+
 func (p *Pipeline) ReadSample() *media.Sample {
 	return <-p.sampchan
 }
@@ -91,5 +127,5 @@ func (p *Pipeline) ReadRTP() *rtp.Packet {
 }
 
 func (p *Pipeline) Close() {
-	C.stop_audio_pipeline(p.Pipeline)
+	C.stop_audio_pipeline(p.pipeline)
 }

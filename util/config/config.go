@@ -23,10 +23,11 @@ type GrpcConfig struct {
 }
 
 type ListenerConfig struct {
-	MediaType string
 	Bitrate int
+	MediaType string
+
 	VideoSource tool.Monitor
-	AudioSource []tool.Soundcard
+	AudioSource tool.Soundcard
 
 	DataType  string
 	Name      string

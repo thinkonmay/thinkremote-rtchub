@@ -2,17 +2,25 @@ package grpc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
 	"github.com/OnePlay-Internet/webrtc-proxy/signalling/gRPC/packet"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/webrtc/v3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
+
+type deviceSelection struct {
+	Monitor int		`json:"monitor"`
+	SoundCard int	`json:"soundcard"`
+	Bitrate int		`json:"bitrate"`
+}
 
 type GRPCclient struct {
 	packet.UnimplementedStreamServiceServer
@@ -22,8 +30,10 @@ type GRPCclient struct {
 	client packet.StreamService_StreamRequestClient
 	requestCount int
 
+	deviceAvailableSent *tool.MediaDevice
 	sdpChan chan *webrtc.SessionDescription
 	iceChan chan *webrtc.ICECandidateInit
+	preflightChan chan deviceSelection
 	startChan chan bool
 }
 
@@ -87,7 +97,16 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 				ret.iceChan <- &ice;
 			} else if res.Data["Target"] == "START" {
 				fmt.Printf("Receive start signal");
-				ret.startChan<-true;
+				ret.SendDeviceAvailable();
+			} else if res.Data["Target"] == "PREFLIGHT" {
+				var preflight deviceSelection;
+				bitrate,err := strconv.ParseInt(res.Data["Bitrate"],10,32);
+				err = json.Unmarshal([]byte(res.Data["Device"]),&preflight);
+				if err == nil {
+					preflight.Bitrate = int(bitrate);
+					ret.preflightChan<-preflight;
+					ret.startChan<-true;
+				}
 			} else {
 				fmt.Println("Unknown packet");
 			}
@@ -131,7 +150,31 @@ func (client *GRPCclient) SendICE(ice *webrtc.ICECandidateInit) error {
 	}
 	client.requestCount++;
 	return nil;
+}
 
+func (client *GRPCclient) SendDeviceAvailable() error {
+	devices := tool.GetDevice()
+	data,err := json.Marshal(devices);
+	if err != nil {
+		return err;
+	}
+	
+	client.deviceAvailableSent = devices
+
+	req := packet.UserRequest{
+		Id: (int64) (client.requestCount),
+		Target: "PREFLIGHT",
+		Headers: map[string]string{},
+		Data: map[string]string{
+			"Devices": string(data),
+		},
+	}
+	fmt.Printf("PREFLIGHT sent\n");
+	if err := client.client.Send(&req); err != nil {
+		return err;
+	}
+	client.requestCount++;
+	return nil;
 }
 
 func (client *GRPCclient) OnICE(fun signalling.OnIceFunc) {
@@ -148,6 +191,21 @@ func (client *GRPCclient) OnSDP(fun signalling.OnSDPFunc) {
 		for {
 			sdp := <- client.sdpChan;
 			fun(sdp);
+		}
+	}()
+}
+
+func (client *GRPCclient) OnDeviceSelect(fun signalling.OnDeviceSelectFunc) {
+	go func() {
+		for {
+			devsec := <- client.preflightChan;
+			if client.deviceAvailableSent == nil {
+				fmt.Printf("receive preflight when haven't started\n");
+				continue;
+			}
+			fun(client.deviceAvailableSent.Monitors[devsec.Monitor],
+				client.deviceAvailableSent.Soundcards[devsec.SoundCard],
+				devsec.Bitrate);
 		}
 	}()
 }

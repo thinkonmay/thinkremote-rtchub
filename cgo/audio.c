@@ -92,6 +92,12 @@ start_audio_pipeline(void* pipeline)
 }
 
 void 
+audio_pipeline_set_bitrate(void* pipeline, int bitrate) {
+    GstElement *encoder = gst_bin_get_by_name(GST_BIN(pipeline), "encoder");
+    g_object_set(encoder, "bitrate", bitrate, NULL);
+}
+
+void 
 stop_audio_pipeline(void* pipeline) {
     gst_element_set_state((GstElement*)pipeline, GST_STATE_NULL);
 }

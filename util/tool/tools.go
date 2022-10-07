@@ -18,6 +18,7 @@ type Monitor struct {
     Adapter string 		`json:"adapter"`
 	Width int 			`json:"width"`
 	Height int 			`json:"height"`
+	Framerate int 		`json:"framerate"`
 	IsPrimary bool 		`json:"isPrimary"`
 };
 

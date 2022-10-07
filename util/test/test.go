@@ -34,33 +34,23 @@ func formatDeviceID(in string) string {
 
 func GstTestAudio(source *config.ListenerConfig) string{
 	options := make([]map[string]string,0); 
+	soundcard := source.AudioSource
 
 	// wasapi2 has higher priority
-	for _,soundcard := range source.AudioSource {
-		if soundcard.Api == "wasapi2" && soundcard.IsDefault && soundcard.IsLoopback{
-			options = append(options,map[string]string { 
-				"element":"wasapi2src", 
-				"device": formatDeviceID(soundcard.DeviceID),
-			})
-		}
-	}
+	if soundcard.Api == "wasapi2" {
+		options = append(options,map[string]string { 
+			"element":"wasapi2src", 
+			"device": formatDeviceID(soundcard.DeviceID),
+		})
+	} else if soundcard.Api == "wasapi" {
+		options = append(options,map[string]string { 
+			"element":"wasapisrc", 
+			"device": formatDeviceID(soundcard.DeviceID),
+		})
+	} 
 
-	for _,soundcard := range source.AudioSource {
-		if soundcard.Api == "wasapi2" && soundcard.IsLoopback{
-			options = append(options,map[string]string { 
-				"element":"wasapi2src", 
-				"device": formatDeviceID(soundcard.DeviceID),
-			})
-		}
-	}
-
-	for _,soundcard := range source.AudioSource {
-		if soundcard.Api == "wasapi" {
-			options = append(options,map[string]string { 
-				"element":"wasapisrc", 
-				"device": formatDeviceID(soundcard.DeviceID),
-			})
-		}
+	if len(options) == 0 {
+		return ""
 	}
 
 
@@ -72,7 +62,7 @@ func GstTestAudio(source *config.ListenerConfig) string{
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 							"audioconvert",
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
-							"opusenc",fmt.Sprintf("bitrate=%d",source.Bitrate),
+							"opusenc",fmt.Sprintf("bitrate=%d",source.Bitrate), "name=encoder",
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 							"appsink","name=appsink")
 
@@ -122,18 +112,17 @@ func GstTestAudio(source *config.ListenerConfig) string{
 	} else {
 		return "";
 	}
-
 }
 
 
 func GstTestNvCodec(source *config.ListenerConfig) string{
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
 						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
-						"!", "video/x-raw(memory:D3D11Memory),framerate=60/1", "!",
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.VideoSource.Framerate), "!",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11download",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
-						"nvh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"zerolatency=true","rc-mode=2",
+						"nvh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"zerolatency=true","rc-mode=2","name=encoder",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"appsink","name=appsink")
 
@@ -186,11 +175,11 @@ func GstTestNvCodec(source *config.ListenerConfig) string{
 func GstTestMediaFoundation(source *config.ListenerConfig) string{
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
 						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
-						"!", "video/x-raw(memory:D3D11Memory),framerate=60/1", "!",
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.VideoSource.Framerate), "!",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
-						"mfh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"rc-mode=0","low-latency=true","ref=1","quality-vs-speed=0",
+						"mfh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"rc-mode=0","low-latency=true","ref=1","quality-vs-speed=0","name=encoder",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"appsink","name=appsink")
 
@@ -242,12 +231,13 @@ func GstTestMediaFoundation(source *config.ListenerConfig) string{
 func GstTestSoftwareEncoder(source *config.ListenerConfig) string{
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
 						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
+						"!", fmt.Sprintf("video/x-raw,framerate=%d/1",source.VideoSource.Framerate), "!",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11download",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
-						"openh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"usage-type=1","rate-control=1","multi-thread=8",
+						"openh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"usage-type=1","rate-control=1","multi-thread=8","name=encoder",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"appsink","name=appsink")
 

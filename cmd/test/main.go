@@ -12,7 +12,7 @@ func main() {
 	dev := tool.GetDevice()
 	soundcards := dev.Soundcards;
 	result := gsttest.GstTestAudio(&config.ListenerConfig{
-		AudioSource: soundcards,
+		AudioSource: soundcards[0],
 		Bitrate: 128000,
 	})
 	fmt.Printf("%s\n",result);
