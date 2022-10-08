@@ -41,7 +41,7 @@ const (
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	pipeline = &Pipeline{
 		pipeline: unsafe.Pointer(nil),
-		sampchan: make(chan *media.Sample, 2),
+		sampchan: make(chan *media.Sample),
 		config:   config,
 	};
 	return pipeline;
@@ -58,12 +58,18 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 }
 
 func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
-	pipelineStr := gsttest.GstTestAudio(config);
-	if pipelineStr == "" {
+	var pipelineStr string
+	if config.AudioSource.DeviceID == "none" {
+		pipelineStr = "fakesrc ! appsink name=appsink"
+	} else {
+		pipelineStr = gsttest.GstTestAudio(config);
 		if pipelineStr == "" {
-			return fmt.Errorf("unable to create encode pipeline with device");
+			if pipelineStr == "" {
+				return fmt.Errorf("unable to create encode pipeline with device");
+			}
 		}
 	}
+
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
@@ -75,7 +81,7 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
 		return fmt.Errorf("%s",tool.ToGoString(err));
 	}
 	
-	fmt.Printf("starting audio pipeline: %s",pipelineStr);
+	fmt.Printf("starting audio pipeline: %s\n",pipelineStr);
 	p.pipeline = Pipeline;
 	p.config = config;
 	return nil;

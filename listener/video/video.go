@@ -41,7 +41,7 @@ const (
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	pipeline = &Pipeline{
 		pipeline: unsafe.Pointer(nil),
-		sampchan: make(chan *media.Sample, 2),
+		sampchan: make(chan *media.Sample),
 		config:   config,
 	};
 	return pipeline;

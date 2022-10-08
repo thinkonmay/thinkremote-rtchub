@@ -90,6 +90,15 @@ func GetDevice() *MediaDevice{
 		count_soundcard++;
 	}
 
+	result.Soundcards = append(result.Soundcards, Soundcard{
+		DeviceID : "none",
+		Name : "Mute audio",
+		Api : "None",
+
+		IsDefault: false,
+		IsLoopback: false,
+	})
+
 	return result;
 }
 

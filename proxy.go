@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/dummy"
@@ -74,9 +75,23 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 		panic(err)
 	}
 
+
+	start := make(chan bool)
+	go func() {
+		time.Sleep(30 * time.Second)
+		start<-false
+	}()
 	go func() {
 		proxy.signallingClient.WaitForStart()
-		proxy.Start()
+		start<-true
+	}()
+	go func() {
+		if <-start {
+			proxy.Start()
+		} else {
+			fmt.Printf("application start timeout, closing\n");
+			proxy.Shutdown<-true;
+		}
 	}()
 	go func() {
 		for {
