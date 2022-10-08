@@ -8,10 +8,13 @@ extern void   goHandlePipelineBufferAudio         (void *buffer,
                                                    int bufferLen, 
                                                    int samples);
 
-extern void          handleAudioStopOrError            ();
+extern void   handleAudioStopOrError    ();
 
-void*  create_audio_pipeline            (char *pipeline,
+void*         create_audio_pipeline     (char *pipeline,
                                          void** err);
+
+void          audio_pipeline_set_bitrate(void* pipeline, 
+                                         int bitrate);
 
 void          start_audio_pipeline      (void* pipeline);
 

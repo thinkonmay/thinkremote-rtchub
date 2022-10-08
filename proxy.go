@@ -11,6 +11,7 @@ import (
 	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
 	grpc "github.com/OnePlay-Internet/webrtc-proxy/signalling/gRPC"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/OnePlay-Internet/webrtc-proxy/webrtc"
 	webrtclib "github.com/pion/webrtc/v3"
 )
@@ -31,7 +32,8 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	webrtc_conf *config.WebRTCConfig,
 	br_conf []*config.BroadcasterConfig,
 	chan_conf *config.DataChannelConfig,
-	lis []listener.Listener) (proxy *Proxy, err error) {
+	lis []listener.Listener,
+	devices *tool.MediaDevice) (proxy *Proxy, err error) {
 	proxy = &Proxy{}
 	proxy.chan_conf = chan_conf
 	proxy.listeners = lis
@@ -40,12 +42,12 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	fmt.Printf("added listener\n")
 
 	if grpc_conf != nil {
-		var rpc grpc.GRPCclient
-		rpc, err = grpc.InitGRPCClient(grpc_conf)
+		var rpc *grpc.GRPCclient
+		rpc, err = grpc.InitGRPCClient(grpc_conf,devices)
 		if err != nil {
 			return
 		}
-		proxy.signallingClient = &rpc
+		proxy.signallingClient = rpc
 	} else if sock != nil {
 		err = fmt.Errorf("Unimplemented")
 		return
@@ -116,6 +118,26 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	})
 	proxy.signallingClient.OnSDP(func(i *webrtclib.SessionDescription) {
 		proxy.webrtcClient.OnIncominSDP(i)
+	})
+	proxy.signallingClient.OnDeviceSelect(func(monitor tool.Monitor,soundcard tool.Soundcard, bitrate int) error {
+		for _,listener := range proxy.listeners {
+			conf := listener.GetConfig()
+			if conf.MediaType == "video" {
+				conf.VideoSource = monitor;
+				conf.Bitrate = bitrate;
+				err := listener.UpdateConfig(conf);
+				if err != nil {
+					return err
+				}
+			} else if listener.GetConfig().MediaType == "audio" {
+				conf.AudioSource = soundcard;
+				err := listener.UpdateConfig(conf);
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil;
 	})
 	return
 }

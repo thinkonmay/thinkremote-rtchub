@@ -24,7 +24,7 @@ func init() {
 
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
-	Pipeline unsafe.Pointer
+	pipeline unsafe.Pointer
 	sampchan chan *media.Sample
 	config   *config.ListenerConfig
 }
@@ -38,29 +38,13 @@ const (
 )
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
-	pipelineStr := gsttest.GstTestAudio(config)
-	if len(pipelineStr) == 0 {
-		return nil, fmt.Errorf("unable to find suitable pipeline");
-	}
-
-	pipelineStrUnsafe := C.CString(pipelineStr)
-	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
-
-	var err unsafe.Pointer
+func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	pipeline = &Pipeline{
-		Pipeline: C.create_audio_pipeline(pipelineStrUnsafe,&err),
+		pipeline: unsafe.Pointer(nil),
 		sampchan: make(chan *media.Sample, 2),
 		config:   config,
-	}
-
-	errStr := tool.ToGoString(err)
-	if len(errStr) != 0 {
-		return nil, fmt.Errorf("%s", errStr)
-	}
-
-	fmt.Printf("starting with audio pipeline : %s\n", pipelineStr)
-	return pipeline, nil
+	};
+	return pipeline;
 }
 
 //export goHandlePipelineBufferAudio
@@ -73,15 +57,45 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 	pipeline.sampchan <- &sample
 }
 
+func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
+	pipelineStr := gsttest.GstTestAudio(config);
+	if pipelineStr == "" {
+		if pipelineStr == "" {
+			return fmt.Errorf("unable to create encode pipeline with device");
+		}
+	}
+
+	pipelineStrUnsafe := C.CString(pipelineStr)
+	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
+	
+	var err unsafe.Pointer
+	Pipeline := C.create_audio_pipeline(pipelineStrUnsafe,&err);
+	if len(tool.ToGoString(err)) != 0 {
+		C.stop_audio_pipeline(Pipeline)
+		return fmt.Errorf("%s",tool.ToGoString(err));
+	}
+	
+	fmt.Printf("starting audio pipeline: %s",pipelineStr);
+	p.pipeline = Pipeline;
+	p.config = config;
+	return nil;
+}
+
 //export handleAudioStopOrError
 func handleAudioStopOrError() {
 	pipeline.Close()
+	pipeline.UpdateConfig(pipeline.config);
+	pipeline.Open()
 }
 
 func (p *Pipeline) Open() *config.ListenerConfig {
-	C.start_audio_pipeline(pipeline.Pipeline)
+	C.start_audio_pipeline(pipeline.pipeline)
 	return p.config
 }
+func (p *Pipeline) GetConfig() *config.ListenerConfig {
+	return p.config
+}
+
 func (p *Pipeline) ReadSample() *media.Sample {
 	return <-p.sampchan
 }
@@ -91,5 +105,5 @@ func (p *Pipeline) ReadRTP() *rtp.Packet {
 }
 
 func (p *Pipeline) Close() {
-	C.stop_audio_pipeline(p.Pipeline)
+	C.stop_audio_pipeline(p.pipeline)
 }
