@@ -8,7 +8,7 @@ import (
 
 type Listener interface {
 	GetConfig() *config.ListenerConfig 
-	UpdateConfig(config *config.ListenerConfig )
+	UpdateConfig( config *config.ListenerConfig ) error
 
 	ReadRTP() *rtp.Packet
 	ReadSample() *media.Sample

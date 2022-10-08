@@ -38,29 +38,13 @@ const (
 )
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
-	pipelineStr := gsttest.GstTestAudio(config)
-	if len(pipelineStr) == 0 {
-		return nil, fmt.Errorf("unable to find suitable pipeline");
-	}
-
-	pipelineStrUnsafe := C.CString(pipelineStr)
-	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
-
-	var err unsafe.Pointer
+func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	pipeline = &Pipeline{
-		pipeline: C.create_audio_pipeline(pipelineStrUnsafe,&err),
+		pipeline: unsafe.Pointer(nil),
 		sampchan: make(chan *media.Sample, 2),
 		config:   config,
-	}
-
-	errStr := tool.ToGoString(err)
-	if len(errStr) != 0 {
-		return nil, fmt.Errorf("%s", errStr)
-	}
-
-	fmt.Printf("starting with audio pipeline : %s\n", pipelineStr)
-	return pipeline, nil
+	};
+	return pipeline;
 }
 
 //export goHandlePipelineBufferAudio
@@ -73,20 +57,12 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 	pipeline.sampchan <- &sample
 }
 
-func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) {
-	if p.config.AudioSource.DeviceID == config.AudioSource.DeviceID {
-		return;
-	}
-
-	if p.config.Bitrate != config.Bitrate{
-		defer func ()  {
-			C.audio_pipeline_set_bitrate(p.pipeline,C.int(config.Bitrate));
-		}()
-	}
-
+func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
 	pipelineStr := gsttest.GstTestAudio(config);
 	if pipelineStr == "" {
-		return;
+		if pipelineStr == "" {
+			return fmt.Errorf("unable to create encode pipeline with device");
+		}
 	}
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
@@ -96,11 +72,13 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) {
 	Pipeline := C.create_audio_pipeline(pipelineStrUnsafe,&err);
 	if len(tool.ToGoString(err)) != 0 {
 		C.stop_audio_pipeline(Pipeline)
+		return fmt.Errorf("%s",tool.ToGoString(err));
 	}
 	
-	pipeline.Close()
-	pipeline.pipeline = Pipeline;
-	pipeline.config = config;
+	fmt.Printf("starting audio pipeline: %s",pipelineStr);
+	p.pipeline = Pipeline;
+	p.config = config;
+	return nil;
 }
 
 //export handleAudioStopOrError

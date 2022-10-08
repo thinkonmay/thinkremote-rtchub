@@ -9,7 +9,7 @@ type OnIceFunc func (*webrtc.ICECandidateInit)
 
 type OnSDPFunc func (*webrtc.SessionDescription) 
 
-type OnDeviceSelectFunc func (tool.Monitor, tool.Soundcard, int) 
+type OnDeviceSelectFunc func (tool.Monitor, tool.Soundcard, int) error
 
 type Signalling interface {
 	SendSDP(*webrtc.SessionDescription) error;

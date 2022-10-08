@@ -21,7 +21,6 @@ func main() {
 	var token string
 	args := os.Args[1:]
 	HIDURL := "localhost:5000"
-	MonitorOrder := -1;
 
 	signaling := "54.169.49.176"
 	Port :=      30000;
@@ -31,7 +30,6 @@ func main() {
 
 	TurnUser 	 :=		"oneplay";
 	TurnPassword :=		"oneplay";
-	engine 		 :=		"screencoder";
 
 
 	qr := tool.GetDevice()
@@ -43,8 +41,6 @@ func main() {
 	for i, arg := range args {
 		if arg == "--token" {
 			token = args[i+1]
-		} else if arg == "--monitor" {
-			MonitorOrder,err = strconv.Atoi(args[i+1])
 		} else if arg == "--hid" {
 			HIDURL = args[i+1]
 		} else if arg == "--grpc" {
@@ -57,8 +53,6 @@ func main() {
 			TurnUser = args[i+1]
 		} else if arg == "--turnpassword" {
 			TurnPassword = args[i+1]
-		} else if arg == "--engine" {
-			engine = args[i+1]
 		} else if arg == "--device" {
 				fmt.Printf("=======================================================================\n")
 				fmt.Printf("MONITOR DEVICE\n")
@@ -126,28 +120,8 @@ func main() {
 	}
 
 	br  := []*config.BroadcasterConfig{}
-
-	var selection tool.Monitor
-	if MonitorOrder == -1 {
-		for _,i := range qr.Monitors {
-			if i.IsPrimary {
-				selection =  i;
-			}
-		}
-	} else {
-		selection = qr.Monitors[MonitorOrder];
-	}
-
 	lis := []*config.ListenerConfig{{
-		VideoSource: selection,
-
-		DataType:  "rtp",
-		MediaType: "video",
-		Name:      "Screencapture",
-		Codec:     webrtc.MimeTypeH264,
-	},
-	{
-		VideoSource: selection,
+		VideoSource: tool.Monitor{},
 
 		DataType: "sample",
 
@@ -155,37 +129,19 @@ func main() {
 		MediaType: "video",
 		Name:      "videoGstreamer",
 		Codec:     webrtc.MimeTypeH264,
-	}, }
+	},{
+		AudioSource: tool.Soundcard{},
+		
+		DataType: "sample",
 
-	if len(qr.Soundcards) > 0{
-		selection := func() tool.Soundcard {
-			for _,soundcard := range qr.Soundcards {
-				if soundcard.Api == "wasapi2" && soundcard.IsDefault && soundcard.IsLoopback{
-					return soundcard
-				} else if soundcard.Api == "wasapi2" && soundcard.IsLoopback{
-					return soundcard
-				} else if soundcard.Api == "wasapi2" {
-					return soundcard
-				} else if soundcard.Api == "wasapi" {
-					return soundcard
-				} 
-			} 
-			return tool.Soundcard{Api: "none"}
-		}()
+		Bitrate: 128000,
+		MediaType: "audio",
+		Name:      "audioGstreamer",
+		Codec:     webrtc.MimeTypeOpus,
+	}}
 
-		if selection.Api != "none" {
-			lis = append(lis, &config.ListenerConfig{
-				AudioSource: selection,
-				
-				DataType: "sample",
 
-				Bitrate: 128000,
-				MediaType: "audio",
-				Name:      "audioGstreamer",
-				Codec:     webrtc.MimeTypeOpus,
-			})
-		}
-	}
+
 	
 
 	Lists := make([]listener.Listener, 0)
@@ -193,14 +149,10 @@ func main() {
 		var err error;
 		var Lis listener.Listener
 
-		if engine == "gstreamer" {
-			if conf.MediaType == "video" && conf.DataType == "sample"{
-				Lis,err     =  video.CreatePipeline(conf);
-			} else if conf.MediaType == "audio" && conf.DataType == "sample"{
-				Lis,err     =  audio.CreatePipeline(conf);
-			} else {
-				err = fmt.Errorf("unimplemented listener")
-			}
+		if conf.MediaType == "video" && conf.DataType == "sample"{
+			Lis     =  video.CreatePipeline(conf);
+		} else if conf.MediaType == "audio" && conf.DataType == "sample"{
+			Lis     =  audio.CreatePipeline(conf);
 		} else {
 			err = fmt.Errorf("unimplemented listener")
 		}

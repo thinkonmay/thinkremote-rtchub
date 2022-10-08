@@ -118,7 +118,7 @@ func GstTestAudio(source *config.ListenerConfig) string{
 func GstTestNvCodec(source *config.ListenerConfig) string{
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
 						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.VideoSource.Framerate), "!",
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.VideoSource.Framerate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11download",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
@@ -175,7 +175,7 @@ func GstTestNvCodec(source *config.ListenerConfig) string{
 func GstTestMediaFoundation(source *config.ListenerConfig) string{
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
 						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.VideoSource.Framerate), "!",
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.VideoSource.Framerate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
@@ -231,7 +231,7 @@ func GstTestMediaFoundation(source *config.ListenerConfig) string{
 func GstTestSoftwareEncoder(source *config.ListenerConfig) string{
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
 						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw,framerate=%d/1",source.VideoSource.Framerate), "!",
+						"!", fmt.Sprintf("video/x-raw,framerate=%d/1",source.VideoSource.Framerate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",

@@ -38,37 +38,13 @@ const (
 )
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
-	var pipelineStr string
-
-	pipelineStr = gsttest.GstTestMediaFoundation(config);
-	if pipelineStr == "" {
-		pipelineStr = gsttest.GstTestNvCodec(config);
-		if pipelineStr == "" {
-			pipelineStr = gsttest.GstTestSoftwareEncoder(config);
-		}
-	}
-
-
-	
-
-	pipelineStrUnsafe := C.CString(pipelineStr)
-	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
-
-	var err unsafe.Pointer
+func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	pipeline = &Pipeline{
-		pipeline: C.create_video_pipeline(pipelineStrUnsafe, &err),
+		pipeline: unsafe.Pointer(nil),
 		sampchan: make(chan *media.Sample, 2),
 		config:   config,
-	}
-
-	errStr := tool.ToGoString(err)
-	if len(errStr) != 0 {
-		return nil, fmt.Errorf("%s", errStr)
-	}
-
-	fmt.Printf("starting with monitor : %s\n", config.VideoSource.MonitorName)
-	return pipeline, nil
+	};
+	return pipeline;
 }
 
 //export goHandlePipelineBuffer
@@ -81,21 +57,23 @@ func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.i
 	pipeline.sampchan <- &sample
 }
 
-func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) {
-	if p.config.VideoSource.MonitorHandle == config.VideoSource.MonitorHandle {
-		return;
-	}
-	if p.config.Bitrate != config.Bitrate{
-		defer func ()  {
+func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) (errr error) {
+	defer func ()  {
+		if errr == nil {
+			fmt.Printf("bitrate is set to %dkbps\n",config.Bitrate)
 			C.video_pipeline_set_bitrate(p.pipeline,C.int(config.Bitrate));
-		}()
-	}
+		}
+	}()
 
 	pipelineStr := gsttest.GstTestMediaFoundation(config);
 	if pipelineStr == "" {
 		pipelineStr = gsttest.GstTestNvCodec(config);
 		if pipelineStr == "" {
 			pipelineStr = gsttest.GstTestSoftwareEncoder(config);
+				if pipelineStr == "" {
+					errr = fmt.Errorf("unable to create encode pipeline with device");
+					return 
+				}
 		}
 	}
 
@@ -106,11 +84,14 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) {
 	Pipeline := C.create_video_pipeline(pipelineStrUnsafe,&err);
 	if len(tool.ToGoString(err)) != 0 {
 		C.stop_video_pipeline(Pipeline)
+		errr = fmt.Errorf("%s",tool.ToGoString(err));
+		return 
 	}
 	
-	pipeline.Close()
-	pipeline.pipeline = Pipeline;
-	pipeline.config = config;
+	fmt.Printf("starting video pipeline: %s",pipelineStr);
+	p.pipeline = Pipeline;
+	p.config = config;
+	return nil;
 }
 
 //export handleVideoStopOrError
