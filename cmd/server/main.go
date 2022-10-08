@@ -242,7 +242,7 @@ func main() {
 
 
 
-	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists)
+	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists,qr)
 	if err != nil {
 		fmt.Printf("%s\n",err.Error())
 		return;

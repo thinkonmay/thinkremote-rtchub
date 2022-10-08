@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -14,7 +15,7 @@ func TestClient(t *testing.T) {
 		ServerAddress: "localhost",
 		Port:          8000,
 	}
-	client, err := InitGRPCClient(&conf)
+	client, err := InitGRPCClient(&conf,tool.GetDevice())
 	if err != nil {
 		t.Error(err)
 	}

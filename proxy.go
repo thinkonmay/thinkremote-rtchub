@@ -32,7 +32,8 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	webrtc_conf *config.WebRTCConfig,
 	br_conf []*config.BroadcasterConfig,
 	chan_conf *config.DataChannelConfig,
-	lis []listener.Listener) (proxy *Proxy, err error) {
+	lis []listener.Listener,
+	devices *tool.MediaDevice) (proxy *Proxy, err error) {
 	proxy = &Proxy{}
 	proxy.chan_conf = chan_conf
 	proxy.listeners = lis
@@ -42,7 +43,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 	if grpc_conf != nil {
 		var rpc grpc.GRPCclient
-		rpc, err = grpc.InitGRPCClient(grpc_conf)
+		rpc, err = grpc.InitGRPCClient(grpc_conf,devices)
 		if err != nil {
 			return
 		}

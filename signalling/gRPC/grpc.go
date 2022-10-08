@@ -38,7 +38,8 @@ type GRPCclient struct {
 }
 
 
-func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
+func InitGRPCClient (conf *config.GrpcConfig,
+					 devices *tool.MediaDevice) (ret GRPCclient, err error) {
 	ret.sdpChan = make(chan *webrtc.SessionDescription)
 	ret.iceChan = make(chan *webrtc.ICECandidateInit)
 	ret.startChan = make(chan bool)
@@ -97,7 +98,7 @@ func InitGRPCClient (conf *config.GrpcConfig) (ret GRPCclient, err error) {
 				ret.iceChan <- &ice;
 			} else if res.Data["Target"] == "START" {
 				fmt.Printf("Receive start signal");
-				ret.SendDeviceAvailable();
+				ret.SendDeviceAvailable(devices);
 			} else if res.Data["Target"] == "PREFLIGHT" {
 				var preflight deviceSelection;
 				bitrate,err := strconv.ParseInt(res.Data["Bitrate"],10,32);
@@ -152,8 +153,7 @@ func (client *GRPCclient) SendICE(ice *webrtc.ICECandidateInit) error {
 	return nil;
 }
 
-func (client *GRPCclient) SendDeviceAvailable() error {
-	devices := tool.GetDevice()
+func (client *GRPCclient) SendDeviceAvailable(devices *tool.MediaDevice) error {
 	data,err := json.Marshal(devices);
 	if err != nil {
 		return err;

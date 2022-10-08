@@ -77,7 +77,7 @@ func main() {
 		},
 	}
 	Lists := make([]listener.Listener, 0)
-	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists)
+	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists,tool.GetDevice())
 	if err != nil {
 		fmt.Printf("failed to init webrtc proxy: %s\n",err.Error())
 		return
