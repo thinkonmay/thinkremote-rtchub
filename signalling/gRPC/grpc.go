@@ -36,6 +36,7 @@ type GRPCclient struct {
 	iceChan chan *webrtc.ICECandidateInit
 	preflightChan chan deviceSelection
 	startChan chan bool
+	connectedNotifier chan bool
 }
 
 
@@ -46,6 +47,7 @@ func InitGRPCClient(conf *config.GrpcConfig,
 		iceChan : make(chan *webrtc.ICECandidateInit),
 		preflightChan : make(chan deviceSelection),
 		startChan : make(chan bool),
+		connectedNotifier: make(chan bool,10),
 	}
 
 	ret.conn,err = grpc.Dial(
@@ -104,6 +106,7 @@ func InitGRPCClient(conf *config.GrpcConfig,
 			} else if res.Data["Target"] == "START" {
 				fmt.Printf("Receive start signal\n");
 				ret.SendDeviceAvailable(devices,nil);
+				ret.connectedNotifier<-true;
 			} else if res.Data["Target"] == "PREFLIGHT" {
 				bitrate,err := strconv.ParseInt(res.Data["bitrate"],10,32);
 				framerate,err := strconv.ParseInt(res.Data["framerate"],10,32);
@@ -246,6 +249,9 @@ func (client *GRPCclient) OnDeviceSelect(fun signalling.OnDeviceSelectFunc) {
 
 func (client *GRPCclient) WaitForStart(){
 	<- client.startChan;
+}
+func (client *GRPCclient) WaitForConnected(){
+	<- client.connectedNotifier;
 }
 func (client *GRPCclient) Stop(){
 	client.conn.Close()

@@ -42,6 +42,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	proxy.Shutdown = make(chan bool)
 	fmt.Printf("added listener\n")
 
+
 	if grpc_conf != nil {
 		var rpc *grpc.GRPCclient
 		rpc, err = grpc.InitGRPCClient(grpc_conf,devices)
@@ -76,9 +77,10 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	}
 
 
-	start := make(chan bool)
+	start := make(chan bool,2)
 	go func() {
-		time.Sleep(30 * time.Second)
+		proxy.signallingClient.WaitForConnected()
+		time.Sleep(60 * time.Second)
 		start<-false
 	}()
 	go func() {

@@ -20,6 +20,8 @@ type Signalling interface {
 	OnDeviceSelect(OnDeviceSelectFunc);
 
 	WaitForStart();
+	WaitForConnected();
+	
 	Stop();
 }
 
