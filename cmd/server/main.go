@@ -32,7 +32,7 @@ func main() {
 	TurnPassword :=		"oneplay";
 
 
-	qr := tool.GetDevice()
+	qr,err := tool.GetDevice()
 	if len(qr.Monitors) == 0{
 		fmt.Printf("no display available");
 		return;

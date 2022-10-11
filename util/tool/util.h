@@ -25,3 +25,5 @@ void* get_soundcard_api(void* data, int pos);
 void* get_soundcard_device_id(void* data, int pos);
 int   soundcard_is_default(void* data, int pos);
 int   soundcard_is_loopback(void* data, int pos);
+
+void   syncThreadDesktop(void** error);

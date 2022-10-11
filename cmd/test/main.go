@@ -9,7 +9,11 @@ import (
 )
 
 func main() {
-	dev := tool.GetDevice()
+	dev,err := tool.GetDevice()
+	if err != nil {
+		fmt.Printf("%s\n",err.Error());
+	}
+
 	soundcards := dev.Soundcards;
 	result := gsttest.GstTestAudio(&config.ListenerConfig{
 		AudioSource: soundcards[0],

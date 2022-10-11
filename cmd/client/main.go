@@ -18,7 +18,7 @@ func main() {
 	TurnUser 	 :=		"oneplay";
 	TurnPassword :=		"oneplay";
 
-	dev := tool.GetDevice()
+	dev,err := tool.GetDevice()
 	args := os.Args[1:]
 	for i, arg := range args {
 		if arg == "--token" {
@@ -77,7 +77,7 @@ func main() {
 		},
 	}
 	Lists := make([]listener.Listener, 0)
-	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists,tool.GetDevice())
+	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists,dev)
 	if err != nil {
 		fmt.Printf("failed to init webrtc proxy: %s\n",err.Error())
 		return

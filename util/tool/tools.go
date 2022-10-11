@@ -1,5 +1,7 @@
 package tool
+
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -37,7 +39,12 @@ type MediaDevice struct {
 };
 
 
-func GetDevice() *MediaDevice{
+func GetDevice() (*MediaDevice,error){
+	err := syncThread()
+	if err != nil {
+		return nil,err;	
+	}
+
 	result := &MediaDevice{};
 	query := C.query_media_device()
 
@@ -99,9 +106,19 @@ func GetDevice() *MediaDevice{
 		IsLoopback: false,
 	})
 
-	return result;
+	return result,nil;
 }
 
+func syncThread() error {
+
+	var errStr unsafe.Pointer;
+	C.syncThreadDesktop(&errStr);
+	if errStr != nil {
+		return fmt.Errorf("%s", string(C.GoBytes(errStr,C.int(C.string_get_length(errStr)))))		
+	}
+
+	return nil;
+}
 
 
 func ToGoString(str unsafe.Pointer) string {

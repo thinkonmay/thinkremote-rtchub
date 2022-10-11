@@ -15,7 +15,8 @@ func TestClient(t *testing.T) {
 		ServerAddress: "localhost",
 		Port:          8000,
 	}
-	client, err := InitGRPCClient(&conf,tool.GetDevice())
+	dev,err := tool.GetDevice()
+	client, err := InitGRPCClient(&conf,dev);
 	if err != nil {
 		t.Error(err)
 	}
