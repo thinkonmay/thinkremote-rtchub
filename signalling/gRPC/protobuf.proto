@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package protobuf;
+package signalingGRPC;
 
 option go_package = "./packet";
 
