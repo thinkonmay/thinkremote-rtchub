@@ -45,7 +45,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 	if grpc_conf != nil {
 		var rpc *grpc.GRPCclient
-		rpc, err = grpc.InitGRPCClient(grpc_conf,devices)
+		rpc, err = grpc.InitGRPCClient(grpc_conf,devices,proxy.Shutdown)
 		if err != nil {
 			return
 		}

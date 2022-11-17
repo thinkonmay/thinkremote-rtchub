@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
@@ -37,17 +38,21 @@ type GRPCclient struct {
 	preflightChan chan deviceSelection
 	startChan chan bool
 	connectedNotifier chan bool
+
+	shutdown chan bool
 }
 
 
 func InitGRPCClient(conf *config.GrpcConfig,
-					 devices *tool.MediaDevice) (ret *GRPCclient, err error) {
+					 devices *tool.MediaDevice,
+					 shutdown chan bool) (ret *GRPCclient, err error) {
 	ret = &GRPCclient{
 		sdpChan : make(chan *webrtc.SessionDescription),
 		iceChan : make(chan *webrtc.ICECandidateInit),
 		preflightChan : make(chan deviceSelection),
 		startChan : make(chan bool),
 		connectedNotifier: make(chan bool,10),
+		shutdown: shutdown,
 	}
 
 	ret.conn,err = grpc.Dial(
@@ -77,6 +82,9 @@ func InitGRPCClient(conf *config.GrpcConfig,
 			res,err := ret.client.Recv()
 			if err != nil {
 				fmt.Println(err.Error());
+				if err != io.EOF {
+					ret.shutdown<-true;
+				}
 				return;
 			}
 			if len(res.Error) != 0 {

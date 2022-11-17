@@ -15,11 +15,13 @@ func TestClient(t *testing.T) {
 		ServerAddress: "localhost",
 		Port:          8000,
 	}
-	client, err := InitGRPCClient(&conf,tool.GetDevice())
+	shutdown_channel := make(chan bool)
+
+	dev := tool.GetDevice()
+	client, err := InitGRPCClient(&conf,dev,shutdown_channel);
 	if err != nil {
 		t.Error(err)
 	}
-	shutdown_channel := make(chan bool)
 	client.OnSDP(func(i *webrtc.SessionDescription) {
 		json, _ := json.Marshal(i)
 		fmt.Printf("%s\n", json)
@@ -28,7 +30,6 @@ func TestClient(t *testing.T) {
 	client.OnICE(func(i *webrtc.ICECandidateInit) {
 		json, _ := json.Marshal(i)
 		fmt.Printf("%s\n", json)
-		// shutdown_channel<-true;
 	})
 	test := "test"
 	var test_num uint16
