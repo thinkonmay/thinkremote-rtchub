@@ -111,6 +111,8 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 			switch state {
 			case webrtclib.ICEConnectionStateConnected:
+				proxy.webrtcClient.Listen(proxy.listeners)
+				
 			case webrtclib.ICEConnectionStateClosed:
 			case webrtclib.ICEConnectionStateFailed:
 				proxy.Stop()
@@ -161,7 +163,6 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 func (prox *Proxy) Start() {
 	prox.webrtcClient.RegisterDataChannel(prox.chan_conf)
-	prox.webrtcClient.Listen(prox.listeners)
 }
 
 func (prox *Proxy) Stop() {
