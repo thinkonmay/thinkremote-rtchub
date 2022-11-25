@@ -64,11 +64,7 @@ func main() {
 
 	chans := config.DataChannelConfig{
 		Offer: true,
-		Confs: map[string]*struct {
-			Send    chan string
-			Recv    chan string
-			Channel *webrtc.DataChannel
-		}{
+		Confs: map[string]*config.DataChannel {
 			"hid": {
 				Send:    make(chan string),
 				Recv:    make(chan string),

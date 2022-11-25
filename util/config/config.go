@@ -39,12 +39,14 @@ type BroadcasterConfig struct {
 	Codec string
 }
 
+
+type DataChannel struct {
+	Send chan string
+	Recv chan string
+	Channel *webrtc.DataChannel
+}
 type DataChannelConfig struct {
 	Offer bool
 	Mutext *sync.Mutex
-	Confs map[string]*struct {
-		Send chan string
-		Recv chan string
-		Channel *webrtc.DataChannel
-	}
+	Confs map[string]*DataChannel
 }

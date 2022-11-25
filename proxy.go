@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/OnePlay-Internet/webrtc-proxy/adaptive"
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/dummy"
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/gstreamer"
@@ -24,23 +25,36 @@ type Proxy struct {
 
 	signallingClient signalling.Signalling
 	webrtcClient     *webrtc.WebRTCClient
+	adsContext *adaptive.AdsContext
 
 	Shutdown chan bool
 }
 
 func InitWebRTCProxy(sock *config.WebsocketConfig,
-	grpc_conf *config.GrpcConfig,
-	webrtc_conf *config.WebRTCConfig,
-	br_conf []*config.BroadcasterConfig,
-	chan_conf *config.DataChannelConfig,
-	lis []listener.Listener,
-	devices *tool.MediaDevice) (proxy *Proxy, err error) {
-	proxy = &Proxy{}
-	proxy.chan_conf = chan_conf
-	proxy.listeners = lis
+					grpc_conf *config.GrpcConfig,
+					webrtc_conf *config.WebRTCConfig,
+					br_conf []*config.BroadcasterConfig,
+					chan_conf *config.DataChannelConfig,
+					lis []listener.Listener,
+					devices *tool.MediaDevice,
+	) (proxy *Proxy, 
+		err error) {
 
-	proxy.Shutdown = make(chan bool)
-	fmt.Printf("added listener\n")
+	adsChan := &config.DataChannel{
+		Send: make(chan string),
+		Recv: make(chan string),
+		Channel: nil,
+	}
+
+	chan_conf.Confs["adaptive"] = adsChan
+
+	fmt.Printf("started proxy\n")
+	proxy = &Proxy{
+		Shutdown : make(chan bool),
+		chan_conf : chan_conf,
+		listeners : lis,
+	 	adsContext : adaptive.NewAdsContext(adsChan.Recv),
+	}
 
 
 	if grpc_conf != nil {
