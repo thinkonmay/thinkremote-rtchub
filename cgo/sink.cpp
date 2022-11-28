@@ -1,4 +1,6 @@
+extern "C" {
 #include <sink.h>
+}
 
 #include <gst/app/gstappsrc.h>
 

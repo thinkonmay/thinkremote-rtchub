@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/adaptive"
+	
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/dummy"
-	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/gstreamer"
+	sink "github.com/OnePlay-Internet/webrtc-proxy/broadcaster/gstreamer"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
@@ -16,6 +16,8 @@ import (
 	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/OnePlay-Internet/webrtc-proxy/webrtc"
 	webrtclib "github.com/pion/webrtc/v3"
+	
+	"github.com/OnePlay-Internet/webrtc-proxy/adaptive"
 )
 
 type Proxy struct {
@@ -25,24 +27,24 @@ type Proxy struct {
 
 	signallingClient signalling.Signalling
 	webrtcClient     *webrtc.WebRTCClient
-	adsContext *adaptive.AdsContext
+	adsContext       *adaptive.AdaptiveContext
 
 	Shutdown chan bool
 }
 
 func InitWebRTCProxy(sock *config.WebsocketConfig,
-					grpc_conf *config.GrpcConfig,
-					webrtc_conf *config.WebRTCConfig,
-					br_conf []*config.BroadcasterConfig,
-					chan_conf *config.DataChannelConfig,
-					lis []listener.Listener,
-					devices *tool.MediaDevice,
-	) (proxy *Proxy, 
-		err error) {
+	grpc_conf *config.GrpcConfig,
+	webrtc_conf *config.WebRTCConfig,
+	br_conf []*config.BroadcasterConfig,
+	chan_conf *config.DataChannelConfig,
+	lis []listener.Listener,
+	devices *tool.MediaDevice,
+) (proxy *Proxy,
+	err error) {
 
 	adsChan := &config.DataChannel{
-		Send: make(chan string),
-		Recv: make(chan string),
+		Send:    make(chan string),
+		Recv:    make(chan string),
 		Channel: nil,
 	}
 
@@ -50,16 +52,15 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 	fmt.Printf("started proxy\n")
 	proxy = &Proxy{
-		Shutdown : make(chan bool),
-		chan_conf : chan_conf,
-		listeners : lis,
-	 	adsContext : adaptive.NewAdsContext(adsChan.Recv),
+		Shutdown:   make(chan bool),
+		chan_conf:  chan_conf,
+		listeners:  lis,
+		adsContext: adaptive.NewAdsContext(adsChan.Recv),
 	}
-
 
 	if grpc_conf != nil {
 		var rpc *grpc.GRPCclient
-		rpc, err = grpc.InitGRPCClient(grpc_conf,devices,proxy.Shutdown)
+		rpc, err = grpc.InitGRPCClient(grpc_conf, devices, proxy.Shutdown)
 		if err != nil {
 			return
 		}
@@ -75,9 +76,9 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	proxy.webrtcClient, err = webrtc.InitWebRtcClient(func(tr *webrtclib.TrackRemote) (br broadcaster.Broadcaster, err error) {
 		for _, conf := range br_conf {
 			if tr.Codec().MimeType == conf.Codec {
-				return sink.CreatePipeline(conf);
+				return sink.CreatePipeline(conf)
 			} else {
-				fmt.Printf("no available codec handler, using dummy sink\n");
+				fmt.Printf("no available codec handler, using dummy sink\n")
 				return dummy.NewDummyBroadcaster(conf)
 			}
 
@@ -90,23 +91,22 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 		panic(err)
 	}
 
-
-	start := make(chan bool,2)
+	start := make(chan bool, 2)
 	go func() {
 		proxy.signallingClient.WaitForConnected()
 		time.Sleep(60 * time.Second)
-		start<-false
+		start <- false
 	}()
 	go func() {
 		proxy.signallingClient.WaitForStart()
-		start<-true
+		start <- true
 	}()
 	go func() {
 		if <-start {
 			proxy.Start()
 		} else {
-			fmt.Printf("application start timeout, closing\n");
-			proxy.Shutdown<-true;
+			fmt.Printf("application start timeout, closing\n")
+			proxy.Shutdown <- true
 		}
 	}()
 	go func() {
@@ -126,7 +126,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 			switch state {
 			case webrtclib.ICEConnectionStateConnected:
 				proxy.webrtcClient.Listen(proxy.listeners)
-				
+
 			case webrtclib.ICEConnectionStateClosed:
 			case webrtclib.ICEConnectionStateFailed:
 				proxy.Stop()
@@ -152,25 +152,25 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	proxy.signallingClient.OnSDP(func(i *webrtclib.SessionDescription) {
 		proxy.webrtcClient.OnIncominSDP(i)
 	})
-	proxy.signallingClient.OnDeviceSelect(func(monitor tool.Monitor,soundcard tool.Soundcard, bitrate int) error {
-		for _,listener := range proxy.listeners {
+	proxy.signallingClient.OnDeviceSelect(func(monitor tool.Monitor, soundcard tool.Soundcard, bitrate int) error {
+		for _, listener := range proxy.listeners {
 			conf := listener.GetConfig()
 			if conf.MediaType == "video" {
-				conf.VideoSource = monitor;
-				conf.Bitrate = bitrate;
-				err := listener.UpdateConfig(conf);
+				conf.VideoSource = monitor
+				conf.Bitrate = bitrate
+				err := listener.UpdateConfig(conf)
 				if err != nil {
 					return err
 				}
 			} else if listener.GetConfig().MediaType == "audio" {
-				conf.AudioSource = soundcard;
-				err := listener.UpdateConfig(conf);
+				conf.AudioSource = soundcard
+				err := listener.UpdateConfig(conf)
 				if err != nil {
 					return err
 				}
 			}
 		}
-		return nil;
+		return nil
 	})
 	return
 }

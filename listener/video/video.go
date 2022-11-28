@@ -14,7 +14,7 @@ import (
 )
 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
-// #cgo LDFLAGS: ${SRCDIR}/../../lib/libshared.a
+// #cgo LDFLAGS: ${SRCDIR}/../../build/libshared.a
 // #include "webrtc_video.h"
 import "C"
 
@@ -43,8 +43,8 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 		pipeline: unsafe.Pointer(nil),
 		sampchan: make(chan *media.Sample),
 		config:   config,
-	};
-	return pipeline;
+	}
+	return pipeline
 }
 
 //export goHandlePipelineBuffer
@@ -58,46 +58,46 @@ func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.i
 }
 
 func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) (errr error) {
-	defer func ()  {
+	defer func() {
 		if errr == nil {
-			fmt.Printf("bitrate is set to %dkbps\n",config.Bitrate)
-			C.video_pipeline_set_bitrate(p.pipeline,C.int(config.Bitrate));
+			fmt.Printf("bitrate is set to %dkbps\n", config.Bitrate)
+			C.video_pipeline_set_bitrate(p.pipeline, C.int(config.Bitrate))
 		}
 	}()
 
-	pipelineStr := gsttest.GstTestMediaFoundation(config);
+	pipelineStr := gsttest.GstTestMediaFoundation(config)
 	if pipelineStr == "" {
-		pipelineStr = gsttest.GstTestNvCodec(config);
+		pipelineStr = gsttest.GstTestNvCodec(config)
 		if pipelineStr == "" {
-			pipelineStr = gsttest.GstTestSoftwareEncoder(config);
-				if pipelineStr == "" {
-					errr = fmt.Errorf("unable to create encode pipeline with device");
-					return 
-				}
+			pipelineStr = gsttest.GstTestSoftwareEncoder(config)
+			if pipelineStr == "" {
+				errr = fmt.Errorf("unable to create encode pipeline with device")
+				return
+			}
 		}
 	}
 
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
-	
+
 	var err unsafe.Pointer
-	Pipeline := C.create_video_pipeline(pipelineStrUnsafe,&err);
+	Pipeline := C.create_video_pipeline(pipelineStrUnsafe, &err)
 	if len(tool.ToGoString(err)) != 0 {
 		C.stop_video_pipeline(Pipeline)
-		errr = fmt.Errorf("%s",tool.ToGoString(err));
-		return 
+		errr = fmt.Errorf("%s", tool.ToGoString(err))
+		return
 	}
-	
-	fmt.Printf("starting video pipeline: %s",pipelineStr);
-	p.pipeline = Pipeline;
-	p.config = config;
-	return nil;
+
+	fmt.Printf("starting video pipeline: %s", pipelineStr)
+	p.pipeline = Pipeline
+	p.config = config
+	return nil
 }
 
 //export handleVideoStopOrError
 func handleVideoStopOrError() {
 	pipeline.Close()
-	pipeline.UpdateConfig(pipeline.config);
+	pipeline.UpdateConfig(pipeline.config)
 	pipeline.Open()
 }
 

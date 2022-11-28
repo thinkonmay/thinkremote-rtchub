@@ -10,9 +10,6 @@
  */
 
 
-#ifndef __WEBRTC_ADS_H__
-#define __WEBRTC_ADS_H__
-
 
 void* new_ads_context();
 
@@ -38,5 +35,3 @@ void ads_push_video_jitter_buffer_delay              (void* context, int count);
 
 
 
-
-#endif

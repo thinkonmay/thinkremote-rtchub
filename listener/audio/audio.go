@@ -7,13 +7,13 @@ import (
 	"unsafe"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	gsttest "github.com/OnePlay-Internet/webrtc-proxy/util/test"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/test"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
-// #cgo LDFLAGS: ${SRCDIR}/../../lib/libshared.a
+// #cgo LDFLAGS: ${SRCDIR}/../../build/libshared.a
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
 // #include "webrtc_audio.h"
 import "C"
@@ -43,8 +43,8 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 		pipeline: unsafe.Pointer(nil),
 		sampchan: make(chan *media.Sample),
 		config:   config,
-	};
-	return pipeline;
+	}
+	return pipeline
 }
 
 //export goHandlePipelineBufferAudio
@@ -62,35 +62,34 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
 	if config.AudioSource.DeviceID == "none" {
 		pipelineStr = "fakesrc ! appsink name=appsink"
 	} else {
-		pipelineStr = gsttest.GstTestAudio(config);
+		pipelineStr = gsttest.GstTestAudio(config)
 		if pipelineStr == "" {
 			if pipelineStr == "" {
-				return fmt.Errorf("unable to create encode pipeline with device");
+				return fmt.Errorf("unable to create encode pipeline with device")
 			}
 		}
 	}
 
-
 	pipelineStrUnsafe := C.CString(pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
-	
+
 	var err unsafe.Pointer
-	Pipeline := C.create_audio_pipeline(pipelineStrUnsafe,&err);
+	Pipeline := C.create_audio_pipeline(pipelineStrUnsafe, &err)
 	if len(tool.ToGoString(err)) != 0 {
 		C.stop_audio_pipeline(Pipeline)
-		return fmt.Errorf("%s",tool.ToGoString(err));
+		return fmt.Errorf("%s", tool.ToGoString(err))
 	}
-	
-	fmt.Printf("starting audio pipeline: %s\n",pipelineStr);
-	p.pipeline = Pipeline;
-	p.config = config;
-	return nil;
+
+	fmt.Printf("starting audio pipeline: %s\n", pipelineStr)
+	p.pipeline = Pipeline
+	p.config = config
+	return nil
 }
 
 //export handleAudioStopOrError
 func handleAudioStopOrError() {
 	pipeline.Close()
-	pipeline.UpdateConfig(pipeline.config);
+	pipeline.UpdateConfig(pipeline.config)
 	pipeline.Open()
 }
 

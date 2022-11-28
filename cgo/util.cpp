@@ -8,7 +8,10 @@
  * @copyright Copyright (c) 2022
  * 
  */
+extern "C" {
 #include <util.h>
+}
+
 #include <gst/gst.h>
 #include <stdio.h>
 
