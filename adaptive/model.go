@@ -2,6 +2,7 @@ package adaptive
 
 
 type VideoMetrics struct {
+    Type string `json:"type"`
     FrameWidth float64   `json:"frameWidth"`
     FrameHeight float64  `json:"frameHeight"`
 
@@ -32,6 +33,7 @@ type VideoMetrics struct {
     Timestamp float64  `json:"timestamp"`
 }
 type AudioMetric struct {
+    Type string `json:"type"`
     AudioLevel float64    `json:"audioLevel"`
     TotalAudioEnergy float64    `json:"totalAudioEnergy"`
     TotalSamplesReceived float64    `json:"totalSamplesReceived"`
@@ -43,6 +45,7 @@ type AudioMetric struct {
 }
 
 type NetworkMetric struct {
+    Type string `json:"type"`
     PacketsReceived float64   `json:"packetsReceived"`
     PacketsSent float64   `json:"packetsSent"`
     BytesSent float64   `json:"bytesSent"`

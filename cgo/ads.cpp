@@ -16,7 +16,94 @@ extern "C" {
 }
 
 
+typedef void (*QueryFunction) (void* data, 
+                               time_point timestamp,
+                               void* user_data);
 
+
+bool
+ads_query_buffer_map_contain_time_series(AdsBufferMap* map, 
+                                         char* key,
+                                         void* user_data,
+                                         QueryFunction func)
+{
+    ADS_BUFFER_MAP_CLASS->ref(map);
+
+    AdsBuffer* buf = ADS_BUFFER_MAP_CLASS->get(map,key);
+    if (buf == NULL) {
+        LOG_ERROR("key not exist");
+        return false;
+    }
+
+    if (BUFFER_CLASS->datatype(buf) != AdsDataType::ADS_DATATYPE_BUFFER_TIMESERIES) {
+        LOG_ERROR("map buffer not contain timeseries");
+        return false;
+    }
+    
+    AdsTimeseries* buf_array = (AdsTimeseries*)BUFFER_REF(buf,NULL);
+    for(int i = 1 ; i < ADS_TIMESERIES_CLASS->length(buf_array) + 1;i++) {
+        time_point time;
+        AdsBuffer* element = ADS_TIMESERIES_CLASS->n_th(buf_array,i,&time);
+        if (element == NULL)
+            break;
+        
+
+        void* _data = BUFFER_REF(element,NULL);
+        func(_data,time,user_data);
+        BUFFER_UNREF(element);
+    }
+
+    ADS_TIMESERIES_CLASS->unref(buf_array);
+    BUFFER_UNREF(buf);
+    return true;
+}
+
+
+struct AdsCallbackData {
+    uint64 rtt_x_timestamp_total;
+    uint64 rtt_timestamp_total;
+
+    uint64 decodedfps_x_timestamp_total;
+    uint64 decodedfps_timestamp_total;
+
+    uint64 receivedfps_x_timestamp_total;
+    uint64 receivedfps_timestamp_total;
+};
+
+static void 
+query_rtt_field  (void* data, 
+                  time_point timestamp,
+                  void* user_data)
+{
+    AdsCallbackData* cbdata = (AdsCallbackData*) user_data;
+
+    cbdata->rtt_x_timestamp_total += ((*(nanosecond*)data).count() * GET_TIMESTAMP_MILLISEC(timestamp));
+    cbdata->rtt_timestamp_total += GET_TIMESTAMP_MILLISEC(timestamp);
+}
+
+
+static void 
+query_decoded_fps_field  (void* data, 
+                  time_point timestamp,
+                  void* user_data)
+{
+    AdsCallbackData* cbdata = (AdsCallbackData*) user_data;
+
+    cbdata->decodedfps_x_timestamp_total += *(int*)data * GET_TIMESTAMP_MILLISEC(timestamp);
+    cbdata->decodedfps_timestamp_total += GET_TIMESTAMP_MILLISEC(timestamp);
+}
+
+
+static void 
+query_received_fps_field  (void* data, 
+                  time_point timestamp,
+                  void* user_data)
+{
+    AdsCallbackData* cbdata = (AdsCallbackData*) user_data;
+
+    cbdata->receivedfps_x_timestamp_total += *(int*)data * GET_TIMESTAMP_MILLISEC(timestamp);
+    cbdata->receivedfps_timestamp_total   += GET_TIMESTAMP_MILLISEC(timestamp);
+}
 
 
 static AdsBufferMap*
@@ -24,132 +111,32 @@ ads_algorithm(AdsBufferMap* query_result)
 {
     AdsBufferMap* ret = ADS_BUFFER_MAP_CLASS->init();
 
-    {
-        AdsBuffer* buf = NULL;
-        AdsTimeseries* rtt_arr = NULL;
-        int32 data;
-        ADS_BUFFER_MAP_CLASS->ref(query_result);
-        buf = ADS_BUFFER_MAP_CLASS->get(query_result,"rtt");
-        if (buf == NULL) 
-            goto donertt;
+    AdsCallbackData data = {0};
 
-        if (BUFFER_CLASS->datatype(buf) != AdsDataType::ADS_DATATYPE_BUFFER_TIMESERIES) {
-            LOG_ERROR("unknown");
-        }
-        
-        rtt_arr = (AdsTimeseries*)BUFFER_REF(buf,NULL);
-
-        float total = 0, total_period = 0;
-        for(int i = 1 ; i < ADS_TIMESERIES_CLASS->length(rtt_arr) + 1;i++) {
-
-            time_point time;
-            AdsBuffer* element = ADS_TIMESERIES_CLASS->n_th(rtt_arr,i,&time);
-            if (element == NULL)
-                break;
-            
-
-            nanosecond* data = (nanosecond*)BUFFER_REF(element,NULL);
-
-            int period = (time - TIME_STOP).count();
-
-            total_period += period;
-            total += ((*data).count() * period);
-        }
-
-        data = (float)total / (float)total_period;
-
-        ADS_TIMESERIES_CLASS->unref(rtt_arr);
-        BUFFER_UNREF(buf);
+    if(ads_query_buffer_map_contain_time_series(query_result,"rtt",&data,query_rtt_field)){
+        float medium_rtt = (float)data.rtt_x_timestamp_total / (float)data.rtt_timestamp_total;
+        LOG_DEBUG("Medium Round Trip Time : %d nanosecond",(int)medium_rtt);
     }
-donertt:
-
-    {
-        AdsBuffer* bwbuf = NULL;
-        AdsTimeseries* bandwidth_arr = NULL;
-
-        int32 data;
-        bwbuf = ADS_BUFFER_MAP_CLASS->get(query_result,"bandwidth");
-        if (bwbuf == NULL) 
-            goto donebw;
-
-        if (BUFFER_CLASS->datatype(bwbuf) != AdsDataType::ADS_DATATYPE_BUFFER_TIMESERIES) {
-            LOG_ERROR("unknown");
-        }
-
-        bandwidth_arr = (AdsTimeseries*)BUFFER_REF(bwbuf,NULL);
-
-        float total = 0, total_period = 0;
-        for(int i = 1 ; i < ADS_TIMESERIES_CLASS->length(bandwidth_arr) + 1;i++) {
-            time_point time;
-            AdsBuffer* element = ADS_TIMESERIES_CLASS->n_th(bandwidth_arr,i,&time);
-            if (element == NULL)
-                break;
-            
-            // START query logic
-            nanosecond* data = (nanosecond*)BUFFER_REF(element,NULL);
-
-            int period = (time - TIME_STOP).count();
-
-            total_period += period;
-            total += ((*data).count() * period);
-            // END query logic
-        }
-
-        data = (float)total / (float)total_period;
-
-        ADS_TIMESERIES_CLASS->unref(bandwidth_arr);
-        ADS_BUFFER_MAP_CLASS->unref(query_result);
+    if(ads_query_buffer_map_contain_time_series(query_result,"receivedFps",&data,query_received_fps_field)){
+        float medium_receivedfps = (float)data.receivedfps_x_timestamp_total / (float)data.receivedfps_timestamp_total;
+        LOG_DEBUG("Medium Received Fps : %d fps",(int)medium_receivedfps);
     }
-donebw:
-
-    {
-        AdsBuffer* bwbuf = NULL;
-        AdsTimeseries* bandwidth_arr = NULL;
-
-        int32 data;
-        bwbuf = ADS_BUFFER_MAP_CLASS->get(query_result,"decodedFps");
-        if (bwbuf == NULL) 
-            goto donefps;
-
-        if (BUFFER_CLASS->datatype(bwbuf) != AdsDataType::ADS_DATATYPE_BUFFER_TIMESERIES) {
-            LOG_ERROR("unknown");
-        }
-
-        bandwidth_arr = (AdsTimeseries*)BUFFER_REF(bwbuf,NULL);
-
-        float total = 0, total_period = 0;
-        for(int i = 1 ; i < ADS_TIMESERIES_CLASS->length(bandwidth_arr) + 1;i++) {
-            time_point time;
-            AdsBuffer* element = ADS_TIMESERIES_CLASS->n_th(bandwidth_arr,i,&time);
-            if (element == NULL)
-                break;
-            
-            // START query logic
-            int* data = (int*)BUFFER_REF(element,NULL);
-
-            int period = (time - TIME_STOP).count();
-
-            total_period += period;
-            total += (*data) * period;
-            // END query logic
-        }
-
-        data = (float)total / (float)total_period;
-
-        ADS_TIMESERIES_CLASS->unref(bandwidth_arr);
-        ADS_BUFFER_MAP_CLASS->unref(query_result);
+    if(ads_query_buffer_map_contain_time_series(query_result,"decodedFps",&data,query_decoded_fps_field)){
+        float medium_decodedfps = (float)data.decodedfps_x_timestamp_total / (float)data.decodedfps_timestamp_total;
+        LOG_DEBUG("Medium Decoded Fps : %d fps",(int)medium_decodedfps);
     }
-donefps:
 
     return ret;
-
 }
 
 
 void
-handle_bitrate_change(AdsBuffer* data)
+handle_bitrate_change_event(AdsBuffer* data)
 {
-
+    int bitrate = 0;
+    bitrate = *(int*)BUFFER_REF(data,NULL);
+    handle_bitrate_change(bitrate);
+    BUFFER_UNREF(data);
 }
 
 void* 
@@ -157,7 +144,19 @@ new_ads_context()
 {
     AdsEvent* shutdown = NEW_EVENT;
     AdsContext* ret = new_adaptive_context(shutdown,NULL,ads_algorithm);
-    add_listener(ret,"bitrate",handle_bitrate_change);
+    add_record_source(ret,"rtt");
+    add_record_source(ret,"totalBWincoming");
+    add_record_source(ret,"availableBWincoming");
+    add_record_source(ret,"audioBWincoming");
+    add_record_source(ret,"videoBWincoming");
+    add_record_source(ret,"decodedFps");
+    add_record_source(ret,"receivedFps");
+    add_record_source(ret,"decodeTimeperFrame");
+    add_record_source(ret,"keyFrameperFrame");
+    add_record_source(ret,"packetsLost");
+    add_record_source(ret,"videoJitter");
+    add_record_source(ret,"videoJitterBufferDelay");
+    add_listener(ret,"bitrate",handle_bitrate_change_event);
     return(void*)ret;
 }
 
@@ -221,6 +220,14 @@ ads_push_frame_decoded_per_second(void* context, int count)
     ads_push_record(src,ADS_DATATYPE_INT32,0,&count);
 }
 
+void 
+ads_push_frame_received_per_second(void* context, int count)
+{
+    AdsContext* ctx = (AdsContext*)context;
+    AdsRecordSource* src = get_record_source(ctx,"receivedFps");
+    ads_push_record(src,ADS_DATATYPE_INT32,0,&count);
+}
+
 
 
 void 
@@ -247,11 +254,11 @@ ads_push_key_frame_per_frame(void* context, int count)
 
 
 void 
-ads_push_video_packets_lost(void* context, int count)
+ads_push_video_packets_lost(void* context, float count)
 {
     AdsContext* ctx = (AdsContext*)context;
     AdsRecordSource* src = get_record_source(ctx,"packetsLost");
-    ads_push_record(src,ADS_DATATYPE_INT32,0,&count);
+    ads_push_record(src,ADS_DATATYPE_FLOAT,0,&count);
 }
 
 
