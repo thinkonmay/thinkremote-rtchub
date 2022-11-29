@@ -27,6 +27,8 @@ type Pipeline struct {
 	pipeline unsafe.Pointer
 	sampchan chan *media.Sample
 	config   *config.ListenerConfig
+
+	isRunning bool
 }
 
 var pipeline *Pipeline
@@ -43,6 +45,7 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 		pipeline: unsafe.Pointer(nil),
 		sampchan: make(chan *media.Sample),
 		config:   config,
+		isRunning: false,
 	}
 	return pipeline
 }
@@ -64,6 +67,10 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) (errr error) {
 			C.video_pipeline_set_bitrate(p.pipeline, C.int(config.Bitrate))
 		}
 	}()
+
+	if p.isRunning {
+		return;
+	}
 
 	pipelineStr := gsttest.GstTestMediaFoundation(config)
 	if pipelineStr == "" {
@@ -103,6 +110,7 @@ func handleVideoStopOrError() {
 
 func (p *Pipeline) Open() *config.ListenerConfig {
 	C.start_video_pipeline(pipeline.pipeline)
+	p.isRunning = true;
 	return p.config
 }
 func (p *Pipeline) GetConfig() *config.ListenerConfig {

@@ -27,6 +27,8 @@ type Pipeline struct {
 	pipeline unsafe.Pointer
 	sampchan chan *media.Sample
 	config   *config.ListenerConfig
+
+	isRunning bool
 }
 
 var pipeline *Pipeline
@@ -43,6 +45,7 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 		pipeline: unsafe.Pointer(nil),
 		sampchan: make(chan *media.Sample),
 		config:   config,
+		isRunning: false,
 	}
 	return pipeline
 }
@@ -59,6 +62,10 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 
 func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
 	var pipelineStr string
+	if p.isRunning {
+		return nil;
+	}
+
 	if config.AudioSource.DeviceID == "none" {
 		pipelineStr = "fakesrc ! appsink name=appsink"
 	} else {
@@ -95,6 +102,7 @@ func handleAudioStopOrError() {
 
 func (p *Pipeline) Open() *config.ListenerConfig {
 	C.start_audio_pipeline(pipeline.pipeline)
+	p.isRunning = true;
 	return p.config
 }
 func (p *Pipeline) GetConfig() *config.ListenerConfig {

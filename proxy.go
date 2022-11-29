@@ -61,6 +61,19 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	}
 
 	proxy.adsContext = adaptive.NewAdsContext(adsChan.Recv,proxy.bitrateChange)
+	go func() {
+		for{
+			bitrate := <- proxy.bitrateChange
+			for _,l := range proxy.listeners {
+				cf := l.GetConfig();
+				if cf.MediaType == "video" {
+					cf.Bitrate = bitrate;
+					l.UpdateConfig(cf);
+				}
+			}			
+		}
+		
+	}()
 
 	if grpc_conf != nil {
 		var rpc *grpc.GRPCclient
