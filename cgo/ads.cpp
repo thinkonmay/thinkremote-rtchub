@@ -68,6 +68,9 @@ struct AdsCallbackData {
 
     uint64 receivedfps_x_timestamp_total;
     uint64 receivedfps_timestamp_total;
+
+    uint64 videoBandwidth_x_timestamp_total;
+    uint64 videoBandwidth_timestamp_total;
 };
 
 static void 
@@ -105,6 +108,17 @@ query_received_fps_field  (void* data,
     cbdata->receivedfps_timestamp_total   += GET_TIMESTAMP_MILLISEC(timestamp);
 }
 
+static void 
+query_video_bandwidth_field  (void* data, 
+                              time_point timestamp,
+                              void* user_data)
+{
+    AdsCallbackData* cbdata = (AdsCallbackData*) user_data;
+
+    cbdata->videoBandwidth_x_timestamp_total += *(int*)data * GET_TIMESTAMP_MILLISEC(timestamp);
+    cbdata->videoBandwidth_timestamp_total += GET_TIMESTAMP_MILLISEC(timestamp);
+}
+
 
 static AdsBufferMap*
 ads_algorithm(AdsBufferMap* query_result)
@@ -115,15 +129,19 @@ ads_algorithm(AdsBufferMap* query_result)
 
     if(ads_query_buffer_map_contain_time_series(query_result,"rtt",&data,query_rtt_field)){
         float medium_rtt = (float)data.rtt_x_timestamp_total / (float)data.rtt_timestamp_total;
-        LOG_DEBUG("Medium Round Trip Time : %d nanosecond",(int)medium_rtt);
+        LOG_DEBUG("Medium Round Trip Time: %fms",medium_rtt / 1000000);
     }
     if(ads_query_buffer_map_contain_time_series(query_result,"receivedFps",&data,query_received_fps_field)){
         float medium_receivedfps = (float)data.receivedfps_x_timestamp_total / (float)data.receivedfps_timestamp_total;
-        LOG_DEBUG("Medium Received Fps : %d fps",(int)medium_receivedfps);
+        LOG_DEBUG("Medium Received Fps: %dfps",(int)medium_receivedfps);
     }
     if(ads_query_buffer_map_contain_time_series(query_result,"decodedFps",&data,query_decoded_fps_field)){
         float medium_decodedfps = (float)data.decodedfps_x_timestamp_total / (float)data.decodedfps_timestamp_total;
-        LOG_DEBUG("Medium Decoded Fps : %d fps",(int)medium_decodedfps);
+        LOG_DEBUG("Medium Decoded Fps: %dfps",(int)medium_decodedfps);
+    }
+    if(ads_query_buffer_map_contain_time_series(query_result,"videoBWincoming",&data,query_video_bandwidth_field)){
+        float medium = (float)data.videoBandwidth_x_timestamp_total / (float)data.videoBandwidth_timestamp_total;
+        LOG_DEBUG("Medium video bandwidth: %fmbps",medium * 8 / 1000000);
     }
 
     return ret;

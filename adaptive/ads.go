@@ -78,11 +78,11 @@ func (ads *AdaptiveContext)handleVideoMetric(metric *VideoMetrics) {
 		return
 	}
 
-	timedif := time.Duration(metric.Timestamp - lastVideoMetric.Timestamp); //nanosecond
+	timedif := (metric.Timestamp - lastVideoMetric.Timestamp); //nanosecond
 
-	decodedFps 					:= ( metric.FramesDecoded - 	lastVideoMetric.FramesDecoded ) 		/ (timedif.Seconds());
-	receivedFps 				:= ( metric.FramesReceived - 	lastVideoMetric.FramesReceived) 		/ (timedif.Seconds());
-	videoBandwidthConsumption 	:= ( metric.BytesReceived - 	lastVideoMetric.BytesReceived) 			/ (timedif.Seconds());
+	decodedFps 					:= ( metric.FramesDecoded - 	lastVideoMetric.FramesDecoded ) 		/ (timedif / float64(time.Second.Milliseconds()) );
+	receivedFps 				:= ( metric.FramesReceived - 	lastVideoMetric.FramesReceived) 		/ (timedif / float64(time.Second.Milliseconds()) );
+	videoBandwidthConsumption 	:= ( metric.BytesReceived - 	lastVideoMetric.BytesReceived) 			/ (timedif / float64(time.Second.Milliseconds()) );
 	decodeTimePerFrame 			:= ( metric.TotalDecodeTime - 	lastVideoMetric.TotalDecodeTime) 		/ (metric.FramesDecoded - lastVideoMetric.FramesDecoded)
 	videoPacketsLostpercent     := ( metric.PacketsLost - 		lastVideoMetric.PacketsLost) 			/ (metric.PacketsReceived - lastVideoMetric.PacketsReceived);	
 	videoJitter					:= metric.Jitter
@@ -110,9 +110,9 @@ func (ads *AdaptiveContext)handleNetworkMetric(metric *NetworkMetric) {
 		return
 	}
 
-	timedif := time.Duration(metric.Timestamp - lastNetworkMetric.Timestamp); //nanosecond
+	timedif := metric.Timestamp - lastNetworkMetric.Timestamp; //nanosecond
 
-	totalBandwidthConsumption  := (metric.BytesReceived - lastNetworkMetric.BytesReceived) / (timedif.Seconds());
+	totalBandwidthConsumption  := (metric.BytesReceived - lastNetworkMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds()));
 	RTT 					   := metric.CurrentRoundTripTime * float64(time.Second.Nanoseconds());
 	availableIncomingBandwidth := metric.AvailableIncomingBitrate 
 
@@ -129,10 +129,10 @@ func (ads *AdaptiveContext)handleAudioMetric(metric *AudioMetric) {
 		ads.last.audio = metric
 		return
 	}
-	timedif := time.Duration(metric.Timestamp - lastAudioMetric.Timestamp); //nanosecond
+	timedif := metric.Timestamp - lastAudioMetric.Timestamp; //nanosecond
 
 
-	audioBandwidthConsumption 	:= ( metric.BytesReceived - 	lastAudioMetric.BytesReceived) 			/ (timedif.Seconds());
+	audioBandwidthConsumption 	:= ( metric.BytesReceived - 	lastAudioMetric.BytesReceived) 			/ (timedif / float64(time.Second.Milliseconds()) );
 	C.ads_push_audio_incoming_bandwidth_consumption(ads.ctx,C.int(audioBandwidthConsumption));
 
 	ads.last.audio = lastAudioMetric

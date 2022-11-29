@@ -1,7 +1,6 @@
 package webrtc
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -52,14 +51,14 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 	}
 
 
-	go func() {
-		for {
-			report := client.conn.GetStats()
-			out,_ := json.Marshal(report)
-			fmt.Printf("%s\n\n\n\n",out);
-			time.Sleep(time.Second);
-		}
-	}()
+	// TODO
+	// go func() {
+	// 	for {
+	// 		report := client.conn.GetStats()
+	// 		out,_ := json.Marshal(report)
+	// 		time.Sleep(time.Second);
+	// 	}
+	// }()
 
 	client.conn.OnICECandidate(func(ice *webrtc.ICECandidate) {
 		if ice == nil {
