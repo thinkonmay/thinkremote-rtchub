@@ -29,6 +29,8 @@ type Proxy struct {
 	webrtcClient     *webrtc.WebRTCClient
 	adsContext       *adaptive.AdaptiveContext
 
+	bitrateChange chan int
+
 	Shutdown chan bool
 }
 
@@ -53,10 +55,12 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	fmt.Printf("started proxy\n")
 	proxy = &Proxy{
 		Shutdown:   make(chan bool),
+		bitrateChange:  make(chan int),
 		chan_conf:  chan_conf,
 		listeners:  lis,
-		adsContext: adaptive.NewAdsContext(adsChan.Recv),
 	}
+
+	proxy.adsContext = adaptive.NewAdsContext(adsChan.Recv,proxy.bitrateChange)
 
 	if grpc_conf != nil {
 		var rpc *grpc.GRPCclient

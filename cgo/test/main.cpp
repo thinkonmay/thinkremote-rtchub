@@ -20,11 +20,7 @@ extern "C" {
 #include <string.h>
 
 
-void 
-handle_bitrate_change(int bitrate)
-{
-    printf("bitrate changed to %s",bitrate);
-}
+
 
 
 int main(void) {

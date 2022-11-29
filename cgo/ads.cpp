@@ -71,6 +71,9 @@ struct AdsCallbackData {
 
     uint64 videoBandwidth_x_timestamp_total;
     uint64 videoBandwidth_timestamp_total;
+
+    uint64 availableIncomingBandwidth_x_timestamp_total;
+    uint64 availableIncomingBandwidth_timestamp_total;
 };
 
 static void 
@@ -118,6 +121,16 @@ query_video_bandwidth_field  (void* data,
     cbdata->videoBandwidth_x_timestamp_total += *(int*)data * GET_TIMESTAMP_MILLISEC(timestamp);
     cbdata->videoBandwidth_timestamp_total += GET_TIMESTAMP_MILLISEC(timestamp);
 }
+static void 
+query_available_incoming_bandwidth_field  (void* data, 
+                              time_point timestamp,
+                              void* user_data)
+{
+    AdsCallbackData* cbdata = (AdsCallbackData*) user_data;
+
+    cbdata->availableIncomingBandwidth_x_timestamp_total += *(int*)data * GET_TIMESTAMP_MILLISEC(timestamp);
+    cbdata->availableIncomingBandwidth_timestamp_total   += GET_TIMESTAMP_MILLISEC(timestamp);
+}
 
 
 static AdsBufferMap*
@@ -143,17 +156,21 @@ ads_algorithm(AdsBufferMap* query_result)
         float medium = (float)data.videoBandwidth_x_timestamp_total / (float)data.videoBandwidth_timestamp_total;
         LOG_DEBUG("Medium video bandwidth: %fmbps",medium * 8 / 1000000);
     }
+    if(ads_query_buffer_map_contain_time_series(query_result,"availableBWincoming",&data,query_available_incoming_bandwidth_field)){
+        float medium = (float)data.availableIncomingBandwidth_x_timestamp_total / (float)data.availableIncomingBandwidth_timestamp_total;
+        LOG_DEBUG("Medium available incoming bandwidth: %fmbps",medium / 1000000);
+    }
 
     return ret;
 }
 
 
 void
-handle_bitrate_change_event(AdsBuffer* data)
+handle_bitrate_change_event(AdsBuffer* data,void* user_data)
 {
     int bitrate = 0;
     bitrate = *(int*)BUFFER_REF(data,NULL);
-    handle_bitrate_change(bitrate);
+    *(int*)user_data = bitrate;
     BUFFER_UNREF(data);
 }
 
@@ -174,8 +191,19 @@ new_ads_context()
     add_record_source(ret,"packetsLost");
     add_record_source(ret,"videoJitter");
     add_record_source(ret,"videoJitterBufferDelay");
-    add_listener(ret,"bitrate",handle_bitrate_change_event);
     return(void*)ret;
+}
+
+
+int
+wait_for_bitrate_change(void* ctx)
+{
+    int val = -1;
+    AdsContext* context = (AdsContext*)ctx;
+    int id = add_listener_to_ctx(context,"bitrate",handle_bitrate_change_event,(void*)&val);
+    while (val == -1) { SLEEP_MILLISEC(10); }
+    remove_listener_from_ctx(context,id);
+    return val;
 }
 
 

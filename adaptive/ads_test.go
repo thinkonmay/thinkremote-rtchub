@@ -63,7 +63,8 @@ var sampleVideo VideoMetrics = VideoMetrics{
 
 func TestAdaptiveStream(t *testing.T) {
 	strChan := make(chan string)
-	NewAdsContext(strChan);
+	brChan := make(chan int)
+	NewAdsContext(strChan,brChan);
 
 	go func() {
 		for {

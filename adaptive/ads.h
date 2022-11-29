@@ -11,10 +11,8 @@
 
 
 
-void ads_init();
 void* new_ads_context();
-
-extern void handle_bitrate_change(int bitrate);
+int wait_for_bitrate_change(void* ctx);
 
 void ads_push_rtt                                    (void* context, int nanosec);
 

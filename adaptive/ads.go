@@ -13,6 +13,8 @@ import "C"
 
 type AdaptiveContext struct {
 	In  chan string
+	bitrateOut  chan int
+
 	ctx unsafe.Pointer
 
 	last struct {
@@ -24,22 +26,22 @@ type AdaptiveContext struct {
 	GroupofPicture float64
 }
 
-//export handle_bitrate_change
-func handle_bitrate_change(bitrate C.int) {
-	
-}
 
-func NewAdsContext(InChan chan string) *AdaptiveContext {
+
+func NewAdsContext(InChan chan string,
+				   BitrateChange chan int,
+				   ) *AdaptiveContext {
 	ret := &AdaptiveContext{
+		In: InChan,
+		bitrateOut: BitrateChange,
+		ctx: C.new_ads_context(),
 		last: struct{audio *AudioMetric; video *VideoMetrics; network *NetworkMetric}{
 			audio: nil,
 			video: nil,
 			network: nil,
 		},
 	}
-	ret.ctx = C.new_ads_context()
 
-	ret.In = InChan
 	go func() {
 		for {
 			metricRaw := <-ret.In
@@ -63,6 +65,14 @@ func NewAdsContext(InChan chan string) *AdaptiveContext {
 				ret.handleNetworkMetric(&network);
 			}
 		}
+	}()
+
+	go func() {
+		for {
+			bitrate := C.wait_for_bitrate_change(ret.ctx);
+			ret.bitrateOut <- int(bitrate);
+
+		}	
 	}()
 
 	return ret
