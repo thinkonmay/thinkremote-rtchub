@@ -50,6 +50,16 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		return
 	}
 
+
+	// TODO
+	// go func() {
+	// 	for {
+	// 		report := client.conn.GetStats()
+	// 		out,_ := json.Marshal(report)
+	// 		time.Sleep(time.Second);
+	// 	}
+	// }()
+
 	client.conn.OnICECandidate(func(ice *webrtc.ICECandidate) {
 		if ice == nil {
 			fmt.Printf("ice candidate was null\n")

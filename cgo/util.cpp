@@ -8,7 +8,10 @@
  * @copyright Copyright (c) 2022
  * 
  */
+extern "C" {
 #include <util.h>
+}
+
 #include <gst/gst.h>
 #include <stdio.h>
 
@@ -161,7 +164,7 @@ query_media_device()
     gst_init(NULL, NULL);
     GstDeviceMonitor* monitor = gst_device_monitor_new();
     if(!gst_device_monitor_start(monitor)) {
-        return "fail to start device monitor";
+        return (void*)"fail to start device monitor";
     }
 
     GList* device_list = gst_device_monitor_get_devices(monitor);

@@ -1,4 +1,6 @@
+extern "C" {
 #include <webrtc_video.h>
+}
 
 #include <gst/app/gstappsrc.h>
 #include <stdint.h>
