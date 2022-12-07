@@ -7,6 +7,7 @@ import (
 
 	childprocess "github.com/OnePlay-Internet/webrtc-proxy/util/child-process"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 )
 
 
@@ -34,7 +35,7 @@ func formatDeviceID(in string) string {
 
 func GstTestAudio(source *config.ListenerConfig) string{
 	options := make([]map[string]string,0); 
-	soundcard := source.AudioSource
+	soundcard := source.Source.(*tool.Soundcard)
 
 	// wasapi2 has higher priority
 	if soundcard.Api == "wasapi2" {
@@ -117,8 +118,8 @@ func GstTestAudio(source *config.ListenerConfig) string{
 
 func GstTestNvCodec(source *config.ListenerConfig) string{
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
-						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.VideoSource.Framerate), 
+						fmt.Sprintf("monitor-handle=%d",source.Source.(*tool.Monitor).MonitorHandle),
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.Source.(*tool.Monitor).Framerate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11download",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
@@ -174,8 +175,8 @@ func GstTestNvCodec(source *config.ListenerConfig) string{
 
 func GstTestMediaFoundation(source *config.ListenerConfig) string{
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
-						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.VideoSource.Framerate), 
+						fmt.Sprintf("monitor-handle=%d",source.Source.(*tool.Monitor).MonitorHandle),
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.Source.(tool.Monitor).Framerate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
@@ -230,8 +231,8 @@ func GstTestMediaFoundation(source *config.ListenerConfig) string{
 
 func GstTestSoftwareEncoder(source *config.ListenerConfig) string{
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
-						fmt.Sprintf("monitor-handle=%d",source.VideoSource.MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw,framerate=%d/1",source.VideoSource.Framerate), 
+						fmt.Sprintf("monitor-handle=%d",source.Source.(*tool.Monitor).MonitorHandle),
+						"!", fmt.Sprintf("video/x-raw,framerate=%d/1",source.Source.(*tool.Monitor).Framerate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",

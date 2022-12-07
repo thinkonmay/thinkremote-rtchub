@@ -70,7 +70,7 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
 		return nil;
 	}
 
-	if config.AudioSource.DeviceID == "none" {
+	if config.Source.(*tool.Soundcard).DeviceID == "none" {
 		pipelineStr = "fakesrc ! appsink name=appsink"
 	} else {
 		pipelineStr = gsttest.GstTestAudio(config)

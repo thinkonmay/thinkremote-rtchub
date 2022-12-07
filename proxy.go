@@ -66,7 +66,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 			bitrate := <- proxy.bitrateChange
 			for _,l := range proxy.listeners {
 				cf := l.GetConfig();
-				if cf.MediaType == "video" {
+				if cf.StreamID == "video" {
 					cf.Bitrate = bitrate;
 					l.UpdateConfig(cf);
 				}
@@ -169,18 +169,19 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	proxy.signallingClient.OnSDP(func(i *webrtclib.SessionDescription) {
 		proxy.webrtcClient.OnIncominSDP(i)
 	})
+
 	proxy.signallingClient.OnDeviceSelect(func(monitor tool.Monitor, soundcard tool.Soundcard, bitrate int) error {
 		for _, listener := range proxy.listeners {
 			conf := listener.GetConfig()
-			if conf.MediaType == "video" {
-				conf.VideoSource = monitor
+			if conf.StreamID == "video" {
+				conf.Source = monitor
 				conf.Bitrate = bitrate
 				err := listener.UpdateConfig(conf)
 				if err != nil {
 					return err
 				}
-			} else if listener.GetConfig().MediaType == "audio" {
-				conf.AudioSource = soundcard
+			} else if listener.GetConfig().StreamID == "audio" {
+				conf.Source = soundcard
 				err := listener.UpdateConfig(conf)
 				if err != nil {
 					return err

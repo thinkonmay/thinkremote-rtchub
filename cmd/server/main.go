@@ -6,11 +6,11 @@ import (
 	"strconv"
 
 	proxy "github.com/OnePlay-Internet/webrtc-proxy"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/OnePlay-Internet/webrtc-proxy/hid"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener/audio"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener/video"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/webrtc/v3"
@@ -23,19 +23,18 @@ func main() {
 	HIDURL := "localhost:5000"
 
 	signaling := "54.169.49.176"
-	Port :=      30000;
+	Port := 30000
 
-	Stun :=		"stun:workstation.thinkmay.net:3478";
-	Turn :=		"turn:workstation.thinkmay.net:3478";
+	Stun := "stun:workstation.thinkmay.net:3478"
+	Turn := "turn:workstation.thinkmay.net:3478"
 
-	TurnUser 	 :=		"oneplay";
-	TurnPassword :=		"oneplay";
-
+	TurnUser := "oneplay"
+	TurnPassword := "oneplay"
 
 	qr := tool.GetDevice()
-	if len(qr.Monitors) == 0{
-		fmt.Printf("no display available");
-		return;
+	if len(qr.Monitors) == 0 {
+		fmt.Printf("no display available")
+		return
 	}
 
 	for i, arg := range args {
@@ -46,7 +45,7 @@ func main() {
 		} else if arg == "--grpc" {
 			signaling = args[i+1]
 		} else if arg == "--grpcport" {
-			Port,err = strconv.Atoi(args[i+1])
+			Port, err = strconv.Atoi(args[i+1])
 		} else if arg == "--turn" {
 			Turn = args[i+1]
 		} else if arg == "--turnuser" {
@@ -54,29 +53,29 @@ func main() {
 		} else if arg == "--turnpassword" {
 			TurnPassword = args[i+1]
 		} else if arg == "--device" {
+			fmt.Printf("=======================================================================\n")
+			fmt.Printf("MONITOR DEVICE\n")
+			for index, monitor := range qr.Monitors {
 				fmt.Printf("=======================================================================\n")
-				fmt.Printf("MONITOR DEVICE\n")
-			for index,monitor := range qr.Monitors {
-				fmt.Printf("=======================================================================\n")
-				fmt.Printf("monitor %d\n",index)
-				fmt.Printf("monitor name 			%s\n",monitor.MonitorName)
-				fmt.Printf("monitor handle  		%d\n",monitor.MonitorHandle)
-				fmt.Printf("monitor adapter 		%s\n",monitor.Adapter)
-				fmt.Printf("monitor device  		%s\n",monitor.DeviceName);
+				fmt.Printf("monitor %d\n", index)
+				fmt.Printf("monitor name 			%s\n", monitor.MonitorName)
+				fmt.Printf("monitor handle  		%d\n", monitor.MonitorHandle)
+				fmt.Printf("monitor adapter 		%s\n", monitor.Adapter)
+				fmt.Printf("monitor device  		%s\n", monitor.DeviceName)
 				fmt.Printf("=======================================================================\n")
 			}
-				fmt.Printf("\n\n\n\n")
+			fmt.Printf("\n\n\n\n")
 
+			fmt.Printf("=======================================================================\n")
+			fmt.Printf("AUDIO DEVICE\n")
+			for index, audio := range qr.Soundcards {
 				fmt.Printf("=======================================================================\n")
-				fmt.Printf("AUDIO DEVICE\n")
-			for index,audio := range qr.Soundcards {
-				fmt.Printf("=======================================================================\n")
-				fmt.Printf("audio source 			%d\n",index)
-				fmt.Printf("audio source name 		%s\n",audio.Name)
-				fmt.Printf("audio source device id  %s\n",audio.DeviceID)
+				fmt.Printf("audio source 			%d\n", index)
+				fmt.Printf("audio source name 		%s\n", audio.Name)
+				fmt.Printf("audio source device id  %s\n", audio.DeviceID)
 				fmt.Printf("=======================================================================\n")
 			}
-				fmt.Printf("\n\n\n\n")
+			fmt.Printf("\n\n\n\n")
 		} else if arg == "--help" {
 			fmt.Printf("--token 	 	 |  server token\n")
 			fmt.Printf("--hid   	 	 |  HID server URL (example: localhost:5000)\n")
@@ -91,12 +90,13 @@ func main() {
 		}
 	}
 
-	if token == "" { err = fmt.Errorf("no available token"); }
+	if token == "" {
+		err = fmt.Errorf("no available token")
+	}
 	if err != nil {
-		fmt.Printf("invalid argument : %s\n",err.Error());
+		fmt.Printf("invalid argument : %s\n", err.Error())
 		return
 	}
-
 
 	grpc := config.GrpcConfig{
 		Port:          Port,
@@ -109,59 +109,49 @@ func main() {
 				"stun:stun.l.google.com:19302",
 			},
 		}, {
-			URLs: []string{ Stun, },
+			URLs: []string{Stun},
 		}, {
-				URLs: []string { Turn },
-				Username: TurnUser,
-				Credential: TurnPassword,
-				CredentialType: webrtc.ICECredentialTypePassword,
-			},
+			URLs:           []string{Turn},
+			Username:       TurnUser,
+			Credential:     TurnPassword,
+			CredentialType: webrtc.ICECredentialTypePassword,
+		},
 		},
 	}
 
-	br  := []*config.BroadcasterConfig{}
+	br := []*config.BroadcasterConfig{}
 	lis := []*config.ListenerConfig{{
-		VideoSource: tool.Monitor{},
-
-		Bitrate: 3000,
-		MediaType: "video",
-		Name:      "videoGstreamer",
+		Bitrate:   3000,
+		StreamID:  "video",
 		Codec:     webrtc.MimeTypeH264,
-	},{
-		AudioSource: tool.Soundcard{},
-		
-		Bitrate: 128000,
-		MediaType: "audio",
-		Name:      "audioGstreamer",
+	}, {
+		Bitrate:   128000,
+		StreamID:  "audio",
 		Codec:     webrtc.MimeTypeOpus,
 	}}
 
-
-
-	
-
 	Lists := make([]listener.Listener, 0)
 	for _, conf := range lis {
-		var err error;
+		var err error
 		var Lis listener.Listener
 
-		if conf.MediaType == "video" {
-			Lis     =  video.CreatePipeline(conf);
-		} else if conf.MediaType == "audio" {
-			Lis     =  audio.CreatePipeline(conf);
+		if conf.StreamID == "video" {
+			Lis = video.CreatePipeline(conf)
+		} else if conf.StreamID == "audio" {
+			Lis = audio.CreatePipeline(conf)
 		} else {
 			err = fmt.Errorf("unimplemented listener")
 		}
 
 		if err != nil {
-			fmt.Printf("%s\n",err.Error());
-		} else if (Lis != nil) {
+			fmt.Printf("%s\n", err.Error())
+		} else if Lis != nil {
 			Lists = append(Lists, Lis)
 		}
 	}
 
 	chans := config.DataChannelConfig{
-		Confs: map[string]*config.DataChannel {
+		Confs: map[string]*config.DataChannel{
 			"hid": {
 				Send:    make(chan string),
 				Recv:    make(chan string),
@@ -183,13 +173,10 @@ func main() {
 		}
 	}()
 
-
-
-	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists,qr)
+	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists, qr)
 	if err != nil {
-		fmt.Printf("%s\n",err.Error())
-		return;
+		fmt.Printf("%s\n", err.Error())
+		return
 	}
 	<-prox.Shutdown
 }
-

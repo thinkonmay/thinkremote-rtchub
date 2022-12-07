@@ -10,6 +10,7 @@ import (
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/rtcp"
 	webrtc "github.com/pion/webrtc/v3"
 )
@@ -49,7 +50,6 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 	if err != nil {
 		return
 	}
-
 
 	// TODO
 	// go func() {
@@ -101,8 +101,8 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 
 		br, err := client.onTrack(track)
 		if err != nil {
-			fmt.Printf("unable to handle track: %s\n",err.Error());
-			return;
+			fmt.Printf("unable to handle track: %s\n", err.Error())
+			return
 		}
 
 		fmt.Printf("new track %s\n", track.Codec().MimeType)
@@ -179,13 +179,20 @@ func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 	for _, lis := range listeners {
 		listenerConfig := lis.GetConfig()
 
-		lis.Open();
+		lis.Open()
 
 		fmt.Printf("added track\n")
 
+		var ID string
+		if listenerConfig.StreamID == "audio" {
+			ID = listenerConfig.Source.(*tool.Monitor).MonitorName;
+		} else if listenerConfig.StreamID == "video" {
+			ID = listenerConfig.Source.(*tool.Soundcard).Name;
+		}
+
 		track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
 			MimeType: listenerConfig.Codec,
-		}, listenerConfig.MediaType, listenerConfig.Name)
+		}, ID, listenerConfig.StreamID)
 
 		if err != nil {
 			fmt.Printf("error create track %s\n", err.Error())
@@ -197,7 +204,6 @@ func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 			fmt.Printf("error add track %s\n", err.Error())
 			continue
 		}
-
 
 		go readLoopRTP(lis, track)
 		go handleRTCP(rtpSender)
@@ -240,7 +246,6 @@ func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig)
 		channel.OnOpen(func() { ondataChannel(channel, chans) })
 	}
 }
-
 
 func readLoopRTP(listener listener.Listener, track *webrtc.TrackLocalStaticRTP) {
 	for {
