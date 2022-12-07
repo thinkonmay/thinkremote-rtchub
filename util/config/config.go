@@ -29,7 +29,6 @@ type ListenerConfig struct {
 	VideoSource tool.Monitor
 	AudioSource tool.Soundcard
 
-	DataType  string
 	Name      string
 	Codec     string
 }
@@ -46,7 +45,6 @@ type DataChannel struct {
 	Channel *webrtc.DataChannel
 }
 type DataChannelConfig struct {
-	Offer bool
 	Mutext *sync.Mutex
 	Confs map[string]*DataChannel
 }

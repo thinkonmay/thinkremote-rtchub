@@ -177,49 +177,31 @@ func handleRTCP(rtpSender *webrtc.RTPSender) {
 
 func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 	for _, lis := range listeners {
-		var rtpSender *webrtc.RTPSender
-		listenerConfig := lis.Open()
-		var localTrack webrtc.TrackLocal
+		listenerConfig := lis.GetConfig()
+
+		lis.Open();
 
 		fmt.Printf("added track\n")
-		if listenerConfig.DataType == "rtp" {
-			track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
-				MimeType: listenerConfig.Codec,
-			}, listenerConfig.MediaType, listenerConfig.Name)
-			if err != nil {
-				fmt.Printf("error create track %s\n", err.Error())
-				continue
-			}
 
-			rtpSender, err = client.conn.AddTrack(track)
-			if err != nil {
-				fmt.Printf("error add track %s\n", err.Error())
-				continue
-			}
+		track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
+			MimeType: listenerConfig.Codec,
+		}, listenerConfig.MediaType, listenerConfig.Name)
 
-			go readLoopRTP(lis, track)
-			localTrack = track
-		} else if listenerConfig.DataType == "sample" {
-			track, err := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{
-				MimeType: listenerConfig.Codec,
-			}, listenerConfig.MediaType, listenerConfig.Name)
-			if err != nil {
-				fmt.Printf("error create track %s\n", err.Error())
-				continue
-			}
-
-			rtpSender, err = client.conn.AddTrack(track)
-			if err != nil {
-				fmt.Printf("error add track %s\n", err.Error())
-				continue
-			}
-
-			go readLoopSample(lis, track)
-			localTrack = track
+		if err != nil {
+			fmt.Printf("error create track %s\n", err.Error())
+			continue
 		}
 
+		rtpSender, err := client.conn.AddTrack(track)
+		if err != nil {
+			fmt.Printf("error add track %s\n", err.Error())
+			continue
+		}
+
+
+		go readLoopRTP(lis, track)
 		go handleRTCP(rtpSender)
-		client.mediaTracks = append(client.mediaTracks, localTrack)
+		client.mediaTracks = append(client.mediaTracks, track)
 	}
 }
 
@@ -247,36 +229,18 @@ func ondataChannel(channel *webrtc.DataChannel, chans *config.DataChannelConfig)
 
 func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig) {
 	chans.Mutext = &sync.Mutex{}
-	if !chans.Offer {
-		client.conn.OnDataChannel(func(channel *webrtc.DataChannel) {
-			fmt.Printf("new datachannel\n")
-			channel.OnOpen(func() { ondataChannel(channel, chans) })
-		})
-	} else {
-		for Name, _ := range chans.Confs {
-			fmt.Printf("new datachannel\n")
-			channel, err := client.conn.CreateDataChannel(Name, nil)
-			if err != nil {
-				fmt.Printf("unable to add data channel %s: %s", Name, err.Error())
-				continue
-			}
-			channel.OnOpen(func() { ondataChannel(channel, chans) })
+
+	for Name, _ := range chans.Confs {
+		fmt.Printf("new datachannel\n")
+		channel, err := client.conn.CreateDataChannel(Name, nil)
+		if err != nil {
+			fmt.Printf("unable to add data channel %s: %s", Name, err.Error())
+			continue
 		}
+		channel.OnOpen(func() { ondataChannel(channel, chans) })
 	}
 }
 
-func readLoopSample(listener listener.Listener, track *webrtc.TrackLocalStaticSample) {
-	for {
-		pk := listener.ReadSample()
-		if err := track.WriteSample(*pk); err != nil {
-			if errors.Is(err, io.ErrClosedPipe) {
-				fmt.Printf("The peerConnection has been closed.")
-				return
-			}
-			fmt.Printf("fail to write sample%s\n", err.Error())
-		}
-	}
-}
 
 func readLoopRTP(listener listener.Listener, track *webrtc.TrackLocalStaticRTP) {
 	for {

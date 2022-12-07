@@ -1,4 +1,4 @@
-package codecs
+package opus
 
 import (
 	"time"

@@ -40,6 +40,7 @@ func main() {
 		ServerAddress: "54.169.49.176",
 		Token:         token,
 	}
+
 	rtc := config.WebRTCConfig{
 		Ices: []webrtc.ICEServer{{
 			URLs: []string{
@@ -57,13 +58,13 @@ func main() {
 			},
 		},
 	}
+
 	br := []*config.BroadcasterConfig{{
 		Name: "audio",
 		Codec: webrtc.MimeTypeH264,
 	}}
 
 	chans := config.DataChannelConfig{
-		Offer: true,
 		Confs: map[string]*config.DataChannel {
 			"hid": {
 				Send:    make(chan string),
@@ -72,6 +73,7 @@ func main() {
 			},
 		},
 	}
+
 	Lists := make([]listener.Listener, 0)
 	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists,tool.GetDevice())
 	if err != nil {

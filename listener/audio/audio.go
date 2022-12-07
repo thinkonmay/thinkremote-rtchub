@@ -3,14 +3,14 @@ package audio
 
 import (
 	"fmt"
-	"time"
 	"unsafe"
 
+	"github.com/OnePlay-Internet/webrtc-proxy/rtppay"
+	"github.com/OnePlay-Internet/webrtc-proxy/rtppay/opus"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	gsttest "github.com/OnePlay-Internet/webrtc-proxy/util/test"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/rtp"
-	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 // #cgo LDFLAGS: ${SRCDIR}/../../build/libshared.a
@@ -25,8 +25,10 @@ func init() {
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
 	pipeline unsafe.Pointer
-	sampchan chan *media.Sample
+	sampchan chan *rtp.Packet
 	config   *config.ListenerConfig
+
+	packetizer rtppay.Packetizer
 
 	isRunning bool
 }
@@ -43,9 +45,11 @@ const (
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	pipeline = &Pipeline{
 		pipeline: unsafe.Pointer(nil),
-		sampchan: make(chan *media.Sample),
+		sampchan: make(chan *rtp.Packet),
 		config:   config,
 		isRunning: false,
+
+		packetizer: opus.NewOpusPayloader(),
 	}
 	return pipeline
 }
@@ -53,11 +57,11 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 //export goHandlePipelineBufferAudio
 func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
 	c_byte := C.GoBytes(buffer, bufferLen)
-	sample := media.Sample{
-		Data:     c_byte,
-		Duration: time.Duration(duration),
+	packets := pipeline.packetizer.Packetize(c_byte,uint32(bufferLen));
+
+	for _,packet := range packets {
+		pipeline.sampchan <- packet
 	}
-	pipeline.sampchan <- &sample
 }
 
 func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
@@ -100,17 +104,12 @@ func handleAudioStopOrError() {
 	pipeline.Open()
 }
 
-func (p *Pipeline) Open() *config.ListenerConfig {
+func (p *Pipeline) Open() {
 	C.start_audio_pipeline(pipeline.pipeline)
 	p.isRunning = true;
-	return p.config
 }
 func (p *Pipeline) GetConfig() *config.ListenerConfig {
 	return p.config
-}
-
-func (p *Pipeline) ReadSample() *media.Sample {
-	return <-p.sampchan
 }
 func (p *Pipeline) ReadRTP() *rtp.Packet {
 	block := make(chan *rtp.Packet)

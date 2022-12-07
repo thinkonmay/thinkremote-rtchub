@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/util/rtppay"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/io"
 	"github.com/pion/randutil"
 	"github.com/pion/rtp"
 )
@@ -107,7 +107,7 @@ func findIndicator(nalu []byte, start int) (indStart int, indLen int) {
 
 
 
-func SplitNALUs(payload []byte) (nalus [][]byte, typ int) {
+func splitNALUs(payload []byte) (nalus [][]byte, typ int) {
 	typ = NALU_NONE
 	nalus = [][]byte{}
 	defer func ()  {
@@ -156,7 +156,7 @@ func SplitNALUs(payload []byte) (nalus [][]byte, typ int) {
 	// |x|x|s|s|s|s|x|x|x|x|x|x|x|x|x|x|x|x|x|x|...
 	// |   |naluSz |     			nalu	   |
 	// +---------------------------------------+
-	val4 := rtppay.U32BE(payload)
+	val4 := io.U32BE(payload)
 	if val4 <= uint32(len(payload)) {
 		naluSz := val4
 		nalu := payload[4:]
@@ -172,7 +172,7 @@ func SplitNALUs(payload []byte) (nalus [][]byte, typ int) {
 				break
 			}
 
-			naluSz = rtppay.U32BE(nalu) // get naluSize from 4 first bytes left
+			naluSz = io.U32BE(nalu) // get naluSize from 4 first bytes left
 			nalu = nalu[4:] // shift pointer 4 byte to the left
 		}
 
@@ -188,14 +188,14 @@ func SplitNALUs(payload []byte) (nalus [][]byte, typ int) {
 
 
 
-// Payload fragments a H264 packet across one or more byte arrays
-func (p *H264Payloader) Payload(mtu uint16, payload []byte) [][]byte {
+// payload fragments a H264 packet across one or more byte arrays
+func (p *H264Payloader) payload(mtu uint16, payload []byte) [][]byte {
 	var payloads [][]byte
 	if len(payload) == 0 {
 		return payloads
 	}
 
-	nalus,_ := SplitNALUs(payload)
+	nalus,_ := splitNALUs(payload)
 	for _,nalu := range nalus {
 		if len(nalu) == 0 {
 			continue
@@ -317,7 +317,7 @@ func (p *H264Payloader) Packetize(payload []byte, samples uint32) []*rtp.Packet 
 		return nil
 	}
 
-	payloads := p.Payload(p.MTU-12, payload)
+	payloads := p.payload(p.MTU-12, payload)
 	packets := make([]*rtp.Packet, len(payloads))
 
 	for i, pp := range payloads {

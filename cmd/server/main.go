@@ -123,8 +123,6 @@ func main() {
 	lis := []*config.ListenerConfig{{
 		VideoSource: tool.Monitor{},
 
-		DataType: "sample",
-
 		Bitrate: 3000,
 		MediaType: "video",
 		Name:      "videoGstreamer",
@@ -132,8 +130,6 @@ func main() {
 	},{
 		AudioSource: tool.Soundcard{},
 		
-		DataType: "sample",
-
 		Bitrate: 128000,
 		MediaType: "audio",
 		Name:      "audioGstreamer",
@@ -149,9 +145,9 @@ func main() {
 		var err error;
 		var Lis listener.Listener
 
-		if conf.MediaType == "video" && conf.DataType == "sample"{
+		if conf.MediaType == "video" {
 			Lis     =  video.CreatePipeline(conf);
-		} else if conf.MediaType == "audio" && conf.DataType == "sample"{
+		} else if conf.MediaType == "audio" {
 			Lis     =  audio.CreatePipeline(conf);
 		} else {
 			err = fmt.Errorf("unimplemented listener")
@@ -165,7 +161,6 @@ func main() {
 	}
 
 	chans := config.DataChannelConfig{
-		Offer: true,
 		Confs: map[string]*config.DataChannel {
 			"hid": {
 				Send:    make(chan string),
