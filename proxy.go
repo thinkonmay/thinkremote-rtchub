@@ -174,14 +174,14 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 		for _, listener := range proxy.listeners {
 			conf := listener.GetConfig()
 			if conf.StreamID == "video" {
-				conf.Source = monitor
+				conf.Source = &monitor
 				conf.Bitrate = bitrate
 				err := listener.UpdateConfig(conf)
 				if err != nil {
 					return err
 				}
 			} else if listener.GetConfig().StreamID == "audio" {
-				conf.Source = soundcard
+				conf.Source = &soundcard
 				err := listener.UpdateConfig(conf)
 				if err != nil {
 					return err

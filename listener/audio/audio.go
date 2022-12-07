@@ -25,7 +25,7 @@ func init() {
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
 	pipeline unsafe.Pointer
-	sampchan chan *rtp.Packet
+	rtpchan chan *rtp.Packet
 	config   *config.ListenerConfig
 
 	packetizer rtppay.Packetizer
@@ -45,7 +45,7 @@ const (
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	pipeline = &Pipeline{
 		pipeline: unsafe.Pointer(nil),
-		sampchan: make(chan *rtp.Packet),
+		rtpchan: make(chan *rtp.Packet),
 		config:   config,
 		isRunning: false,
 
@@ -60,7 +60,7 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 	packets := pipeline.packetizer.Packetize(c_byte,uint32(bufferLen));
 
 	for _,packet := range packets {
-		pipeline.sampchan <- packet
+		pipeline.rtpchan <- packet
 	}
 }
 
@@ -112,8 +112,7 @@ func (p *Pipeline) GetConfig() *config.ListenerConfig {
 	return p.config
 }
 func (p *Pipeline) ReadRTP() *rtp.Packet {
-	block := make(chan *rtp.Packet)
-	return <-block
+	return <-p.rtpchan
 }
 
 func (p *Pipeline) Close() {

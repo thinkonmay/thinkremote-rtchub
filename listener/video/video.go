@@ -121,8 +121,7 @@ func (p *Pipeline) GetConfig() *config.ListenerConfig {
 }
 
 func (p *Pipeline) ReadRTP() *rtp.Packet {
-	block := make(chan *rtp.Packet)
-	return <-block
+	return <-p.rtpchan
 }
 func (p *Pipeline) Close() {
 	C.stop_video_pipeline(p.pipeline)

@@ -185,9 +185,9 @@ func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 
 		var ID string
 		if listenerConfig.StreamID == "audio" {
-			ID = listenerConfig.Source.(*tool.Monitor).MonitorName;
+			ID = listenerConfig.Source.(*tool.Soundcard).DeviceID;
 		} else if listenerConfig.StreamID == "video" {
-			ID = listenerConfig.Source.(*tool.Soundcard).Name;
+			ID = fmt.Sprintf("%d",listenerConfig.Source.(*tool.Monitor).MonitorHandle);
 		}
 
 		track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
