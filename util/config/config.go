@@ -22,12 +22,9 @@ type GrpcConfig struct {
 }
 
 type ListenerConfig struct {
-	Source 	  interface{}
-
 	ID		  string
 	StreamID  string
 	Codec     string
-	Bitrate   int
 }
 
 type BroadcasterConfig struct {

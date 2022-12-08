@@ -245,7 +245,7 @@ func (client *GRPCclient) OnDeviceSelect(fun signalling.OnDeviceSelectFunc) {
 				return tool.Soundcard{DeviceID: "none"}
 			}()
 
-			err := fun(monitor,soundcard, devsec.Bitrate);
+			err := fun(monitor,soundcard);
 			if err != nil {
 				client.SendDeviceAvailable(client.deviceAvailableSent,err); 
 			} else {

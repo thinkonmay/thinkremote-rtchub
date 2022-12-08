@@ -121,11 +121,9 @@ func main() {
 
 	br := []*config.BroadcasterConfig{}
 	lis := []*config.ListenerConfig{{
-		Bitrate:   3000,
 		StreamID:  "video",
 		Codec:     webrtc.MimeTypeH264,
 	}, {
-		Bitrate:   128000,
 		StreamID:  "audio",
 		Codec:     webrtc.MimeTypeOpus,
 	}}

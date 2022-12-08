@@ -24,15 +24,17 @@ func init() {
 
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
-	pipeline  unsafe.Pointer
-	clockRate int
+	pipeline    unsafe.Pointer
+	pipelineStr string
+	clockRate   int
 
-	config *config.ListenerConfig
+	monitor *tool.Monitor
+	config  *config.ListenerConfig
 
 	rtpchan    chan *rtp.Packet
 	packetizer rtppay.Packetizer
 
-	isRunning bool
+	restartCount int
 }
 
 var pipeline *Pipeline
@@ -40,12 +42,11 @@ var pipeline *Pipeline
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	pipeline = &Pipeline{
-		pipeline:  unsafe.Pointer(nil),
-		rtpchan:   make(chan *rtp.Packet),
-		config:    config,
-		isRunning: false,
-
-		packetizer: h264.NewH264Payloader(),
+		pipeline:     unsafe.Pointer(nil),
+		rtpchan:      make(chan *rtp.Packet),
+		config:       config,
+		pipelineStr : "fakesrc ! appsink name=appsink",
+		restartCount: 0,
 	}
 	return pipeline
 }
@@ -61,31 +62,27 @@ func goHandlePipelineBufferVideo(buffer unsafe.Pointer, bufferLen C.int, duratio
 	}
 }
 
-func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) (errr error) {
-	defer func() {
-		if errr == nil {
-			fmt.Printf("bitrate is set to %dkbps\n", config.Bitrate)
-			C.video_pipeline_set_bitrate(p.pipeline, C.int(config.Bitrate))
+func (p *Pipeline) getDecodePipeline(monitor *tool.Monitor) (string, int) {
+	pipelineStr, clockRate := gsttest.GstTestMediaFoundation(monitor)
+	if pipelineStr == "" {
+		pipelineStr, clockRate = gsttest.GstTestNvCodec(monitor)
+		if pipelineStr == "" {
+			pipelineStr, clockRate = gsttest.GstTestSoftwareEncoder(monitor)
 		}
-	}()
+	}
+	return pipelineStr, clockRate
+}
 
-	if p.isRunning {
+func (p *Pipeline) GetSourceName() (string) {
+	return fmt.Sprintf("%d",p.monitor.MonitorHandle);
+}
+func (p *Pipeline) SetSource(source interface{}) (errr error) {
+	if p.pipelineStr, p.clockRate = p.getDecodePipeline(source.(*tool.Monitor)); p.pipelineStr == "" {
+		errr = fmt.Errorf("unable to create encode pipeline with device")
 		return
 	}
 
-	pipelineStr, clockRate := gsttest.GstTestMediaFoundation(config.Source.(*tool.Monitor))
-	if pipelineStr == "" {
-		pipelineStr, clockRate = gsttest.GstTestNvCodec(config.Source.(*tool.Monitor))
-		if pipelineStr == "" {
-			pipelineStr, clockRate = gsttest.GstTestSoftwareEncoder(config.Source.(*tool.Monitor))
-			if pipelineStr == "" {
-				errr = fmt.Errorf("unable to create encode pipeline with device")
-				return
-			}
-		}
-	}
-
-	pipelineStrUnsafe := C.CString(pipelineStr)
+	pipelineStrUnsafe := C.CString(p.pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
 	var err unsafe.Pointer
@@ -96,31 +93,35 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) (errr error) {
 		return
 	}
 
-	fmt.Printf("starting video pipeline: %s", pipelineStr)
+	fmt.Printf("starting video pipeline: %s", p.pipelineStr)
 	p.pipeline = Pipeline
-	p.config = config
-	p.clockRate = clockRate
+	p.monitor = source.(*tool.Monitor);
 	return nil
 }
 
 //export handleVideoStopOrError
 func handleVideoStopOrError() {
 	pipeline.Close()
-	pipeline.UpdateConfig(pipeline.config)
+	pipeline.SetSource(pipeline.monitor)
 	pipeline.Open()
+	pipeline.restartCount++
 }
 
-func (p *Pipeline) Open() {
-	C.start_video_pipeline(pipeline.pipeline)
-	p.isRunning = true
-}
 func (p *Pipeline) GetConfig() *config.ListenerConfig {
 	return p.config
 }
-
 func (p *Pipeline) ReadRTP() *rtp.Packet {
 	return <-p.rtpchan
 }
+func (p *Pipeline) Open() {
+	if pipeline.pipeline == nil {
+		return
+	}
+
+	p.packetizer = h264.NewH264Payloader()
+	C.start_video_pipeline(pipeline.pipeline)
+}
 func (p *Pipeline) Close() {
+	p.packetizer = nil
 	C.stop_video_pipeline(p.pipeline)
 }

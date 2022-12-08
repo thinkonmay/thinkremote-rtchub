@@ -95,13 +95,17 @@ start_video_pipeline(void* pipeline) {
 }
 
 
-// void 
-// video_pipeline_set_framerate(void* pipeline, int bitrate) {
-//     GstElement *encoder = gst_bin_get_by_name(GST_BIN(pipeline), "encoder");
+void 
+video_pipeline_set_framerate(void* pipeline, int framerate) {
+    GstElement *framerateFilter = gst_bin_get_by_name(GST_BIN(pipeline), "framerateFilter");
 
+    char* capsstr = g_strdup_printf ("video/x-raw(memory:D3D11Memory),framerate=%d/1",framerate);
+    GstCaps* caps = gst_caps_from_string (capsstr);
+    g_free (capsstr);
+    g_object_set (framerateFilter, "caps", caps, NULL);
+    gst_caps_unref (caps);
 
-//     gst_element_get_static_pad()
-// }
+}
 
 
 void 

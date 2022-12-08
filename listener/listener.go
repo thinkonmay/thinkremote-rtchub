@@ -6,11 +6,13 @@ import (
 )
 
 type Listener interface {
-	GetConfig() *config.ListenerConfig 
-	UpdateConfig(config *config.ListenerConfig) error
+	GetConfig() *config.ListenerConfig
+
+	SetSource(source interface{}) error
+	GetSourceName() string
 
 	ReadRTP() *rtp.Packet
-	
-	Open() 
+
+	Open()
 	Close()
 }

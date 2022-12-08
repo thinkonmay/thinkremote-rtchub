@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/dummy"
 	sink "github.com/OnePlay-Internet/webrtc-proxy/broadcaster/gstreamer"
@@ -16,7 +15,7 @@ import (
 	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/OnePlay-Internet/webrtc-proxy/webrtc"
 	webrtclib "github.com/pion/webrtc/v3"
-	
+
 	"github.com/OnePlay-Internet/webrtc-proxy/adaptive"
 )
 
@@ -54,25 +53,18 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 	fmt.Printf("started proxy\n")
 	proxy = &Proxy{
-		Shutdown:   make(chan bool),
-		bitrateChange:  make(chan int),
-		chan_conf:  chan_conf,
-		listeners:  lis,
+		Shutdown:      make(chan bool),
+		bitrateChange: make(chan int),
+		chan_conf:     chan_conf,
+		listeners:     lis,
 	}
 
-	proxy.adsContext = adaptive.NewAdsContext(adsChan.Recv,proxy.bitrateChange)
+	proxy.adsContext = adaptive.NewAdsContext(adsChan.Recv, proxy.bitrateChange)
 	go func() {
-		for{
-			bitrate := <- proxy.bitrateChange
-			for _,l := range proxy.listeners {
-				cf := l.GetConfig();
-				if cf.StreamID == "video" {
-					cf.Bitrate = bitrate;
-					l.UpdateConfig(cf);
-				}
-			}			
+		for {
+			//TODO
+			_ = <-proxy.bitrateChange
 		}
-		
 	}()
 
 	if grpc_conf != nil {
@@ -170,19 +162,18 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 		proxy.webrtcClient.OnIncominSDP(i)
 	})
 
-	proxy.signallingClient.OnDeviceSelect(func(monitor tool.Monitor, soundcard tool.Soundcard, bitrate int) error {
+	proxy.signallingClient.OnDeviceSelect(func(monitor tool.Monitor, soundcard tool.Soundcard) error {
+
+		//TODO
 		for _, listener := range proxy.listeners {
 			conf := listener.GetConfig()
 			if conf.StreamID == "video" {
-				conf.Source = &monitor
-				conf.Bitrate = bitrate
-				err := listener.UpdateConfig(conf)
+				err := listener.SetSource(&monitor)
 				if err != nil {
 					return err
 				}
-			} else if listener.GetConfig().StreamID == "audio" {
-				conf.Source = &soundcard
-				err := listener.UpdateConfig(conf)
+			} else if conf.StreamID == "audio" {
+				err := listener.SetSource(&soundcard)
 				if err != nil {
 					return err
 				}
