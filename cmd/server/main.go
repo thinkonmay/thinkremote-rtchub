@@ -119,8 +119,10 @@ func main() {
 		},
 	}
 
+	chans := config.NewDataChannelConfig([]string{"hid","adaptive"});
 	br := []*config.BroadcasterConfig{}
-	lis := []*config.ListenerConfig{{
+	Lists := []listener.Listener{}
+	lis   := []*config.ListenerConfig{{
 		StreamID:  "video",
 		Codec:     webrtc.MimeTypeH264,
 	}, {
@@ -128,50 +130,26 @@ func main() {
 		Codec:     webrtc.MimeTypeOpus,
 	}}
 
-	Lists := make([]listener.Listener, 0)
 	for _, conf := range lis {
-		var err error
-		var Lis listener.Listener
-
 		if conf.StreamID == "video" {
-			Lis = video.CreatePipeline(conf)
+			Lists = append(Lists, video.CreatePipeline(conf,chans.Confs["adaptive"].Recv))
 		} else if conf.StreamID == "audio" {
-			Lis = audio.CreatePipeline(conf)
+			Lists = append(Lists, audio.CreatePipeline(conf))
 		} else {
-			err = fmt.Errorf("unimplemented listener")
-		}
-
-		if err != nil {
-			fmt.Printf("%s\n", err.Error())
-		} else if Lis != nil {
-			Lists = append(Lists, Lis)
+			continue
 		}
 	}
 
-	chans := config.DataChannelConfig{
-		Confs: map[string]*config.DataChannel{
-			"hid": {
-				Send:    make(chan string),
-				Recv:    make(chan string),
-				Channel: nil,
-			},
-		},
-	}
 
 	_hid := hid.NewHIDSingleton(HIDURL)
 	go func() {
 		for {
-			channel := chans.Confs["hid"]
-			if channel != nil {
-				str := <-chans.Confs["hid"].Recv
-				_hid.ParseHIDInput(str)
-			} else {
-				return
-			}
+			_hid.ParseHIDInput(<-chans.Confs["hid"].Recv)
 		}
 	}()
 
-	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists, qr)
+
+	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, chans, Lists, qr)
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
 		return

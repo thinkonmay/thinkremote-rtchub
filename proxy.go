@@ -16,7 +16,6 @@ import (
 	"github.com/OnePlay-Internet/webrtc-proxy/webrtc"
 	webrtclib "github.com/pion/webrtc/v3"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/adaptive"
 )
 
 type Proxy struct {
@@ -26,46 +25,25 @@ type Proxy struct {
 
 	signallingClient signalling.Signalling
 	webrtcClient     *webrtc.WebRTCClient
-	adsContext       *adaptive.AdaptiveContext
-
-	bitrateChange chan int
 
 	Shutdown chan bool
 }
 
 func InitWebRTCProxy(sock *config.WebsocketConfig,
-	grpc_conf *config.GrpcConfig,
-	webrtc_conf *config.WebRTCConfig,
-	br_conf []*config.BroadcasterConfig,
-	chan_conf *config.DataChannelConfig,
-	lis []listener.Listener,
-	devices *tool.MediaDevice,
-) (proxy *Proxy,
-	err error) {
-
-	adsChan := &config.DataChannel{
-		Send:    make(chan string),
-		Recv:    make(chan string),
-		Channel: nil,
-	}
-
-	chan_conf.Confs["adaptive"] = adsChan
+					 grpc_conf *config.GrpcConfig,
+					 webrtc_conf *config.WebRTCConfig,
+					 br_conf []*config.BroadcasterConfig,
+					 chan_conf *config.DataChannelConfig,
+					 lis []listener.Listener,
+					 devices *tool.MediaDevice,
+					 ) (proxy *Proxy, err error) {
 
 	fmt.Printf("started proxy\n")
 	proxy = &Proxy{
 		Shutdown:      make(chan bool),
-		bitrateChange: make(chan int),
 		chan_conf:     chan_conf,
 		listeners:     lis,
 	}
-
-	proxy.adsContext = adaptive.NewAdsContext(adsChan.Recv, proxy.bitrateChange)
-	go func() {
-		for {
-			//TODO
-			_ = <-proxy.bitrateChange
-		}
-	}()
 
 	if grpc_conf != nil {
 		var rpc *grpc.GRPCclient

@@ -12,7 +12,6 @@ import "C"
 
 type AdaptiveContext struct {
 	In         chan string
-	bitrateOut chan int
 
 	ctx unsafe.Pointer
 
@@ -26,11 +25,10 @@ type AdaptiveContext struct {
 }
 
 func NewAdsContext(InChan chan string,
-	BitrateChange chan int,
-) *AdaptiveContext {
+				   BitrateChangeFunc func(bitrate int),
+				   ) *AdaptiveContext {
 	ret := &AdaptiveContext{
 		In:         InChan,
-		bitrateOut: BitrateChange,
 		ctx:        C.new_ads_context(),
 		last: struct {
 			audio   *AudioMetric
@@ -69,8 +67,7 @@ func NewAdsContext(InChan chan string,
 	go func() {
 		for {
 			bitrate := C.wait_for_bitrate_change(ret.ctx)
-			ret.bitrateOut <- int(bitrate)
-
+			BitrateChangeFunc(int(bitrate))
 		}
 	}()
 

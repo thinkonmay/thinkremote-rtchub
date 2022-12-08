@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"unsafe"
 
+	"github.com/OnePlay-Internet/webrtc-proxy/adaptive"
 	"github.com/OnePlay-Internet/webrtc-proxy/rtppay"
 	"github.com/OnePlay-Internet/webrtc-proxy/rtppay/h264"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
@@ -34,20 +35,27 @@ type Pipeline struct {
 	rtpchan    chan *rtp.Packet
 	packetizer rtppay.Packetizer
 
+	adsContext *adaptive.AdaptiveContext
+
 	restartCount int
 }
 
 var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig) *Pipeline {
+func CreatePipeline(config *config.ListenerConfig,AdsDataChannel chan string) *Pipeline {
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
 		rtpchan:      make(chan *rtp.Packet),
 		config:       config,
 		pipelineStr : "fakesrc ! appsink name=appsink",
 		restartCount: 0,
+		adsContext :  adaptive.NewAdsContext(AdsDataChannel,func(bitrate int) {
+			C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(bitrate))
+		}),
 	}
+
+
 	return pipeline
 }
 
