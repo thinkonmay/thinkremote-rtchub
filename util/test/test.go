@@ -11,6 +11,12 @@ import (
 )
 
 
+const (
+	videoClockRate = 90000
+	audioClockRate = 48000
+	pcmClockRate   = 8000
+)
+
 func formatDeviceID(in string) string {
 
 	modified := make([]byte,0);
@@ -33,7 +39,7 @@ func formatDeviceID(in string) string {
 }
 
 
-func GstTestAudio(source *config.ListenerConfig) string{
+func GstTestAudio(source *config.ListenerConfig) (string,int) {
 	options := make([]map[string]string,0); 
 	soundcard := source.Source.(*tool.Soundcard)
 
@@ -51,15 +57,17 @@ func GstTestAudio(source *config.ListenerConfig) string{
 	} 
 
 	if len(options) == 0 {
-		return ""
+		return "",0;
 	}
 
 
 	result := false
 	var testcase *exec.Cmd
+
 	for _,i := range options{
 		testcase = exec.Command("gst-launch-1.0.exe", 
 							i["element"], "name=source","loopback=true",fmt.Sprintf("device=%s",i["device"]),
+							"!", fmt.Sprintf("audio/x-raw,clock-rate=%d",audioClockRate), 
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 							"audioconvert",
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
@@ -109,17 +117,17 @@ func GstTestAudio(source *config.ListenerConfig) string{
 		for _,i := range testcase.Args[1:] {
 			log = append(log, append([]byte(i),[]byte(" ")...)...);
 		}
-		return string(log)
+		return string(log),audioClockRate
 	} else {
-		return "";
+		return "",0;
 	}
 }
 
 
-func GstTestNvCodec(source *config.ListenerConfig) string{
+func GstTestNvCodec(source *config.ListenerConfig) (string,int) {
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
 						fmt.Sprintf("monitor-handle=%d",source.Source.(*tool.Monitor).MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.Source.(*tool.Monitor).Framerate), 
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1,clock-rate=%d",source.Source.(*tool.Monitor).Framerate,videoClockRate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11download",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
@@ -165,18 +173,18 @@ func GstTestNvCodec(source *config.ListenerConfig) string{
 		for _,i := range testcase.Args[1:] {
 			log = append(log, append([]byte(i),[]byte(" ")...)...);
 		}
-		return string(log)
+		return string(log),videoClockRate
 	} else {
-		return "";
+		return "",0;
 	}
 }
 
 
 
-func GstTestMediaFoundation(source *config.ListenerConfig) string{
+func GstTestMediaFoundation(source *config.ListenerConfig) (string,int) {
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
 						fmt.Sprintf("monitor-handle=%d",source.Source.(*tool.Monitor).MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1",source.Source.(*tool.Monitor).Framerate), 
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1,clock-rate=%d",source.Source.(*tool.Monitor).Framerate,videoClockRate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
@@ -222,17 +230,17 @@ func GstTestMediaFoundation(source *config.ListenerConfig) string{
 		for _,i := range testcase.Args[1:] {
 			log = append(log, append([]byte(i),[]byte(" ")...)...);
 		}
-		return string(log)
+		return string(log),videoClockRate
 	} else {
-		return "";
+		return "",0;
 	}
 }
 
 
-func GstTestSoftwareEncoder(source *config.ListenerConfig) string{
+func GstTestSoftwareEncoder(source *config.ListenerConfig) (string,int) {
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
 						fmt.Sprintf("monitor-handle=%d",source.Source.(*tool.Monitor).MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw,framerate=%d/1",source.Source.(*tool.Monitor).Framerate), 
+						"!", fmt.Sprintf("video/x-raw,framerate=%d/1,clock-rate=%d",source.Source.(*tool.Monitor).Framerate,videoClockRate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
@@ -280,8 +288,8 @@ func GstTestSoftwareEncoder(source *config.ListenerConfig) string{
 		for _,i := range testcase.Args[1:] {
 			log = append(log, append([]byte(i),[]byte(" ")...)...);
 		}
-		return string(log)
+		return string(log),videoClockRate
 	} else {
-		return "";
+		return "",0;
 	}
 }

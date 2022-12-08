@@ -11,26 +11,26 @@ import (
 func main() {
 	dev := tool.GetDevice()
 	soundcards := dev.Soundcards;
-	result := gsttest.GstTestAudio(&config.ListenerConfig{
+	result,_ := gsttest.GstTestAudio(&config.ListenerConfig{
 		Source: soundcards[0],
 		Bitrate: 128000,
 	})
 	fmt.Printf("%s\n",result);
 
-	result = gsttest.GstTestNvCodec(&config.ListenerConfig{
+	result,_ = gsttest.GstTestNvCodec(&config.ListenerConfig{
 		Source: dev.Monitors[0],
 		Bitrate: 3000,
 	})
 
 	fmt.Printf("%s\n",result)
 
-	result = gsttest.GstTestMediaFoundation(&config.ListenerConfig{
+	result,_ = gsttest.GstTestMediaFoundation(&config.ListenerConfig{
 		Source: dev.Monitors[0],
 		Bitrate: 3000,
 	})
 
 	fmt.Printf("%s\n",result)
-	result = gsttest.GstTestSoftwareEncoder(&config.ListenerConfig{
+	result,_ = gsttest.GstTestSoftwareEncoder(&config.ListenerConfig{
 		Source: dev.Monitors[0],
 		Bitrate: 3000,
 	})

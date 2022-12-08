@@ -25,6 +25,9 @@ func init() {
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
 	pipeline unsafe.Pointer
+
+	clockRate int
+
 	rtpchan chan *rtp.Packet
 	config   *config.ListenerConfig
 
@@ -35,11 +38,6 @@ type Pipeline struct {
 
 var pipeline *Pipeline
 
-const (
-	videoClockRate = 90000
-	audioClockRate = 48000
-	pcmClockRate   = 8000
-)
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
@@ -57,7 +55,9 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 //export goHandlePipelineBufferAudio
 func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
 	c_byte := C.GoBytes(buffer, bufferLen)
-	packets := pipeline.packetizer.Packetize(c_byte,uint32(bufferLen));
+
+	samples := uint32(int(duration) * pipeline.clockRate)
+	packets := pipeline.packetizer.Packetize(c_byte,samples);
 
 	for _,packet := range packets {
 		pipeline.rtpchan <- packet
@@ -65,15 +65,14 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 }
 
 func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
-	var pipelineStr string
+	pipelineStr := "fakesrc ! appsink name=appsink"
+
 	if p.isRunning {
 		return nil;
 	}
 
-	if config.Source.(*tool.Soundcard).DeviceID == "none" {
-		pipelineStr = "fakesrc ! appsink name=appsink"
-	} else {
-		pipelineStr = gsttest.GstTestAudio(config)
+	if config.Source.(*tool.Soundcard).DeviceID != "none" {
+		pipelineStr,p.clockRate = gsttest.GstTestAudio(config)
 		if pipelineStr == "" {
 			if pipelineStr == "" {
 				return fmt.Errorf("unable to create encode pipeline with device")
@@ -92,6 +91,7 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
 	}
 
 	fmt.Printf("starting audio pipeline: %s\n", pipelineStr)
+
 	p.pipeline = Pipeline
 	p.config = config
 	return nil

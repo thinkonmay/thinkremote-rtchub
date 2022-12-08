@@ -25,6 +25,8 @@ func init() {
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
 	pipeline unsafe.Pointer
+	clockRate int
+
 	config   *config.ListenerConfig
 
 	rtpchan chan *rtp.Packet
@@ -35,11 +37,6 @@ type Pipeline struct {
 
 var pipeline *Pipeline
 
-const (
-	videoClockRate = 90000
-	audioClockRate = 48000
-	pcmClockRate   = 8000
-)
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
@@ -56,8 +53,9 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 
 //export goHandlePipelineBuffer
 func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
+	samples := uint32(int(duration) * pipeline.clockRate)
 	c_byte := C.GoBytes(buffer, bufferLen)
-	packets := pipeline.packetizer.Packetize(c_byte,uint32(bufferLen));
+	packets := pipeline.packetizer.Packetize(c_byte,samples);
 
 	for _,packet := range packets {
 		pipeline.rtpchan <- packet
@@ -76,11 +74,11 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) (errr error) {
 		return;
 	}
 
-	pipelineStr := gsttest.GstTestMediaFoundation(config)
+	pipelineStr,clockRate := gsttest.GstTestMediaFoundation(config)
 	if pipelineStr == "" {
-		pipelineStr = gsttest.GstTestNvCodec(config)
+		pipelineStr,clockRate = gsttest.GstTestNvCodec(config)
 		if pipelineStr == "" {
-			pipelineStr = gsttest.GstTestSoftwareEncoder(config)
+			pipelineStr,clockRate = gsttest.GstTestSoftwareEncoder(config)
 			if pipelineStr == "" {
 				errr = fmt.Errorf("unable to create encode pipeline with device")
 				return
@@ -102,6 +100,7 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) (errr error) {
 	fmt.Printf("starting video pipeline: %s", pipelineStr)
 	p.pipeline = Pipeline
 	p.config = config
+	p.clockRate = clockRate
 	return nil
 }
 
