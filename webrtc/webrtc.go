@@ -10,7 +10,6 @@ import (
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/rtcp"
 	webrtc "github.com/pion/webrtc/v3"
 )
@@ -177,34 +176,19 @@ func handleRTCP(rtpSender *webrtc.RTPSender) {
 
 func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 	for _, lis := range listeners {
-		listenerConfig := lis.GetConfig()
-
-		lis.Open()
-
 		fmt.Printf("added track\n")
 
-		var ID string
-		if listenerConfig.StreamID == "audio" {
-			ID = listenerConfig.Source.(*tool.Soundcard).DeviceID;
-		} else if listenerConfig.StreamID == "video" {
-			ID = fmt.Sprintf("%d",listenerConfig.Source.(*tool.Monitor).MonitorHandle);
-		}
-
+		listenerConfig := lis.GetConfig()
 		track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
 			MimeType: listenerConfig.Codec,
-		}, ID, listenerConfig.StreamID)
-
-		if err != nil {
-			fmt.Printf("error create track %s\n", err.Error())
-			continue
-		}
-
+		}, lis.GetSourceName(), listenerConfig.StreamID)
 		rtpSender, err := client.conn.AddTrack(track)
 		if err != nil {
 			fmt.Printf("error add track %s\n", err.Error())
 			continue
 		}
 
+		lis.Open()
 		go readLoopRTP(lis, track)
 		go handleRTCP(rtpSender)
 		client.mediaTracks = append(client.mediaTracks, track)

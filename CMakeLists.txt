@@ -81,3 +81,16 @@ target_link_libraries(shared PUBLIC
 add_executable(testCGo ${CMAKE_SOURCE_DIR}/cgo/test/main.cpp)
 target_include_directories( testCGo PUBLIC ${CMAKE_SOURCE_DIR}/adaptive)
 target_link_libraries(testCGo PUBLIC shared )
+
+add_executable(testPipeline ${CMAKE_SOURCE_DIR}/cgo/test/dynamic_pipeline.cpp)
+target_include_directories( testPipeline PUBLIC 
+    ${GLIB_INCLUDE_DIRS} 
+    ${GST_INCLUDE_DIRS}
+    ${VIDEO_INCLUDE_DIRS}
+)
+target_link_directories(testPipeline PUBLIC ${INCLUDE_LIBRARY} )    
+target_link_libraries(testPipeline PUBLIC 
+    ${GLIB_LIBRARIES} 
+    ${GST_LIBRARIES}
+    ${VIDEO_LIBRARIES}
+)

@@ -22,12 +22,9 @@ type GrpcConfig struct {
 }
 
 type ListenerConfig struct {
-	Source 	  interface{}
-
 	ID		  string
 	StreamID  string
 	Codec     string
-	Bitrate   int
 }
 
 type BroadcasterConfig struct {
@@ -43,4 +40,22 @@ type DataChannel struct {
 type DataChannelConfig struct {
 	Mutext *sync.Mutex
 	Confs  map[string]*DataChannel
+}
+
+
+func NewDataChannelConfig(names []string) *DataChannelConfig {
+	conf := DataChannelConfig{
+		Mutext: &sync.Mutex{},
+		Confs: map[string]*DataChannel{ },
+	}
+
+	for _,name := range names {
+		conf.Confs[name] = &DataChannel{
+			Send:    make(chan string),
+			Recv:    make(chan string),
+			Channel: nil,
+		}
+	}
+
+	return &conf;
 }

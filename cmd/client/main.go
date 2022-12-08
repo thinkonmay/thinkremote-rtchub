@@ -75,10 +75,31 @@ func main() {
 	}
 
 	Lists := make([]listener.Listener, 0)
-	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists,tool.GetDevice())
-	if err != nil {
+
+	var err error
+	var prox *proxy.Proxy;
+	if prox,err = proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists,tool.GetDevice(),
+		func(monitor tool.Monitor, soundcard tool.Soundcard) error {
+			for _, listener := range Lists {
+				conf := listener.GetConfig()
+				if conf.StreamID == "video" {
+					err := listener.SetSource(&monitor)
+					if err != nil {
+						return err
+					}
+				} else if conf.StreamID == "audio" {
+					err := listener.SetSource(&soundcard)
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+	); err != nil {
 		fmt.Printf("failed to init webrtc proxy: %s\n",err.Error())
 		return
 	}
+
 	<-prox.Shutdown
 }

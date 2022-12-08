@@ -25,7 +25,9 @@ func init() {
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
 	pipeline unsafe.Pointer
+	pipelineStr string
 
+	soundcard *tool.Soundcard
 	clockRate int
 
 	rtpchan chan *rtp.Packet
@@ -33,7 +35,7 @@ type Pipeline struct {
 
 	packetizer rtppay.Packetizer
 
-	isRunning bool
+	restartCount int
 }
 
 var pipeline *Pipeline
@@ -44,7 +46,12 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 		pipeline:  unsafe.Pointer(nil),
 		rtpchan:   make(chan *rtp.Packet),
 		config:    config,
-		isRunning: false,
+		pipelineStr : "fakesrc ! appsink name=appsink",
+		restartCount: 0,
+
+		soundcard: &tool.Soundcard{
+			DeviceID: "none",
+		},
 
 		packetizer: opus.NewOpusPayloader(),
 	}
@@ -63,23 +70,20 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 	}
 }
 
-func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
-	pipelineStr := "fakesrc ! appsink name=appsink"
-
-	if p.isRunning {
-		return nil
-	}
-
-	if config.Source.(*tool.Soundcard).DeviceID != "none" {
-		pipelineStr, p.clockRate = gsttest.GstTestAudio(config.Source.(*tool.Soundcard))
+func (p *Pipeline) GetSourceName() (string) {
+	return p.soundcard.DeviceID;
+}
+func (p *Pipeline) SetSource(source interface{}) error {
+	if source.(*tool.Soundcard).DeviceID != "none" {
+		pipelineStr, clockRate := gsttest.GstTestAudio(source.(*tool.Soundcard))
 		if pipelineStr == "" {
-			if pipelineStr == "" {
-				return fmt.Errorf("unable to create encode pipeline with device")
-			}
+			return fmt.Errorf("unable to create encode pipeline with device")
 		}
+		p.pipelineStr = pipelineStr
+		p.clockRate = clockRate
 	}
 
-	pipelineStrUnsafe := C.CString(pipelineStr)
+	pipelineStrUnsafe := C.CString(p.pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
 	var err unsafe.Pointer
@@ -89,23 +93,22 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
 		return fmt.Errorf("%s", tool.ToGoString(err))
 	}
 
-	fmt.Printf("starting audio pipeline: %s\n", pipelineStr)
 
 	p.pipeline = Pipeline
-	p.config = config
 	return nil
 }
 
 //export handleAudioStopOrError
 func handleAudioStopOrError() {
 	pipeline.Close()
-	pipeline.UpdateConfig(pipeline.config)
+	pipeline.SetSource(pipeline.soundcard)
 	pipeline.Open()
+	pipeline.restartCount++
 }
 
 func (p *Pipeline) Open() {
+	fmt.Printf("starting audio pipeline: %s\n", p.pipelineStr)
 	C.start_audio_pipeline(pipeline.pipeline)
-	p.isRunning = true
 }
 func (p *Pipeline) GetConfig() *config.ListenerConfig {
 	return p.config
