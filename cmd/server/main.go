@@ -119,7 +119,7 @@ func main() {
 		},
 	}
 
-	chans := config.NewDataChannelConfig([]string{"hid","adaptive"});
+	chans := config.NewDataChannelConfig([]string{"hid","adaptive","manual"});
 	br := []*config.BroadcasterConfig{}
 	Lists := []listener.Listener{}
 	lis   := []*config.ListenerConfig{{
@@ -161,7 +161,7 @@ func main() {
 			return nil
 		},
 	)
-	
+
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
 		return

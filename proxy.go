@@ -156,5 +156,5 @@ func (prox *Proxy) Stop() {
 	for _, lis := range prox.listeners {
 		lis.Close()
 	}
-	prox.Shutdown <- true
+	prox.Shutdown<- true
 }

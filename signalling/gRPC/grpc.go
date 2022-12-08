@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"strconv"
 	"time"
 
@@ -85,9 +84,7 @@ func InitGRPCClient(conf *config.GrpcConfig,
 			res,err := ret.client.Recv()
 			if err != nil {
 				fmt.Printf("%s\n",err.Error());
-				if err != io.EOF {
-					ret.shutdown<-true;
-				} else if !ret.deviceSelected {
+				if !ret.deviceSelected {
 					fmt.Printf("grpc connection terminated while waiting for peer, terminating...\n");
 					ret.shutdown<-true;
 				}
