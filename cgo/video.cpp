@@ -102,9 +102,9 @@ video_pipeline_set_framerate(void* pipeline, int framerate) {
     char* capsstr = g_strdup_printf ("video/x-raw(memory:D3D11Memory),framerate=%d/1",framerate);
     GstCaps* caps = gst_caps_from_string (capsstr);
     g_free (capsstr);
+
     g_object_set (framerateFilter, "caps", caps, NULL);
     gst_caps_unref (caps);
-
 }
 
 

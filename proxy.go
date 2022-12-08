@@ -15,7 +15,6 @@ import (
 	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/OnePlay-Internet/webrtc-proxy/webrtc"
 	webrtclib "github.com/pion/webrtc/v3"
-
 )
 
 type Proxy struct {
@@ -36,6 +35,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 					 chan_conf *config.DataChannelConfig,
 					 lis []listener.Listener,
 					 devices *tool.MediaDevice,
+					 deviceSelect signalling.OnDeviceSelectFunc,
 					 ) (proxy *Proxy, err error) {
 
 	fmt.Printf("started proxy\n")
@@ -46,12 +46,9 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	}
 
 	if grpc_conf != nil {
-		var rpc *grpc.GRPCclient
-		rpc, err = grpc.InitGRPCClient(grpc_conf, devices, proxy.Shutdown)
-		if err != nil {
+		if proxy.signallingClient, err = grpc.InitGRPCClient(grpc_conf, devices, proxy.Shutdown);err != nil {
 			return
 		}
-		proxy.signallingClient = rpc
 	} else if sock != nil {
 		err = fmt.Errorf("Unimplemented")
 		return
@@ -60,7 +57,9 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 		return
 	}
 
-	proxy.webrtcClient, err = webrtc.InitWebRtcClient(func(tr *webrtclib.TrackRemote) (br broadcaster.Broadcaster, err error) {
+	proxy.handleTimeout()
+	proxy.signallingClient.OnDeviceSelect(deviceSelect)
+	if proxy.webrtcClient, err = webrtc.InitWebRtcClient(func(tr *webrtclib.TrackRemote) (br broadcaster.Broadcaster, err error) {
 		for _, conf := range br_conf {
 			if tr.Codec().MimeType == conf.Codec {
 				return sink.CreatePipeline(conf)
@@ -73,29 +72,13 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 		err = fmt.Errorf("unimplemented broadcaster")
 		return
-	}, *webrtc_conf)
-	if err != nil {
-		panic(err)
+	}, *webrtc_conf); err != nil {
+		return
 	}
 
-	start := make(chan bool, 2)
-	go func() {
-		proxy.signallingClient.WaitForConnected()
-		time.Sleep(60 * time.Second)
-		start <- false
-	}()
-	go func() {
-		proxy.signallingClient.WaitForStart()
-		start <- true
-	}()
-	go func() {
-		if <-start {
-			proxy.Start()
-		} else {
-			fmt.Printf("application start timeout, closing\n")
-			proxy.Shutdown <- true
-		}
-	}()
+
+
+
 	go func() {
 		for {
 			state := proxy.webrtcClient.GatherStateChange()
@@ -140,28 +123,29 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 		proxy.webrtcClient.OnIncominSDP(i)
 	})
 
-	proxy.signallingClient.OnDeviceSelect(func(monitor tool.Monitor, soundcard tool.Soundcard) error {
-
-		//TODO
-		for _, listener := range proxy.listeners {
-			conf := listener.GetConfig()
-			if conf.StreamID == "video" {
-				err := listener.SetSource(&monitor)
-				if err != nil {
-					return err
-				}
-			} else if conf.StreamID == "audio" {
-				err := listener.SetSource(&soundcard)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	})
 	return
 }
 
+func (proxy *Proxy) handleTimeout() {
+	start := make(chan bool, 2)
+	go func() {
+		proxy.signallingClient.WaitForConnected()
+		time.Sleep(30 * time.Second)
+		start <- false
+	}()
+	go func() {
+		proxy.signallingClient.WaitForStart()
+		start <- true
+	}()
+	go func() {
+		if <-start {
+			proxy.Start()
+		} else {
+			fmt.Printf("application start timeout, closing\n")
+			proxy.Stop()
+		}
+	}()
+}
 func (prox *Proxy) Start() {
 	prox.webrtcClient.RegisterDataChannel(prox.chan_conf)
 }

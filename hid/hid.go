@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 )
 
 const (
@@ -38,7 +40,7 @@ type HIDMsg struct {
 }
 
 
-func NewHIDSingleton(URL string) *HIDSingleton{
+func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 	ret := HIDSingleton{
 		URL: URL,
 		channel: make(chan *HIDMsg,100),
@@ -59,6 +61,12 @@ func NewHIDSingleton(URL string) *HIDSingleton{
 	if ret.URL == "" {
 		ret.URL = HIDdefaultEndpoint	
 	}
+
+	go func() {
+		for {
+			ret.ParseHIDInput(<-DataChannel.Recv)
+		}
+	}()
 
 	process := func ()  {
 		var err error;

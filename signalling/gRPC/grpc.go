@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
 	"github.com/OnePlay-Internet/webrtc-proxy/signalling/gRPC/packet"
@@ -36,8 +37,9 @@ type GRPCclient struct {
 	sdpChan chan *webrtc.SessionDescription
 	iceChan chan *webrtc.ICECandidateInit
 	preflightChan chan deviceSelection
-	startChan chan bool
-	connectedNotifier chan bool
+
+	deviceSelected bool
+	connected bool
 
 	shutdown chan bool
 }
@@ -50,9 +52,10 @@ func InitGRPCClient(conf *config.GrpcConfig,
 		sdpChan : make(chan *webrtc.SessionDescription),
 		iceChan : make(chan *webrtc.ICECandidateInit),
 		preflightChan : make(chan deviceSelection),
-		startChan : make(chan bool),
-		connectedNotifier: make(chan bool,10),
 		shutdown: shutdown,
+
+		deviceSelected : false,
+		connected: false,
 	}
 
 	ret.conn,err = grpc.Dial(
@@ -81,16 +84,19 @@ func InitGRPCClient(conf *config.GrpcConfig,
 		for {
 			res,err := ret.client.Recv()
 			if err != nil {
-				fmt.Println(err.Error());
+				fmt.Printf("%s\n",err.Error());
 				if err != io.EOF {
 					ret.shutdown<-true;
+				} else if !ret.deviceSelected {
+					fmt.Printf("grpc connection terminated while waiting for peer, terminating...\n");
+					ret.shutdown<-true;
 				}
+
 				return;
 			}
-			if len(res.Error) != 0 {
-				fmt.Println(res.Error);
-			}
-			if res.Data["Target"] == "SDP" {
+
+			switch res.Data["Target"] {
+			case "SDP":
 				var sdp webrtc.SessionDescription;	
 
 				sdp.SDP		= res.Data["SDP"];
@@ -98,7 +104,7 @@ func InitGRPCClient(conf *config.GrpcConfig,
 
 				fmt.Printf("SDP received: %s\n",res.Data["Type"])
 				ret.sdpChan <- &sdp;
-			} else if res.Data["Target"] == "ICE" {
+			case "ICE" :
 				var ice webrtc.ICECandidateInit;
 
 				ice.Candidate  =	res.Data["Candidate"] 
@@ -111,14 +117,14 @@ func InitGRPCClient(conf *config.GrpcConfig,
 
 				fmt.Printf("ICE received\n")
 				ret.iceChan <- &ice;
-			} else if res.Data["Target"] == "START" {
+			case "START":
 				fmt.Printf("Receive start signal\n");
 				ret.SendDeviceAvailable(devices,nil);
-				ret.connectedNotifier<-true;
-			} else if res.Data["Target"] == "PREFLIGHT" {
-				bitrate,err := strconv.ParseInt(res.Data["bitrate"],10,32);
-				framerate,err := strconv.ParseInt(res.Data["framerate"],10,32);
-				monitor,err := strconv.ParseInt(res.Data["monitor"],10,32);
+				ret.connected = true;
+			case "PREFLIGHT" :
+				bitrate,err 	:= strconv.ParseInt(res.Data["bitrate"],10,32);
+				framerate,err 	:= strconv.ParseInt(res.Data["framerate"],10,32);
+				monitor,err 	:= strconv.ParseInt(res.Data["monitor"],10,32);
 				if err == nil {
 					ret.preflightChan<-deviceSelection{
 						Bitrate: int(bitrate),
@@ -127,7 +133,7 @@ func InitGRPCClient(conf *config.GrpcConfig,
 						SoundCard: res.Data["soundcard"],	
 					};
 				}
-			} else {
+			default:
 				fmt.Println("Unknown packet");
 			}
 		}	
@@ -249,17 +255,27 @@ func (client *GRPCclient) OnDeviceSelect(fun signalling.OnDeviceSelectFunc) {
 			if err != nil {
 				client.SendDeviceAvailable(client.deviceAvailableSent,err); 
 			} else {
-				client.startChan<-true;
+				client.deviceSelected = true;
 			}
 		}
 	}()
 }
 
 func (client *GRPCclient) WaitForStart(){
-	<- client.startChan;
+	for {
+		if client.deviceSelected{
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 func (client *GRPCclient) WaitForConnected(){
-	<- client.connectedNotifier;
+	for {
+		if client.connected {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 func (client *GRPCclient) Stop(){
 	client.conn.Close()

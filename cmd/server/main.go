@@ -132,7 +132,7 @@ func main() {
 
 	for _, conf := range lis {
 		if conf.StreamID == "video" {
-			Lists = append(Lists, video.CreatePipeline(conf,chans.Confs["adaptive"].Recv))
+			Lists = append(Lists, video.CreatePipeline(conf,chans.Confs["adaptive"]))
 		} else if conf.StreamID == "audio" {
 			Lists = append(Lists, audio.CreatePipeline(conf))
 		} else {
@@ -141,15 +141,27 @@ func main() {
 	}
 
 
-	_hid := hid.NewHIDSingleton(HIDURL)
-	go func() {
-		for {
-			_hid.ParseHIDInput(<-chans.Confs["hid"].Recv)
-		}
-	}()
-
-
-	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, chans, Lists, qr)
+	hid.NewHIDSingleton(HIDURL,chans.Confs["hid"])
+	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, chans, Lists, qr,
+		func(monitor tool.Monitor, soundcard tool.Soundcard) error {
+			for _, listener := range Lists {
+				conf := listener.GetConfig()
+				if conf.StreamID == "video" {
+					err := listener.SetSource(&monitor)
+					if err != nil {
+						return err
+					}
+				} else if conf.StreamID == "audio" {
+					err := listener.SetSource(&soundcard)
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+	)
+	
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())
 		return

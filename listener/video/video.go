@@ -43,14 +43,18 @@ type Pipeline struct {
 var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig,AdsDataChannel chan string) *Pipeline {
+func CreatePipeline(config *config.ListenerConfig,AdsDataChannel *config.DataChannel) *Pipeline {
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
 		rtpchan:      make(chan *rtp.Packet),
 		config:       config,
 		pipelineStr : "fakesrc ! appsink name=appsink",
 		restartCount: 0,
-		adsContext :  adaptive.NewAdsContext(AdsDataChannel,func(bitrate int) {
+		adsContext :  adaptive.NewAdsContext(AdsDataChannel.Recv,func(bitrate int) {
+			if pipeline.pipeline == nil {
+				return
+			}
+
 			C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(bitrate))
 		}),
 	}
