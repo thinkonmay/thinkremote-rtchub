@@ -126,9 +126,10 @@ func GstTestAudio(soundcard *tool.Soundcard) (string,int) {
 
 
 func GstTestNvCodec(source *tool.Monitor) (string,int) {
-	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
+	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192","do-timestamp=true",
 						fmt.Sprintf("monitor-handle=%d",source.MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1,clock-rate=%d",source.Framerate,videoClockRate), 
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d",videoClockRate), 
+						"!", "capsfilter","name=filter", 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11download",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
@@ -183,9 +184,10 @@ func GstTestNvCodec(source *tool.Monitor) (string,int) {
 
 
 func GstTestMediaFoundation(source *tool.Monitor) (string,int) {
-	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
+	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192","do-timestamp=true",
 						fmt.Sprintf("monitor-handle=%d",source.MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1,clock-rate=%d",source.Framerate,videoClockRate), 
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d",videoClockRate), 
+						"!", "capsfilter","name=filter", 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
@@ -239,9 +241,10 @@ func GstTestMediaFoundation(source *tool.Monitor) (string,int) {
 
 
 func GstTestSoftwareEncoder(source *tool.Monitor) (string,int) {
-	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
+	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192","do-timestamp=true",
 						fmt.Sprintf("monitor-handle=%d",source.MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw,framerate=%d/1,clock-rate=%d",source.Framerate,videoClockRate), 
+						"!", fmt.Sprintf("video/x-raw,clock-rate=%d",videoClockRate), 
+						"!", "capsfilter","name=filter", 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",

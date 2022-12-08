@@ -55,7 +55,7 @@ handle_audio_sample(GstElement *object, gpointer user_data) {
         if(copy_size) {
             gpointer copy = malloc(copy_size);
             gst_buffer_extract(buffer, 0, (gpointer)copy, copy_size); // linking gstreamer to go limited available stack frame // very dangerous to modify
-            goHandlePipelineBuffer(copy, copy_size, GST_BUFFER_DURATION(buffer));
+            goHandlePipelineBufferVideo(copy, copy_size, GST_BUFFER_DURATION(buffer));
             free(copy);
         }
         }
@@ -95,6 +95,13 @@ start_video_pipeline(void* pipeline) {
 }
 
 
+// void 
+// video_pipeline_set_framerate(void* pipeline, int bitrate) {
+//     GstElement *encoder = gst_bin_get_by_name(GST_BIN(pipeline), "encoder");
+
+
+//     gst_element_get_static_pad()
+// }
 
 
 void 
