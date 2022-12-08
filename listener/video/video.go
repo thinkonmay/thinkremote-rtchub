@@ -14,7 +14,7 @@ import (
 )
 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
-// #cgo LDFLAGS: ${SRCDIR}/../../build/libshared.a
+// #cgo LDFLAGS: ${SRCDIR}/../../cgo/lib/libshared.a
 // #include "webrtc_video.h"
 import "C"
 
@@ -24,12 +24,12 @@ func init() {
 
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
-	pipeline unsafe.Pointer
+	pipeline  unsafe.Pointer
 	clockRate int
 
-	config   *config.ListenerConfig
+	config *config.ListenerConfig
 
-	rtpchan chan *rtp.Packet
+	rtpchan    chan *rtp.Packet
 	packetizer rtppay.Packetizer
 
 	isRunning bool
@@ -37,13 +37,12 @@ type Pipeline struct {
 
 var pipeline *Pipeline
 
-
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	pipeline = &Pipeline{
-		pipeline: unsafe.Pointer(nil),
-		rtpchan: make(chan *rtp.Packet),
-		config:   config,
+		pipeline:  unsafe.Pointer(nil),
+		rtpchan:   make(chan *rtp.Packet),
+		config:    config,
 		isRunning: false,
 
 		packetizer: h264.NewH264Payloader(),
@@ -55,9 +54,9 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
 	samples := uint32(int(duration) * pipeline.clockRate)
 	c_byte := C.GoBytes(buffer, bufferLen)
-	packets := pipeline.packetizer.Packetize(c_byte,samples);
+	packets := pipeline.packetizer.Packetize(c_byte, samples)
 
-	for _,packet := range packets {
+	for _, packet := range packets {
 		pipeline.rtpchan <- packet
 	}
 }
@@ -71,14 +70,14 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) (errr error) {
 	}()
 
 	if p.isRunning {
-		return;
+		return
 	}
 
-	pipelineStr,clockRate := gsttest.GstTestMediaFoundation(config)
+	pipelineStr, clockRate := gsttest.GstTestMediaFoundation(config)
 	if pipelineStr == "" {
-		pipelineStr,clockRate = gsttest.GstTestNvCodec(config)
+		pipelineStr, clockRate = gsttest.GstTestNvCodec(config)
 		if pipelineStr == "" {
-			pipelineStr,clockRate = gsttest.GstTestSoftwareEncoder(config)
+			pipelineStr, clockRate = gsttest.GstTestSoftwareEncoder(config)
 			if pipelineStr == "" {
 				errr = fmt.Errorf("unable to create encode pipeline with device")
 				return
@@ -111,9 +110,9 @@ func handleVideoStopOrError() {
 	pipeline.Open()
 }
 
-func (p *Pipeline) Open()  {
+func (p *Pipeline) Open() {
 	C.start_video_pipeline(pipeline.pipeline)
-	p.isRunning = true;
+	p.isRunning = true
 }
 func (p *Pipeline) GetConfig() *config.ListenerConfig {
 	return p.config

@@ -5,7 +5,7 @@ import (
 )
 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
-// #cgo LDFLAGS: ${SRCDIR}/../../build/libshared.a
+// #cgo LDFLAGS: ${SRCDIR}/../../cgo/lib/libshared.a
 // #include "util.h"
 import "C"
 

@@ -13,7 +13,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// #cgo LDFLAGS: ${SRCDIR}/../../build/libshared.a
+// #cgo LDFLAGS: ${SRCDIR}/../../cgo/lib/libshared.a
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
 // #include "webrtc_audio.h"
 import "C"
@@ -29,7 +29,7 @@ type Pipeline struct {
 	clockRate int
 
 	rtpchan chan *rtp.Packet
-	config   *config.ListenerConfig
+	config  *config.ListenerConfig
 
 	packetizer rtppay.Packetizer
 
@@ -38,13 +38,12 @@ type Pipeline struct {
 
 var pipeline *Pipeline
 
-
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	pipeline = &Pipeline{
-		pipeline: unsafe.Pointer(nil),
-		rtpchan: make(chan *rtp.Packet),
-		config:   config,
+		pipeline:  unsafe.Pointer(nil),
+		rtpchan:   make(chan *rtp.Packet),
+		config:    config,
 		isRunning: false,
 
 		packetizer: opus.NewOpusPayloader(),
@@ -57,9 +56,9 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 	c_byte := C.GoBytes(buffer, bufferLen)
 
 	samples := uint32(int(duration) * pipeline.clockRate)
-	packets := pipeline.packetizer.Packetize(c_byte,samples);
+	packets := pipeline.packetizer.Packetize(c_byte, samples)
 
-	for _,packet := range packets {
+	for _, packet := range packets {
 		pipeline.rtpchan <- packet
 	}
 }
@@ -68,11 +67,11 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
 	pipelineStr := "fakesrc ! appsink name=appsink"
 
 	if p.isRunning {
-		return nil;
+		return nil
 	}
 
 	if config.Source.(*tool.Soundcard).DeviceID != "none" {
-		pipelineStr,p.clockRate = gsttest.GstTestAudio(config)
+		pipelineStr, p.clockRate = gsttest.GstTestAudio(config)
 		if pipelineStr == "" {
 			if pipelineStr == "" {
 				return fmt.Errorf("unable to create encode pipeline with device")
@@ -106,7 +105,7 @@ func handleAudioStopOrError() {
 
 func (p *Pipeline) Open() {
 	C.start_audio_pipeline(pipeline.pipeline)
-	p.isRunning = true;
+	p.isRunning = true
 }
 func (p *Pipeline) GetConfig() *config.ListenerConfig {
 	return p.config
