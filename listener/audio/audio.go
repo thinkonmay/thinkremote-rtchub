@@ -71,7 +71,7 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) error {
 	}
 
 	if config.Source.(*tool.Soundcard).DeviceID != "none" {
-		pipelineStr, p.clockRate = gsttest.GstTestAudio(config)
+		pipelineStr, p.clockRate = gsttest.GstTestAudio(config.Source.(*tool.Soundcard))
 		if pipelineStr == "" {
 			if pipelineStr == "" {
 				return fmt.Errorf("unable to create encode pipeline with device")

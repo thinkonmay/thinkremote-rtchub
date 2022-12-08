@@ -50,8 +50,8 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	return pipeline
 }
 
-//export goHandlePipelineBuffer
-func goHandlePipelineBuffer(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
+//export goHandlePipelineBufferVideo
+func goHandlePipelineBufferVideo(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
 	samples := uint32(int(duration) * pipeline.clockRate)
 	c_byte := C.GoBytes(buffer, bufferLen)
 	packets := pipeline.packetizer.Packetize(c_byte, samples)
@@ -73,11 +73,11 @@ func (p *Pipeline) UpdateConfig(config *config.ListenerConfig) (errr error) {
 		return
 	}
 
-	pipelineStr, clockRate := gsttest.GstTestMediaFoundation(config)
+	pipelineStr, clockRate := gsttest.GstTestMediaFoundation(config.Source.(*tool.Monitor))
 	if pipelineStr == "" {
-		pipelineStr, clockRate = gsttest.GstTestNvCodec(config)
+		pipelineStr, clockRate = gsttest.GstTestNvCodec(config.Source.(*tool.Monitor))
 		if pipelineStr == "" {
-			pipelineStr, clockRate = gsttest.GstTestSoftwareEncoder(config)
+			pipelineStr, clockRate = gsttest.GstTestSoftwareEncoder(config.Source.(*tool.Monitor))
 			if pipelineStr == "" {
 				errr = fmt.Errorf("unable to create encode pipeline with device")
 				return

@@ -56,6 +56,7 @@ func GetDevice() *MediaDevice {
 		prim := C.monitor_is_primary(query, count_monitor)
 
 		result.Monitors = append(result.Monitors, Monitor{
+			Framerate: 	   60,
 			MonitorHandle: int(mhandle),
 			MonitorName:   string(C.GoBytes(monitor_name, C.string_get_length(monitor_name))),
 			Adapter:       string(C.GoBytes(adapter, C.string_get_length(adapter))),

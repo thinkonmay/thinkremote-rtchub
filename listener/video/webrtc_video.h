@@ -2,7 +2,7 @@
 #define __WEBRTC_VIDEO_H__
 #include <stdlib.h>
 
-extern void goHandlePipelineBuffer(void *buffer, int bufferLen, int samples);
+extern void goHandlePipelineBufferVideo(void *buffer, int bufferLen, int samples);
 extern void handleVideoStopOrError            ();
 
 void*create_video_pipeline(char *pipeline,void** err);

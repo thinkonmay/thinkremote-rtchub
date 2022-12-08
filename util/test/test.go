@@ -6,7 +6,6 @@ import (
 	"time"
 
 	childprocess "github.com/OnePlay-Internet/webrtc-proxy/util/child-process"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 )
 
@@ -15,6 +14,9 @@ const (
 	videoClockRate = 90000
 	audioClockRate = 48000
 	pcmClockRate   = 8000
+
+	defaultAudioBitrate = 128000
+	defaultVideoBitrate = 3000
 )
 
 func formatDeviceID(in string) string {
@@ -39,9 +41,8 @@ func formatDeviceID(in string) string {
 }
 
 
-func GstTestAudio(source *config.ListenerConfig) (string,int) {
+func GstTestAudio(soundcard *tool.Soundcard) (string,int) {
 	options := make([]map[string]string,0); 
-	soundcard := source.Source.(*tool.Soundcard)
 
 	// wasapi2 has higher priority
 	if soundcard.Api == "wasapi2" {
@@ -71,7 +72,7 @@ func GstTestAudio(source *config.ListenerConfig) (string,int) {
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 							"audioconvert",
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
-							"opusenc",fmt.Sprintf("bitrate=%d",source.Bitrate), "name=encoder",
+							"opusenc",fmt.Sprintf("bitrate=%d",defaultAudioBitrate), "name=encoder",
 							"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 							"appsink","name=appsink")
 
@@ -124,14 +125,14 @@ func GstTestAudio(source *config.ListenerConfig) (string,int) {
 }
 
 
-func GstTestNvCodec(source *config.ListenerConfig) (string,int) {
+func GstTestNvCodec(source *tool.Monitor) (string,int) {
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
-						fmt.Sprintf("monitor-handle=%d",source.Source.(*tool.Monitor).MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1,clock-rate=%d",source.Source.(*tool.Monitor).Framerate,videoClockRate), 
+						fmt.Sprintf("monitor-handle=%d",source.MonitorHandle),
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1,clock-rate=%d",source.Framerate,videoClockRate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11download",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
-						"nvh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"zerolatency=true","rc-mode=2","name=encoder",
+						"nvh264enc",fmt.Sprintf("bitrate=%d",defaultVideoBitrate),"zerolatency=true","rc-mode=2","name=encoder",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"appsink","name=appsink")
 
@@ -181,14 +182,14 @@ func GstTestNvCodec(source *config.ListenerConfig) (string,int) {
 
 
 
-func GstTestMediaFoundation(source *config.ListenerConfig) (string,int) {
+func GstTestMediaFoundation(source *tool.Monitor) (string,int) {
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
-						fmt.Sprintf("monitor-handle=%d",source.Source.(*tool.Monitor).MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1,clock-rate=%d",source.Source.(*tool.Monitor).Framerate,videoClockRate), 
+						fmt.Sprintf("monitor-handle=%d",source.MonitorHandle),
+						"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=%d/1,clock-rate=%d",source.Framerate,videoClockRate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
-						"mfh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"rc-mode=0","low-latency=true","ref=1","quality-vs-speed=0","name=encoder",
+						"mfh264enc",fmt.Sprintf("bitrate=%d",defaultVideoBitrate),"rc-mode=0","low-latency=true","ref=1","quality-vs-speed=0","name=encoder",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"appsink","name=appsink")
 
@@ -237,16 +238,16 @@ func GstTestMediaFoundation(source *config.ListenerConfig) (string,int) {
 }
 
 
-func GstTestSoftwareEncoder(source *config.ListenerConfig) (string,int) {
+func GstTestSoftwareEncoder(source *tool.Monitor) (string,int) {
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc","blocksize=8192",
-						fmt.Sprintf("monitor-handle=%d",source.Source.(*tool.Monitor).MonitorHandle),
-						"!", fmt.Sprintf("video/x-raw,framerate=%d/1,clock-rate=%d",source.Source.(*tool.Monitor).Framerate,videoClockRate), 
+						fmt.Sprintf("monitor-handle=%d",source.MonitorHandle),
+						"!", fmt.Sprintf("video/x-raw,framerate=%d/1,clock-rate=%d",source.Framerate,videoClockRate), 
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11convert",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"d3d11download",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
-						"openh264enc",fmt.Sprintf("bitrate=%d",source.Bitrate),"usage-type=1","rate-control=1","multi-thread=8","name=encoder",
+						"openh264enc",fmt.Sprintf("bitrate=%d",defaultVideoBitrate),"usage-type=1","rate-control=1","multi-thread=8","name=encoder",
 						"!","queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3","!",
 						"appsink","name=appsink")
 

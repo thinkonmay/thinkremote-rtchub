@@ -27,7 +27,7 @@ type ListenerConfig struct {
 	ID		  string
 	StreamID  string
 	Codec     string
-	Bitrate int
+	Bitrate   int
 }
 
 type BroadcasterConfig struct {
