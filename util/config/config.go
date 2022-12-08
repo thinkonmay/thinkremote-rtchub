@@ -3,7 +3,6 @@ package config
 import (
 	"sync"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -23,15 +22,12 @@ type GrpcConfig struct {
 }
 
 type ListenerConfig struct {
-	Bitrate int
-	MediaType string
+	Source 	  interface{}
 
-	VideoSource tool.Monitor
-	AudioSource tool.Soundcard
-
-	DataType  string
-	Name      string
+	ID		  string
+	StreamID  string
 	Codec     string
+	Bitrate int
 }
 
 type BroadcasterConfig struct {
@@ -39,14 +35,12 @@ type BroadcasterConfig struct {
 	Codec string
 }
 
-
 type DataChannel struct {
-	Send chan string
-	Recv chan string
+	Send    chan string
+	Recv    chan string
 	Channel *webrtc.DataChannel
 }
 type DataChannelConfig struct {
-	Offer bool
 	Mutext *sync.Mutex
-	Confs map[string]*DataChannel
+	Confs  map[string]*DataChannel
 }

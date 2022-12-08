@@ -10,6 +10,7 @@ import (
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
+	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/rtcp"
 	webrtc "github.com/pion/webrtc/v3"
 )
@@ -49,7 +50,6 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 	if err != nil {
 		return
 	}
-
 
 	// TODO
 	// go func() {
@@ -101,8 +101,8 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 
 		br, err := client.onTrack(track)
 		if err != nil {
-			fmt.Printf("unable to handle track: %s\n",err.Error());
-			return;
+			fmt.Printf("unable to handle track: %s\n", err.Error())
+			return
 		}
 
 		fmt.Printf("new track %s\n", track.Codec().MimeType)
@@ -177,49 +177,37 @@ func handleRTCP(rtpSender *webrtc.RTPSender) {
 
 func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 	for _, lis := range listeners {
-		var rtpSender *webrtc.RTPSender
-		listenerConfig := lis.Open()
-		var localTrack webrtc.TrackLocal
+		listenerConfig := lis.GetConfig()
+
+		lis.Open()
 
 		fmt.Printf("added track\n")
-		if listenerConfig.DataType == "rtp" {
-			track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
-				MimeType: listenerConfig.Codec,
-			}, listenerConfig.MediaType, listenerConfig.Name)
-			if err != nil {
-				fmt.Printf("error create track %s\n", err.Error())
-				continue
-			}
 
-			rtpSender, err = client.conn.AddTrack(track)
-			if err != nil {
-				fmt.Printf("error add track %s\n", err.Error())
-				continue
-			}
-
-			go readLoopRTP(lis, track)
-			localTrack = track
-		} else if listenerConfig.DataType == "sample" {
-			track, err := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{
-				MimeType: listenerConfig.Codec,
-			}, listenerConfig.MediaType, listenerConfig.Name)
-			if err != nil {
-				fmt.Printf("error create track %s\n", err.Error())
-				continue
-			}
-
-			rtpSender, err = client.conn.AddTrack(track)
-			if err != nil {
-				fmt.Printf("error add track %s\n", err.Error())
-				continue
-			}
-
-			go readLoopSample(lis, track)
-			localTrack = track
+		var ID string
+		if listenerConfig.StreamID == "audio" {
+			ID = listenerConfig.Source.(*tool.Soundcard).DeviceID;
+		} else if listenerConfig.StreamID == "video" {
+			ID = fmt.Sprintf("%d",listenerConfig.Source.(*tool.Monitor).MonitorHandle);
 		}
 
+		track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
+			MimeType: listenerConfig.Codec,
+		}, ID, listenerConfig.StreamID)
+
+		if err != nil {
+			fmt.Printf("error create track %s\n", err.Error())
+			continue
+		}
+
+		rtpSender, err := client.conn.AddTrack(track)
+		if err != nil {
+			fmt.Printf("error add track %s\n", err.Error())
+			continue
+		}
+
+		go readLoopRTP(lis, track)
 		go handleRTCP(rtpSender)
-		client.mediaTracks = append(client.mediaTracks, localTrack)
+		client.mediaTracks = append(client.mediaTracks, track)
 	}
 }
 
@@ -247,34 +235,15 @@ func ondataChannel(channel *webrtc.DataChannel, chans *config.DataChannelConfig)
 
 func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig) {
 	chans.Mutext = &sync.Mutex{}
-	if !chans.Offer {
-		client.conn.OnDataChannel(func(channel *webrtc.DataChannel) {
-			fmt.Printf("new datachannel\n")
-			channel.OnOpen(func() { ondataChannel(channel, chans) })
-		})
-	} else {
-		for Name, _ := range chans.Confs {
-			fmt.Printf("new datachannel\n")
-			channel, err := client.conn.CreateDataChannel(Name, nil)
-			if err != nil {
-				fmt.Printf("unable to add data channel %s: %s", Name, err.Error())
-				continue
-			}
-			channel.OnOpen(func() { ondataChannel(channel, chans) })
-		}
-	}
-}
 
-func readLoopSample(listener listener.Listener, track *webrtc.TrackLocalStaticSample) {
-	for {
-		pk := listener.ReadSample()
-		if err := track.WriteSample(*pk); err != nil {
-			if errors.Is(err, io.ErrClosedPipe) {
-				fmt.Printf("The peerConnection has been closed.")
-				return
-			}
-			fmt.Printf("fail to write sample%s\n", err.Error())
+	for Name, _ := range chans.Confs {
+		fmt.Printf("new datachannel\n")
+		channel, err := client.conn.CreateDataChannel(Name, nil)
+		if err != nil {
+			fmt.Printf("unable to add data channel %s: %s", Name, err.Error())
+			continue
 		}
+		channel.OnOpen(func() { ondataChannel(channel, chans) })
 	}
 }
 
