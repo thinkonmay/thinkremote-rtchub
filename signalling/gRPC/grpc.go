@@ -17,12 +17,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type deviceSelection struct {
-	SoundCard string	
-	Monitor int
-	Bitrate int			
-	Framerate int		
-}
+
 
 type GRPCclient struct {
 	packet.UnimplementedStreamServiceServer
@@ -32,10 +27,9 @@ type GRPCclient struct {
 	client packet.StreamService_StreamRequestClient
 	requestCount int
 
-	deviceAvailableSent *tool.MediaDevice
 	sdpChan chan *webrtc.SessionDescription
 	iceChan chan *webrtc.ICECandidateInit
-	preflightChan chan deviceSelection
+	preflightChan chan signalling.DeviceSelection
 
 	deviceSelected bool
 	connected bool
@@ -44,13 +38,15 @@ type GRPCclient struct {
 }
 
 
-func InitGRPCClient(conf *config.GrpcConfig,
-					 devices *tool.MediaDevice,
-					 shutdown chan bool) (ret *GRPCclient, err error) {
+func InitGRPCClient(conf 		*config.GrpcConfig,
+					devices 	*tool.MediaDevice,
+					webrtc_conf *config.WebRTCConfig,
+					shutdown chan bool,
+					) (ret *GRPCclient, err error) {
 	ret = &GRPCclient{
 		sdpChan : make(chan *webrtc.SessionDescription),
 		iceChan : make(chan *webrtc.ICECandidateInit),
-		preflightChan : make(chan deviceSelection),
+		preflightChan : make(chan signalling.DeviceSelection),
 		shutdown: shutdown,
 
 		deviceSelected : false,
@@ -116,16 +112,12 @@ func InitGRPCClient(conf *config.GrpcConfig,
 				ret.iceChan <- &ice;
 			case "START":
 				fmt.Printf("Receive start signal\n");
-				ret.SendDeviceAvailable(devices,nil);
+				ret.SendDeviceAvailable(devices,webrtc_conf,nil);
 				ret.connected = true;
 			case "PREFLIGHT" :
-				bitrate,err 	:= strconv.ParseInt(res.Data["bitrate"],10,32);
-				framerate,err 	:= strconv.ParseInt(res.Data["framerate"],10,32);
 				monitor,err 	:= strconv.ParseInt(res.Data["monitor"],10,32);
 				if err == nil {
-					ret.preflightChan<-deviceSelection{
-						Bitrate: int(bitrate),
-						Framerate: int(framerate),
+					ret.preflightChan<-signalling.DeviceSelection{
 						Monitor: int(monitor),
 						SoundCard: res.Data["soundcard"],	
 					};
@@ -175,33 +167,42 @@ func (client *GRPCclient) SendICE(ice *webrtc.ICECandidateInit) error {
 	return nil;
 }
 
-func (client *GRPCclient) SendDeviceAvailable(devices *tool.MediaDevice, preverr error) error {
-	data,err := json.Marshal(devices);
-	if err != nil {
-		return err;
-	}
-	
-	client.deviceAvailableSent = devices
-
+func (client *GRPCclient) SendDeviceAvailable(devices *tool.MediaDevice, 
+											  webrtc_conf *config.WebRTCConfig,
+											  preverr error) (err error) {
 	req := packet.UserRequest{
 		Id: (int64) (client.requestCount),
 		Target: "PREFLIGHT",
 		Headers: map[string]string{},
-		Data: map[string]string{
-			"Devices": string(data),
-		},
+		Data: 	 map[string]string{},
 	}
 
+	data,err := json.Marshal(devices);
+	if err != nil {
+		return
+	} else {
+		req.Data["Devices"] = string(data);
+	}
+
+	if webrtc_conf != nil {
+		data,err = json.Marshal(webrtc_conf);
+		if err != nil {
+			return
+		} else {
+			req.Data["WebRTCConfig"] = string(data);
+		}
+	}
+	
 	if preverr != nil {
 		req.Data["Error"] = preverr.Error()
 	}
 
 	fmt.Printf("PREFLIGHT sent\n");
-	if err := client.client.Send(&req); err != nil {
-		return err;
+	if err = client.client.Send(&req); err != nil {
+		return
 	}
 	client.requestCount++;
-	return nil;
+	return
 }
 
 func (client *GRPCclient) OnICE(fun signalling.OnIceFunc) {
@@ -225,32 +226,9 @@ func (client *GRPCclient) OnSDP(fun signalling.OnSDPFunc) {
 func (client *GRPCclient) OnDeviceSelect(fun signalling.OnDeviceSelectFunc) {
 	go func() {
 		for {
-			devsec := <- client.preflightChan;
-			if client.deviceAvailableSent == nil {
-				fmt.Printf("receive preflight when haven't started\n");
-				continue;
-			}
-			monitor := func () tool.Monitor  {
-				for _,monitor := range client.deviceAvailableSent.Monitors {
-					if monitor.MonitorHandle == devsec.Monitor {
-						monitor.Framerate = devsec.Framerate
-						return monitor
-					}
-				}
-				return tool.Monitor{MonitorHandle: -1}
-			}()
-			soundcard := func () tool.Soundcard {
-				for _,soundcard := range client.deviceAvailableSent.Soundcards {
-					if soundcard.DeviceID == devsec.SoundCard {
-						return soundcard
-					}
-				}
-				return tool.Soundcard{DeviceID: "none"}
-			}()
-
-			err := fun(monitor,soundcard);
+			dev,err := fun(<-client.preflightChan);
 			if err != nil {
-				client.SendDeviceAvailable(client.deviceAvailableSent,err); 
+				client.SendDeviceAvailable(dev,nil,err); 
 			} else {
 				client.deviceSelected = true;
 			}

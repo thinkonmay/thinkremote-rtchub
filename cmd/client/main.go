@@ -59,10 +59,10 @@ func main() {
 		},
 	}
 
-	br := []*config.BroadcasterConfig{{
-		Name: "audio",
-		Codec: webrtc.MimeTypeH264,
-	}}
+	// br := []*config.BroadcasterConfig{{
+	// 	Name: "audio",
+	// 	Codec: webrtc.MimeTypeH264,
+	// }}
 
 	chans := config.DataChannelConfig{
 		Confs: map[string]*config.DataChannel {
@@ -78,8 +78,10 @@ func main() {
 
 	var err error
 	var prox *proxy.Proxy;
-	if prox,err = proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, &chans, Lists,tool.GetDevice(),
-		func(monitor tool.Monitor, soundcard tool.Soundcard) error {
+	// TODO
+	dev := tool.GetDevice()
+	if prox,err = proxy.InitWebRTCProxy(nil, &grpc, &rtc, &chans, Lists,dev,nil,
+		func(monitor tool.Monitor, soundcard tool.Soundcard) (*tool.MediaDevice,error) {
 			for _, listener := range Lists {
 				conf := listener.GetConfig()
 				if conf.StreamID == "video" {

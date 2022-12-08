@@ -220,7 +220,7 @@ func ondataChannel(channel *webrtc.DataChannel, chans *config.DataChannelConfig)
 func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig) {
 	chans.Mutext = &sync.Mutex{}
 
-	for Name, _ := range chans.Confs {
+	for Name,_ := range chans.Confs {
 		fmt.Printf("new datachannel\n")
 		channel, err := client.conn.CreateDataChannel(Name, nil)
 		if err != nil {
@@ -261,12 +261,8 @@ func (client *WebRTCClient) GatherStateChange() webrtc.ICEGathererState {
 func (client *WebRTCClient) ConnectionStateChange() webrtc.ICEConnectionState {
 	return <-client.connectionState
 }
-
 func (client *WebRTCClient) Close() {
-	err := client.conn.Close()
-	if err != nil {
-
-	}
+	client.conn.Close()
 }
 
 func (webrtc *WebRTCClient) OnIncominSDP(sdp *webrtc.SessionDescription) {

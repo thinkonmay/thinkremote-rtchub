@@ -6,10 +6,14 @@ import (
 	"strconv"
 
 	proxy "github.com/OnePlay-Internet/webrtc-proxy"
+	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
+	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/dummy"
+	sink "github.com/OnePlay-Internet/webrtc-proxy/broadcaster/gstreamer"
 	"github.com/OnePlay-Internet/webrtc-proxy/hid"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener/audio"
 	"github.com/OnePlay-Internet/webrtc-proxy/listener/video"
+	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
@@ -19,6 +23,7 @@ import (
 func main() {
 	var err error
 	var token string
+
 	args := os.Args[1:]
 	HIDURL := "localhost:5000"
 
@@ -31,8 +36,8 @@ func main() {
 	TurnUser := "oneplay"
 	TurnPassword := "oneplay"
 
-	qr := tool.GetDevice()
-	if len(qr.Monitors) == 0 {
+	devices := tool.GetDevice()
+	if len(devices.Monitors) == 0 {
 		fmt.Printf("no display available")
 		return
 	}
@@ -55,7 +60,7 @@ func main() {
 		} else if arg == "--device" {
 			fmt.Printf("=======================================================================\n")
 			fmt.Printf("MONITOR DEVICE\n")
-			for index, monitor := range qr.Monitors {
+			for index, monitor := range devices.Monitors {
 				fmt.Printf("=======================================================================\n")
 				fmt.Printf("monitor %d\n", index)
 				fmt.Printf("monitor name 			%s\n", monitor.MonitorName)
@@ -68,7 +73,7 @@ func main() {
 
 			fmt.Printf("=======================================================================\n")
 			fmt.Printf("AUDIO DEVICE\n")
-			for index, audio := range qr.Soundcards {
+			for index, audio := range devices.Soundcards {
 				fmt.Printf("=======================================================================\n")
 				fmt.Printf("audio source 			%d\n", index)
 				fmt.Printf("audio source name 		%s\n", audio.Name)
@@ -98,18 +103,17 @@ func main() {
 		return
 	}
 
-	grpc := config.GrpcConfig{
+	grpc := &config.GrpcConfig{
 		Port:          Port,
 		ServerAddress: signaling,
 		Token:         token,
 	}
-	rtc := config.WebRTCConfig{
+
+	rtc := &config.WebRTCConfig{
 		Ices: []webrtc.ICEServer{{
 			URLs: []string{
-				"stun:stun.l.google.com:19302",
+				"stun:stun.l.google.com:19302",Stun,
 			},
-		}, {
-			URLs: []string{Stun},
 		}, {
 			URLs:           []string{Turn},
 			Username:       TurnUser,
@@ -120,7 +124,7 @@ func main() {
 	}
 
 	chans := config.NewDataChannelConfig([]string{"hid","adaptive","manual"});
-	br := []*config.BroadcasterConfig{}
+	br    := []*config.BroadcasterConfig{}
 	Lists := []listener.Listener{}
 	lis   := []*config.ListenerConfig{{
 		StreamID:  "video",
@@ -142,23 +146,51 @@ func main() {
 
 
 	hid.NewHIDSingleton(HIDURL,chans.Confs["hid"])
-	prox, err := proxy.InitWebRTCProxy(nil, &grpc, &rtc, br, chans, Lists, qr,
-		func(monitor tool.Monitor, soundcard tool.Soundcard) error {
+	prox, err := proxy.InitWebRTCProxy(nil, grpc, rtc, chans,devices, Lists,
+		func(tr *webrtc.TrackRemote) (broadcaster.Broadcaster, error) {
+			for _, conf := range br {
+				if tr.Codec().MimeType == conf.Codec {
+					return sink.CreatePipeline(conf)
+				} else {
+					fmt.Printf("no available codec handler, using dummy sink\n")
+					return dummy.NewDummyBroadcaster(conf)
+				}
+			}
+			return nil,fmt.Errorf("unavailable broadcaster")
+		},
+		func(selection signalling.DeviceSelection) (*tool.MediaDevice,error) {
+			monitor := func () tool.Monitor  {
+				for _,monitor := range devices.Monitors {
+					if monitor.MonitorHandle == selection.Monitor {
+						return monitor
+					}
+				}
+				return tool.Monitor{MonitorHandle: -1}
+			}()
+			soundcard := func () tool.Soundcard {
+				for _,soundcard := range devices.Soundcards {
+					if soundcard.DeviceID == selection.SoundCard {
+						return soundcard
+					}
+				}
+				return tool.Soundcard{DeviceID: "none"}
+			}()
+
 			for _, listener := range Lists {
 				conf := listener.GetConfig()
 				if conf.StreamID == "video" {
 					err := listener.SetSource(&monitor)
 					if err != nil {
-						return err
+						return devices,err
 					}
 				} else if conf.StreamID == "audio" {
 					err := listener.SetSource(&soundcard)
 					if err != nil {
-						return err
+						return devices,err
 					}
 				}
 			}
-			return nil
+			return nil,nil
 		},
 	)
 

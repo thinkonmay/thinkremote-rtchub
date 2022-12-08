@@ -5,11 +5,17 @@ import (
 	"github.com/pion/webrtc/v3"
 )
 
+
+type DeviceSelection struct {
+	SoundCard string	
+	Monitor int
+}
+
 type OnIceFunc func (*webrtc.ICECandidateInit) 
 
 type OnSDPFunc func (*webrtc.SessionDescription) 
 
-type OnDeviceSelectFunc func (tool.Monitor, tool.Soundcard) error
+type OnDeviceSelectFunc func (selection DeviceSelection) ( *tool.MediaDevice,error)
 
 type Signalling interface {
 	SendSDP(*webrtc.SessionDescription) error;
