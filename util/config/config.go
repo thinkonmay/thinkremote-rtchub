@@ -7,7 +7,7 @@ import (
 )
 
 type WebRTCConfig struct {
-	Ices []webrtc.ICEServer
+	Ices []webrtc.ICEServer `json:"iceServers"`
 }
 
 type WebsocketConfig struct {

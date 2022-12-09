@@ -125,24 +125,17 @@ func main() {
 
 	chans := config.NewDataChannelConfig([]string{"hid","adaptive","manual"});
 	br    := []*config.BroadcasterConfig{}
-	Lists := []listener.Listener{}
-	lis   := []*config.ListenerConfig{{
-		StreamID:  "video",
-		Codec:     webrtc.MimeTypeH264,
-	}, {
-		StreamID:  "audio",
-		Codec:     webrtc.MimeTypeOpus,
-	}}
-
-	for _, conf := range lis {
-		if conf.StreamID == "video" {
-			Lists = append(Lists, video.CreatePipeline(conf,chans.Confs["adaptive"]))
-		} else if conf.StreamID == "audio" {
-			Lists = append(Lists, audio.CreatePipeline(conf))
-		} else {
-			continue
-		}
+	Lists := []listener.Listener{
+		audio.CreatePipeline(&config.ListenerConfig{
+			StreamID:  "audio",
+			Codec:     webrtc.MimeTypeOpus,
+		}), video.CreatePipeline(&config.ListenerConfig{
+			StreamID:  "video",
+			Codec:     webrtc.MimeTypeH264,
+		} ,chans.Confs["adaptive"]),
 	}
+
+
 
 
 	hid.NewHIDSingleton(HIDURL,chans.Confs["hid"])
@@ -151,12 +144,13 @@ func main() {
 			for _, conf := range br {
 				if tr.Codec().MimeType == conf.Codec {
 					return sink.CreatePipeline(conf)
-				} else {
-					fmt.Printf("no available codec handler, using dummy sink\n")
-					return dummy.NewDummyBroadcaster(conf)
-				}
+				} 
 			}
-			return nil,fmt.Errorf("unavailable broadcaster")
+			fmt.Printf("no available codec handler, using dummy sink\n")
+			return dummy.NewDummyBroadcaster(&config.BroadcasterConfig{
+				Name: "dummy",
+				Codec:"any",
+			})
 		},
 		func(selection signalling.DeviceSelection) (*tool.MediaDevice,error) {
 			monitor := func () tool.Monitor  {
