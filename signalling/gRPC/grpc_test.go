@@ -18,7 +18,7 @@ func TestClient(t *testing.T) {
 	shutdown_channel := make(chan bool)
 
 	dev := tool.GetDevice()
-	client, err := InitGRPCClient(&conf,dev,shutdown_channel);
+	client, err := InitGRPCClient(&conf,dev,nil,shutdown_channel);
 	if err != nil {
 		t.Error(err)
 	}

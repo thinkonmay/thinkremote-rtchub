@@ -85,12 +85,12 @@ func main() {
 			fmt.Printf("--token 	 	 |  server token\n")
 			fmt.Printf("--hid   	 	 |  HID server URL (example: localhost:5000)\n")
 			fmt.Printf("--grpcport   	 |  HID server URL (example: localhost:5000)\n")
-			fmt.Printf("--stun  	 	 |  TURN server (example: stun:workstation.thinkmay.net:3478 )\n")
-			fmt.Printf("--turn  	 	 |  TURN server (example: stun:workstation.thinkmay.net:3478 )\n")
-			fmt.Printf("--turncred  	 |  TURN server (example: stun:workstation.thinkmay.net:3478 )\n")
-			fmt.Printf("--turnuser  	 |  TURN server (example: stun:workstation.thinkmay.net:3478 )\n")
-			fmt.Printf("--signaling  	 |  TURN server (example: (signaling.thinkmay.net or 54.169.49.176 )\n")
-			fmt.Printf("--signalingport  |  TURN server (example: stun:workstation.thinkmay.net:3478 )\n")
+			fmt.Printf("--stun  	 	 |  TURN server \n")
+			fmt.Printf("--turn  	 	 |  TURN server \n")
+			fmt.Printf("--turncred  	 |  TURN server \n")
+			fmt.Printf("--turnuser  	 |  TURN server \n")
+			fmt.Printf("--signaling  	 |  TURN server \n")
+			fmt.Printf("--signalingport  |  TURN server \n")
 			return
 		}
 	}
@@ -98,6 +98,7 @@ func main() {
 	if token == "" {
 		err = fmt.Errorf("no available token")
 	}
+	
 	if err != nil {
 		fmt.Printf("invalid argument : %s\n", err.Error())
 		return
@@ -109,18 +110,15 @@ func main() {
 		Token:         token,
 	}
 
-	rtc := &config.WebRTCConfig{
-		Ices: []webrtc.ICEServer{{
+	rtc := &config.WebRTCConfig{ Ices: []webrtc.ICEServer{{
 			URLs: []string{
 				"stun:stun.l.google.com:19302",Stun,
-			},
-		}, {
-			URLs:           []string{Turn},
-			Username:       TurnUser,
-			Credential:     TurnPassword,
-			CredentialType: webrtc.ICECredentialTypePassword,
-		},
-		},
+			}, }, {
+				URLs:           []string{Turn},
+				Username:       TurnUser,
+				Credential:     TurnPassword,
+				CredentialType: webrtc.ICECredentialTypePassword,
+		}, },
 	}
 
 	chans := config.NewDataChannelConfig([]string{"hid","adaptive","manual"});
@@ -134,8 +132,6 @@ func main() {
 			Codec:     webrtc.MimeTypeH264,
 		} ,chans.Confs["adaptive"]),
 	}
-
-
 
 
 	hid.NewHIDSingleton(HIDURL,chans.Confs["hid"])
