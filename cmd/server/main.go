@@ -3,9 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 
-	iceservers "github.com/OnePlay-Internet/daemon-tool/ice-servers"
-	"github.com/OnePlay-Internet/daemon-tool/session"
 	proxy "github.com/OnePlay-Internet/webrtc-proxy"
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
 	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster/dummy"
@@ -22,13 +21,21 @@ import (
 )
 
 func main() {
+	var err error
 	var token string
+
 	args := os.Args[1:]
-
-	grpcString   := ""
-	webrtcString := ""
-
 	HIDURL := "localhost:5000"
+
+	signaling := "54.169.49.176"
+	Port := 30000
+
+	Stun := "stun:workstation.thinkmay.net:3478"
+	Turn := "turn:workstation.thinkmay.net:3478"
+
+	TurnUser := "oneplay"
+	TurnPassword := "oneplay"
+
 	devices := tool.GetDevice()
 	if len(devices.Monitors) == 0 {
 		fmt.Printf("no display available")
@@ -41,9 +48,15 @@ func main() {
 		} else if arg == "--hid" {
 			HIDURL = args[i+1]
 		} else if arg == "--grpc" {
-			grpcString = args[i+1]
-		} else if arg == "--webrtc" {
-			webrtcString = args[i+1]
+			signaling = args[i+1]
+		} else if arg == "--grpcport" {
+			Port, err = strconv.Atoi(args[i+1])
+		} else if arg == "--turn" {
+			Turn = args[i+1]
+		} else if arg == "--turnuser" {
+			TurnUser = args[i+1]
+		} else if arg == "--turnpassword" {
+			TurnPassword = args[i+1]
 		} else if arg == "--device" {
 			fmt.Printf("=======================================================================\n")
 			fmt.Printf("MONITOR DEVICE\n")
@@ -71,25 +84,42 @@ func main() {
 		} else if arg == "--help" {
 			fmt.Printf("--token 	 	 |  server token\n")
 			fmt.Printf("--hid   	 	 |  HID server URL (example: localhost:5000)\n")
+			fmt.Printf("--grpcport   	 |  HID server URL (example: localhost:5000)\n")
+			fmt.Printf("--stun  	 	 |  TURN server \n")
+			fmt.Printf("--turn  	 	 |  TURN server \n")
+			fmt.Printf("--turncred  	 |  TURN server \n")
+			fmt.Printf("--turnuser  	 |  TURN server \n")
+			fmt.Printf("--signaling  	 |  TURN server \n")
+			fmt.Printf("--signalingport  |  TURN server \n")
 			return
 		}
 	}
+
 	if token == "" {
-		fmt.Printf("no available token")
-		return
+		err = fmt.Errorf("no available token")
 	}
 	
+	if err != nil {
+		fmt.Printf("invalid argument : %s\n", err.Error())
+		return
+	}
 
-	
-
-	signaling := session.DecodeSignalingConfig(grpcString)
 	grpc := &config.GrpcConfig{
-		Port:          signaling.Grpcport,
-		ServerAddress: signaling.Grpcip,
+		Port:          Port,
+		ServerAddress: signaling,
 		Token:         token,
 	}
 
-	rtc := iceservers.DecodeWebRTCConfig(webrtcString);
+	rtc := &config.WebRTCConfig{ Ices: []webrtc.ICEServer{{
+			URLs: []string{
+				"stun:stun.l.google.com:19302",Stun,
+			}, }, {
+				URLs:           []string{Turn},
+				Username:       TurnUser,
+				Credential:     TurnPassword,
+				CredentialType: webrtc.ICECredentialTypePassword,
+		}, },
+	}
 
 	chans := config.NewDataChannelConfig([]string{"hid","adaptive","manual"});
 	br    := []*config.BroadcasterConfig{}
