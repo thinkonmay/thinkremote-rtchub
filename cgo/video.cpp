@@ -42,7 +42,7 @@ gstreamer_send_video_bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
 }
 
 GstFlowReturn 
-handle_audio_sample(GstElement *object, gpointer user_data) {
+handle_video_sample(GstElement *object, gpointer user_data) {
     GstSample *sample = NULL;
     GstBuffer *buffer = NULL;
     gsize copy_size = 0;
@@ -51,13 +51,13 @@ handle_audio_sample(GstElement *object, gpointer user_data) {
     if (sample) {
         buffer = gst_sample_get_buffer(sample);
         if (buffer) {
-        copy_size = gst_buffer_get_size(buffer);
-        if(copy_size) {
-            gpointer copy = malloc(copy_size);
-            gst_buffer_extract(buffer, 0, (gpointer)copy, copy_size); // linking gstreamer to go limited available stack frame // very dangerous to modify
-            goHandlePipelineBufferVideo(copy, copy_size, GST_BUFFER_DURATION(buffer));
-            free(copy);
-        }
+            copy_size = gst_buffer_get_size(buffer);
+            if(copy_size) {
+                gpointer copy = malloc(copy_size);
+                gst_buffer_extract(buffer, 0, (gpointer)copy, copy_size); // linking gstreamer to go limited available stack frame // very dangerous to modify
+                goHandlePipelineBufferVideo(copy, copy_size, GST_BUFFER_DURATION(buffer));
+                free(copy);
+            }
         }
         gst_sample_unref (sample);
     }
@@ -88,7 +88,7 @@ start_video_pipeline(void* pipeline) {
 
     GstElement *appsink = gst_bin_get_by_name(GST_BIN(pipeline), "appsink");
     g_object_set(appsink, "emit-signals", TRUE, NULL);
-    g_signal_connect(appsink, "new-sample", G_CALLBACK(handle_audio_sample), NULL);
+    g_signal_connect(appsink, "new-sample", G_CALLBACK(handle_video_sample), NULL);
     gst_object_unref(appsink);
 
     gst_element_set_state((GstElement*)pipeline, GST_STATE_PLAYING);

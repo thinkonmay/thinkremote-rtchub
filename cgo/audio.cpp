@@ -44,17 +44,18 @@ handle_audio_buffer(GstElement *object, gpointer user_data) {
     GstSample *sample = NULL;
     GstBuffer *buffer = NULL;
     gsize copy_size = 0;
-    char copy[1000] = {0};
 
     g_signal_emit_by_name (object, "pull-sample", &sample);
     if (sample) {
         buffer = gst_sample_get_buffer(sample);
         if (buffer) {
-        copy_size = gst_buffer_get_size(buffer);
-
-        gst_buffer_extract(buffer, 0, (gpointer)copy, copy_size);
-        if(copy || copy_size)
-            goHandlePipelineBufferAudio(copy, copy_size, GST_BUFFER_DURATION(buffer));
+            copy_size = gst_buffer_get_size(buffer);
+            if(copy_size) {
+                gpointer copy = malloc(copy_size);
+                gst_buffer_extract(buffer, 0, (gpointer)copy, copy_size);
+                goHandlePipelineBufferAudio(copy, copy_size, GST_BUFFER_DURATION(buffer));
+                free(copy);
+            }
         }
         gst_sample_unref (sample);
     }

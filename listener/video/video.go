@@ -3,6 +3,7 @@ package video
 
 import (
 	"fmt"
+	"time"
 	"unsafe"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/adaptive"
@@ -27,7 +28,7 @@ func init() {
 type Pipeline struct {
 	pipeline    unsafe.Pointer
 	pipelineStr string
-	clockRate   int
+	clockRate   float64
 
 	monitor *tool.Monitor
 	config  *config.ListenerConfig
@@ -65,7 +66,7 @@ func CreatePipeline(config *config.ListenerConfig,AdsDataChannel *config.DataCha
 
 //export goHandlePipelineBufferVideo
 func goHandlePipelineBufferVideo(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
-	samples := uint32(int(duration) * pipeline.clockRate)
+	samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
 	c_byte := C.GoBytes(buffer, bufferLen)
 	packets := pipeline.packetizer.Packetize(c_byte, samples)
 
@@ -74,7 +75,7 @@ func goHandlePipelineBufferVideo(buffer unsafe.Pointer, bufferLen C.int, duratio
 	}
 }
 
-func (p *Pipeline) getDecodePipeline(monitor *tool.Monitor) (string, int) {
+func (p *Pipeline) getDecodePipeline(monitor *tool.Monitor) (string, float64) {
 	pipelineStr, clockRate := gsttest.GstTestMediaFoundation(monitor)
 	if pipelineStr == "" {
 		pipelineStr, clockRate = gsttest.GstTestNvCodec(monitor)

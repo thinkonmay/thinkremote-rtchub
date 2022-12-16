@@ -39,7 +39,7 @@ func formatDeviceID(in string) string {
 	return string(ret)
 }
 
-func GstTestAudio(soundcard *tool.Soundcard) (string, int) {
+func GstTestAudio(soundcard *tool.Soundcard) (string, float64) {
 	options := make([]map[string]string, 0)
 
 	// wasapi2 has higher priority
@@ -119,7 +119,7 @@ func GstTestAudio(soundcard *tool.Soundcard) (string, int) {
 	}
 }
 
-func GstTestNvCodec(source *tool.Monitor) (string, int) {
+func GstTestNvCodec(source *tool.Monitor) (string, float64) {
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
 		fmt.Sprintf("monitor-handle=%d", source.MonitorHandle),
 		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", videoClockRate),
@@ -174,7 +174,7 @@ func GstTestNvCodec(source *tool.Monitor) (string, int) {
 	}
 }
 
-func GstTestMediaFoundation(source *tool.Monitor) (string, int) {
+func GstTestMediaFoundation(source *tool.Monitor) (string, float64) {
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
 		fmt.Sprintf("monitor-handle=%d", source.MonitorHandle),
 		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", videoClockRate),
@@ -229,7 +229,7 @@ func GstTestMediaFoundation(source *tool.Monitor) (string, int) {
 	}
 }
 
-func GstTestSoftwareEncoder(source *tool.Monitor) (string, int) {
+func GstTestSoftwareEncoder(source *tool.Monitor) (string, float64) {
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
 		fmt.Sprintf("monitor-handle=%d", source.MonitorHandle),
 		"!", fmt.Sprintf("video/x-raw,clock-rate=%d", videoClockRate),

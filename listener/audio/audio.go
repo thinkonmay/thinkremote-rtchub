@@ -3,6 +3,7 @@ package audio
 
 import (
 	"fmt"
+	"time"
 	"unsafe"
 
 	"github.com/OnePlay-Internet/webrtc-proxy/rtppay"
@@ -28,7 +29,7 @@ type Pipeline struct {
 	pipelineStr string
 
 	soundcard *tool.Soundcard
-	clockRate int
+	clockRate float64
 
 	rtpchan chan *rtp.Packet
 	config  *config.ListenerConfig
@@ -36,6 +37,8 @@ type Pipeline struct {
 	packetizer rtppay.Packetizer
 
 	restartCount int
+
+	lastPacketTimestamp time.Time
 }
 
 var pipeline *Pipeline
@@ -60,9 +63,8 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 
 //export goHandlePipelineBufferAudio
 func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
+	samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
 	c_byte := C.GoBytes(buffer, bufferLen)
-
-	samples := uint32(int(duration) * pipeline.clockRate)
 	packets := pipeline.packetizer.Packetize(c_byte, samples)
 
 	for _, packet := range packets {

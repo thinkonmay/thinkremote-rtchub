@@ -41,16 +41,17 @@
             "request": "launch",
             "mode": "debug",
             "program": "${workspaceFolder}/cmd/server",
-            "cwd": "C:/Users/XPS 9500/Desktop/actions-runner/WebRTC/Thinkshare/Thinkshare/2022_10_06_10_49_21.906/Thinkshare/package/bin",
-            "args": ["--token",
-            "--hid", 
-            "localhost:5000",
+            // "cwd": "C:/Users/XPS 9500/Desktop/actions-runner/WebRTC/Thinkshare/Thinkshare/2022_10_06_10_49_21.906/Thinkshare/package/bin",
+            "args": [
+            "--hid" ,
+            "localhost:5007",
             "--token",
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWNpcGllbnQiOiIyIiwiaXNTZXJ2ZXIiOiJUcnVlIiwiaWQiOiI1MjEiLCJuYmYiOjE2NzA2ODEyNDIsImV4cCI6MTY3MDk0MDQ0MiwiaWF0IjoxNjcwNjgxMjQyfQ.cB2InCuLBqt_8uxUV869D0Yc9iw83sqlKLtcjL7ifGE",
+            // "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWNpcGllbnQiOiIyIiwiaXNTZXJ2ZXIiOiJUcnVlIiwiaWQiOiI1NDYiLCJuYmYiOjE2NzExNjMxNDEsImV4cCI6MTY3MTQyMjM0MSwiaWF0IjoxNjcxMTYzMTQxfQ.131E8-uEYpq9CnNrK0M-qTLeG5TW27cLhslKKHe4B_o",
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWNpcGllbnQiOiIyIiwiaXNTZXJ2ZXIiOiJUcnVlIiwiaWQiOiI1NDciLCJuYmYiOjE2NzExNjgxMjcsImV4cCI6MTY3MTQyNzMyNywiaWF0IjoxNjcxMTY4MTI3fQ.vgQFjKN_WVQbYhVDbQlUwgaD3QothDxIuuUgfBytDlY",
             "--grpc",
             "eyJ3c3VybCI6IndzczovL3JlbW90ZS50aGlua21heS5uZXQvaGFuZHNoYWtlIiwiZ3JwY3BvcnQiOjMwMDAwLCJncnBjaXAiOiI1NC4xNjkuNDkuMTc2In0",
             "--webrtc",
-            "eyJpY2VTZXJ2ZXJzIjpbeyJjcmVkZW50aWFsVHlwZSI6InBhc3N3b3JkIiwidXJscyI6WyJzdHVuOnN0dW4ubC5nb29nbGUuY29tOjE5MzAyIiwic3R1bjpzdHVuMS5sLmdvb2dsZS5jb206MTkzMDIiLCJzdHVuOnN0dW4yLmwuZ29vZ2xlLmNvbToxOTMwMiIsInN0dW46c3R1bjMubC5nb29nbGUuY29tOjE5MzAyIiwic3R1bjpzdHVuNC5sLmdvb2dsZS5jb206MTkzMDIiXX0seyJjcmVkZW50aWFsIjoib25lcGxheSIsImNyZWRlbnRpYWxUeXBlIjoicGFzc3dvcmQiLCJ1cmxzIjpbInR1cm46d29ya3N0YXRpb24udGhpbmttYXkubmV0OjM0NzgiXSwidXNlcm5hbWUiOiJvbmVwbGF5In1dfQ"
+            "eyJpY2VTZXJ2ZXJzIjpbeyJjcmVkZW50aWFsIjoib25lcGxheSIsImNyZWRlbnRpYWxUeXBlIjoicGFzc3dvcmQiLCJ1cmxzIjpbInR1cm46d29ya3N0YXRpb24udGhpbmttYXkubmV0OjM0NzgiXSwidXNlcm5hbWUiOiJvbmVwbGF5In0seyJjcmVkZW50aWFsVHlwZSI6InBhc3N3b3JkIiwidXJscyI6WyJzdHVuOndvcmtzdGF0aW9uLnRoaW5rbWF5Lm5ldDozNDc4Il19XX0",
             ]
         }
     ]
