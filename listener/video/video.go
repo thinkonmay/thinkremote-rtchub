@@ -2,6 +2,7 @@
 package video
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 	"unsafe"
@@ -44,14 +45,16 @@ type Pipeline struct {
 var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig,AdsDataChannel *config.DataChannel) *Pipeline {
+func CreatePipeline(config *config.ListenerConfig,
+					Ads *config.DataChannel,
+					Manual *config.DataChannel) *Pipeline {
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
 		rtpchan:      make(chan *rtp.Packet),
 		config:       config,
 		pipelineStr : "fakesrc ! appsink name=appsink",
 		restartCount: 0,
-		adsContext :  adaptive.NewAdsContext(AdsDataChannel.Recv,func(bitrate int) {
+		adsContext :  adaptive.NewAdsContext(Ads.Recv,func(bitrate int) {
 			if pipeline.pipeline == nil {
 				return
 			}
@@ -60,6 +63,25 @@ func CreatePipeline(config *config.ListenerConfig,AdsDataChannel *config.DataCha
 		}),
 	}
 
+	go func ()  {
+		for {
+			data := <-Manual.Recv
+
+			var dat map[string]interface{}
+			err := json.Unmarshal([]byte(data),&dat);
+			if err != nil {
+				fmt.Printf("%s",err.Error())
+				continue
+			}
+
+			switch dat["type"].(string) {
+			case "bitrate":
+				C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(dat["bitrate"].(float64)))
+			case "framerate":
+				C.video_pipeline_set_framerate(pipeline.pipeline,C.int(dat["framerate"].(float64)))
+			}
+		}
+	}()
 
 	return pipeline
 }

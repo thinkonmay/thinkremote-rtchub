@@ -90,16 +90,6 @@ func main() {
 	}
 
 	rtc := &config.WebRTCConfig{ Ices: iceservers.DecodeWebRTCConfig(webrtcString).ICEServers, } ;
-	rtc = &config.WebRTCConfig{ Ices: []webrtc.ICEServer{
-		webrtc.ICEServer{
-			URLs: []string{ "turn:52.66.204.210:3478"} ,
-			Credential: "oneplay",
-			Username: "oneplay",
-			CredentialType: webrtc.ICECredentialTypePassword,
-		}, webrtc.ICEServer{
-			URLs: []string{ "stun:52.66.204.210:3478"},
-		},
-	}, } ;
 	chans := config.NewDataChannelConfig([]string{"hid","adaptive","manual"});
 	br    := []*config.BroadcasterConfig{}
 	Lists := []listener.Listener{
@@ -109,7 +99,7 @@ func main() {
 		}), video.CreatePipeline(&config.ListenerConfig{
 			StreamID:  "video",
 			Codec:     webrtc.MimeTypeH264,
-		} ,chans.Confs["adaptive"]),
+		} ,chans.Confs["adaptive"],chans.Confs["manual"]),
 	}
 
 
