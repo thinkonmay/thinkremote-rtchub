@@ -1,8 +1,8 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/OnePlay-Internet/daemon-tool v1.0.1-0.20221210024851-9b814178debd h1:z02NW58eRyHavT5Q2vJRLDzP47K19tkjhMu/hGy8D9Y=
-github.com/OnePlay-Internet/daemon-tool v1.0.1-0.20221210024851-9b814178debd/go.mod h1:F16hUb07GpYoj0RZ+p+3GobPdIVEpzEnYenZF8gj+9o=
+github.com/OnePlay-Internet/daemon-tool v1.0.1-0.20221216024339-94c67f78a6f2 h1:iFJ+ylctbndJlrQivrJ3M1t7W9KW4eb5L+we910e3d8=
+github.com/OnePlay-Internet/daemon-tool v1.0.1-0.20221216024339-94c67f78a6f2/go.mod h1:JjYfNpLQJtpC6Ps24zfwHbiISjhV0wzPKi/T0fOM6rM=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
