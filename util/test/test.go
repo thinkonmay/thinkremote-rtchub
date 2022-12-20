@@ -65,6 +65,9 @@ func GstTestAudio(soundcard *tool.Soundcard) (string, float64) {
 	for _, i := range options {
 		testcase = exec.Command("gst-launch-1.0.exe",
 			i["element"], "name=source", "loopback=true", fmt.Sprintf("device=%s", i["device"]),
+			"!", "audio/x-raw",
+			"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+			"audioresample",
 			"!", fmt.Sprintf("audio/x-raw,clock-rate=%d", audioClockRate),
 			"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 			"audioconvert",
@@ -182,7 +185,7 @@ func GstTestMediaFoundation(source *tool.Monitor) (string, float64) {
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"d3d11convert",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"mfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "rc-mode=0", "low-latency=true", "ref=1", "quality-vs-speed=0", "name=encoder",
+		"mfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "rc-mode=0", "low-latency=true", "ref=0", "quality-vs-speed=0", "name=encoder",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 
