@@ -15,7 +15,7 @@ const (
 	pcmClockRate   = 8000
 
 	defaultAudioBitrate = 128000
-	defaultVideoBitrate = 3000
+	defaultVideoBitrate = 6000
 )
 
 func formatDeviceID(in string) string {
@@ -180,12 +180,12 @@ func GstTestNvCodec(source *tool.Monitor) (string, float64) {
 func GstTestMediaFoundation(source *tool.Monitor) (string, float64) {
 	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
 		fmt.Sprintf("monitor-handle=%d", source.MonitorHandle),
-		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", videoClockRate),
+		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),framerate=55/1,clock-rate=%d", videoClockRate),
 		"!", "capsfilter", "name=framerateFilter",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"d3d11convert",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"mfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "rc-mode=0", "low-latency=true", "ref=1", "quality-vs-speed=0", "name=encoder",
+		"mfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "gop-size=6", "rc-mode=0", "low-latency=true", "ref=1", "quality-vs-speed=0", "name=encoder",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 
