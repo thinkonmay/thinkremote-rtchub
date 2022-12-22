@@ -75,6 +75,12 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 func (p *Pipeline) GetSourceName() (string) {
 	return p.soundcard.DeviceID;
 }
+func (p *Pipeline) SetProperty(name string,val interface{}) error {
+	return fmt.Errorf("unknown prop");
+}
+
+
+
 func (p *Pipeline) SetSource(source interface{}) error {
 	if source.(*tool.Soundcard).DeviceID != "none" {
 		pipelineStr, clockRate := gsttest.GstTestAudio(source.(*tool.Soundcard))

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	iceservers "github.com/OnePlay-Internet/daemon-tool/ice-servers"
 	"github.com/OnePlay-Internet/daemon-tool/session"
@@ -120,7 +121,12 @@ func main() {
 		func(selection signalling.DeviceSelection) (*tool.MediaDevice,error) {
 			monitor := func () tool.Monitor  {
 				for _,monitor := range devices.Monitors {
-					if monitor.MonitorHandle == selection.Monitor {
+					sel,err := strconv.ParseInt(selection.Monitor,10,32)
+					if err != nil {
+						return tool.Monitor{}
+					}
+
+					if monitor.MonitorHandle == int(sel) {
 						return monitor
 					}
 				}
@@ -139,9 +145,21 @@ func main() {
 				conf := listener.GetConfig()
 				if conf.StreamID == "video" {
 					err := listener.SetSource(&monitor)
+					
+					framerate,err := strconv.ParseInt(selection.Framerate,10,32)
+					if err == nil && (10 < framerate && framerate < 200) {
+						listener.SetProperty("framerate",int(framerate))
+					}
+
+					bitrate,err := strconv.ParseInt(selection.Bitrate,10,32)
+					if err == nil && (100 < bitrate && bitrate < 20000) {
+						listener.SetProperty("bitrate",int(bitrate))
+					}
+
 					if err != nil {
 						return devices,err
 					}
+
 				} else if conf.StreamID == "audio" {
 					err := listener.SetSource(&soundcard)
 					if err != nil {

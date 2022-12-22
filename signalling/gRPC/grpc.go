@@ -115,12 +115,10 @@ func InitGRPCClient(conf 		*config.GrpcConfig,
 				ret.SendDeviceAvailable(devices,webrtc_conf,nil);
 				ret.connected = true;
 			case "PREFLIGHT" :
-				monitor,err 	:= strconv.ParseInt(res.Data["monitor"],10,32);
+				sel := signalling.DeviceSelection{}
+				err := json.Unmarshal([]byte(res.Data["result"]),&sel);
 				if err == nil {
-					ret.preflightChan<-signalling.DeviceSelection{
-						Monitor: int(monitor),
-						SoundCard: res.Data["soundcard"],	
-					};
+					ret.preflightChan<-sel
 				}
 			default:
 				fmt.Println("Unknown packet");

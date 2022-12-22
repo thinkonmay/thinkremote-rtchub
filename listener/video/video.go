@@ -111,6 +111,21 @@ func (p *Pipeline) getDecodePipeline(monitor *tool.Monitor) (string, float64) {
 func (p *Pipeline) GetSourceName() (string) {
 	return fmt.Sprintf("%d",p.monitor.MonitorHandle);
 }
+func (p *Pipeline) SetProperty(name string,val interface{}) error {
+	switch name {
+	case "bitrate":
+		C.video_pipeline_set_bitrate(pipeline.pipeline,val.(int))
+		break;
+	case "framerate":
+		C.video_pipeline_set_framerate(pipeline.pipeline,val.(int))
+		break;
+	default:
+		return fmt.Errorf("unknown prop");
+	}
+	return nil;
+}
+
+
 func (p *Pipeline) SetSource(source interface{}) (errr error) {
 	if p.pipelineStr, p.clockRate = p.getDecodePipeline(source.(*tool.Monitor)); p.pipelineStr == "" {
 		errr = fmt.Errorf("unable to create encode pipeline with device")
