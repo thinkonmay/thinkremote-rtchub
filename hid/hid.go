@@ -49,10 +49,6 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 			}
 		}
 	}()
-
-
-
-
 	go func() {
 		for {
 			if ret.client == nil {
@@ -68,10 +64,11 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 					time.Sleep(time.Second)
 					continue;
 				}
+				fmt.Println("new websocket connection established")
 			}
 
 			typ, message, err := ret.client.ReadMessage()
-			if err != nil || typ == websocket.CloseMessage {
+			if (err != nil || typ == websocket.CloseMessage){
 				ret.client.Close()
 				ret.client = nil;
 			}

@@ -25,6 +25,11 @@ func init() {
 	go C.start_video_mainloop()
 }
 
+type Sample struct {
+	data 	 []byte
+	duration C.int
+}
+
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
 	pipeline    unsafe.Pointer
@@ -35,6 +40,8 @@ type Pipeline struct {
 	config  *config.ListenerConfig
 
 	rtpchan    chan *rtp.Packet
+	samplechan chan *Sample
+
 	packetizer rtppay.Packetizer
 
 	adsContext *adaptive.AdaptiveContext
@@ -51,6 +58,7 @@ func CreatePipeline(config *config.ListenerConfig,
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
 		rtpchan:      make(chan *rtp.Packet),
+		samplechan:   make(chan *Sample),
 		config:       config,
 		pipelineStr : "fakesrc ! appsink name=appsink",
 		restartCount: 0,
@@ -62,6 +70,15 @@ func CreatePipeline(config *config.ListenerConfig,
 			C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(bitrate))
 		}),
 	}
+	go func() {
+		s := <- pipeline.samplechan	
+		samples := uint32(time.Duration(s.duration).Seconds() * pipeline.clockRate)
+		packets := pipeline.packetizer.Packetize(s.data, samples)
+
+		for _, packet := range packets {
+			pipeline.rtpchan <- packet
+		}
+	}()
 
 	go func ()  {
 		for {
@@ -88,12 +105,9 @@ func CreatePipeline(config *config.ListenerConfig,
 
 //export goHandlePipelineBufferVideo
 func goHandlePipelineBufferVideo(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
-	samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
-	c_byte := C.GoBytes(buffer, bufferLen)
-	packets := pipeline.packetizer.Packetize(c_byte, samples)
-
-	for _, packet := range packets {
-		pipeline.rtpchan <- packet
+	pipeline.samplechan<-&Sample{
+		data: C.GoBytes(buffer,bufferLen),
+		duration: duration,
 	}
 }
 

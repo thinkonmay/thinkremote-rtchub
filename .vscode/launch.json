@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
 
+        {
+            "name": "Attach to Process",
+            "type": "go",
+            "request": "attach",
+            "mode": "local",
+            "processId": 0
+        },
+
+
 
 
 
@@ -46,12 +55,11 @@
             "--hid" ,
             "localhost:5007",
             "--token",
-            // "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWNpcGllbnQiOiIyIiwiaXNTZXJ2ZXIiOiJUcnVlIiwiaWQiOiI1NDYiLCJuYmYiOjE2NzExNjMxNDEsImV4cCI6MTY3MTQyMjM0MSwiaWF0IjoxNjcxMTYzMTQxfQ.131E8-uEYpq9CnNrK0M-qTLeG5TW27cLhslKKHe4B_o",
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWNpcGllbnQiOiIyIiwiaXNTZXJ2ZXIiOiJUcnVlIiwiaWQiOiI1NDciLCJuYmYiOjE2NzExNjgxMjcsImV4cCI6MTY3MTQyNzMyNywiaWF0IjoxNjcxMTY4MTI3fQ.vgQFjKN_WVQbYhVDbQlUwgaD3QothDxIuuUgfBytDlY",
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWNpcGllbnQiOiI4NiIsImlzU2VydmVyIjoiVHJ1ZSIsImlkIjoiNzciLCJuYmYiOjE2NzE2OTI2MTEsImV4cCI6MTY3MTk1MTgxMSwiaWF0IjoxNjcxNjkyNjExfQ.Je8KM8J-ehQcKxVzcZT0w751zO-aqwKsUCWUuZwYbsM",
             "--grpc",
-            "eyJ3c3VybCI6IndzczovL3JlbW90ZS50aGlua21heS5uZXQvaGFuZHNoYWtlIiwiZ3JwY3BvcnQiOjMwMDAwLCJncnBjaXAiOiI1NC4xNjkuNDkuMTc2In0",
+            "eyJ3c3VybCI6IndzczovL3JlbW90ZS5kZXYudGhpbmttYXkubmV0L2hhbmRzaGFrZSIsImdycGNwb3J0IjozMDAwMSwiZ3JwY2lwIjoiNTQuMTY5LjQ5LjE3NiJ9",
             "--webrtc",
-            "eyJpY2VTZXJ2ZXJzIjpbeyJjcmVkZW50aWFsIjoib25lcGxheSIsImNyZWRlbnRpYWxUeXBlIjoicGFzc3dvcmQiLCJ1cmxzIjpbInR1cm46d29ya3N0YXRpb24udGhpbmttYXkubmV0OjM0NzgiXSwidXNlcm5hbWUiOiJvbmVwbGF5In0seyJjcmVkZW50aWFsVHlwZSI6InBhc3N3b3JkIiwidXJscyI6WyJzdHVuOndvcmtzdGF0aW9uLnRoaW5rbWF5Lm5ldDozNDc4Il19XX0",
+            "eyJpY2VTZXJ2ZXJzIjpbeyJjcmVkZW50aWFsIjoib25lcGxheSIsImNyZWRlbnRpYWxUeXBlIjoicGFzc3dvcmQiLCJ1cmxzIjpbInR1cm46NTIuNjYuMjA0LjIxMDozNDc4Il0sInVzZXJuYW1lIjoib25lcGxheSJ9LHsiY3JlZGVudGlhbFR5cGUiOiJwYXNzd29yZCIsInVybHMiOlsic3R1bjo1Mi42Ni4yMDQuMjEwOjM0NzgiXX1dfQ",
             ]
         }
     ]
