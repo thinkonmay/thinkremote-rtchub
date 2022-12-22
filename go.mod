@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/OnePlay-Internet/daemon-tool v1.0.1-0.20221216024339-94c67f78a6f2
+	github.com/gorilla/websocket v1.5.0
 	github.com/pion/rtcp v1.2.10
 	github.com/pion/rtp v1.7.13
 	github.com/pion/webrtc/v3 v3.1.49
