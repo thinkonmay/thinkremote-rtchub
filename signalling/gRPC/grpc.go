@@ -116,9 +116,11 @@ func InitGRPCClient(conf 		*config.GrpcConfig,
 				ret.connected = true;
 			case "PREFLIGHT" :
 				sel := signalling.DeviceSelection{}
-				err := json.Unmarshal([]byte(res.Data["result"]),&sel);
+				err := json.Unmarshal([]byte(res.Data["value"]),&sel);
 				if err == nil {
 					ret.preflightChan<-sel
+				} else {
+					fmt.Println("%s",err.Error())
 				}
 			default:
 				fmt.Println("Unknown packet");

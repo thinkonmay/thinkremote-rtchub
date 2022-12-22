@@ -146,13 +146,13 @@ func main() {
 				if conf.StreamID == "video" {
 					err := listener.SetSource(&monitor)
 					
-					framerate,err := strconv.ParseInt(selection.Framerate,10,32)
-					if err == nil && (10 < framerate && framerate < 200) {
+					framerate := selection.Framerate;
+					if (10 < framerate && framerate < 200) {
 						listener.SetProperty("framerate",int(framerate))
 					}
 
-					bitrate,err := strconv.ParseInt(selection.Bitrate,10,32)
-					if err == nil && (100 < bitrate && bitrate < 20000) {
+					bitrate := selection.Bitrate;
+					if (100 < bitrate && bitrate < 20000) {
 						listener.SetProperty("bitrate",int(bitrate))
 					}
 

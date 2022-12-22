@@ -28,6 +28,8 @@ func init() {
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
 	pipeline    unsafe.Pointer
+	properties map[string]int
+
 	pipelineStr string
 	clockRate   float64
 
@@ -54,6 +56,7 @@ func CreatePipeline(config *config.ListenerConfig,
 		config:       config,
 		pipelineStr : "fakesrc ! appsink name=appsink",
 		restartCount: 0,
+		properties: make(map[string]int),
 		adsContext :  adaptive.NewAdsContext(Ads.Recv,func(bitrate int) {
 			if pipeline.pipeline == nil {
 				return
@@ -74,12 +77,7 @@ func CreatePipeline(config *config.ListenerConfig,
 				continue
 			}
 
-			switch dat["type"].(string) {
-			case "bitrate":
-				C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(dat["bitrate"].(float64)))
-			case "framerate":
-				C.video_pipeline_set_framerate(pipeline.pipeline,C.int(dat["framerate"].(float64)))
-			}
+			pipeline.SetProperty(dat["type"].(string),int(dat[dat["type"].(string)].(float64)))
 		}
 	}()
 
@@ -111,14 +109,15 @@ func (p *Pipeline) getDecodePipeline(monitor *tool.Monitor) (string, float64) {
 func (p *Pipeline) GetSourceName() (string) {
 	return fmt.Sprintf("%d",p.monitor.MonitorHandle);
 }
-func (p *Pipeline) SetProperty(name string,val interface{}) error {
+func (p *Pipeline) SetProperty(name string,val int) error {
+	fmt.Printf("%s change to %d\n",name,val);
 	switch name {
 	case "bitrate":
-		C.video_pipeline_set_bitrate(pipeline.pipeline,val.(int))
-		break;
+		pipeline.properties["bitrate"] = val
+		C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(val))
 	case "framerate":
-		C.video_pipeline_set_framerate(pipeline.pipeline,val.(int))
-		break;
+		pipeline.properties["framerate"] = val
+		C.video_pipeline_set_framerate(pipeline.pipeline,C.int(val))
 	default:
 		return fmt.Errorf("unknown prop");
 	}
@@ -153,6 +152,10 @@ func (p *Pipeline) SetSource(source interface{}) (errr error) {
 func handleVideoStopOrError() {
 	pipeline.Close()
 	pipeline.SetSource(pipeline.monitor)
+	for key,val := range pipeline.properties {
+		pipeline.SetProperty(key,val)
+	}
+
 	pipeline.Open()
 	pipeline.restartCount++
 }

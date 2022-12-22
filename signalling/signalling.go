@@ -9,8 +9,8 @@ import (
 type DeviceSelection struct {
 	SoundCard 	string		`json:"soundcard"`			
 	Monitor 	string		`json:"monitor"`		
-	Bitrate 	string		`json:"bitrate"`		
-	Framerate 	string		`json:"framerate"` 		
+	Bitrate 	int		`json:"bitrate"`		
+	Framerate 	int		`json:"framerate"` 		
 }
 
 type OnIceFunc func (*webrtc.ICECandidateInit) 

@@ -75,7 +75,7 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 func (p *Pipeline) GetSourceName() (string) {
 	return p.soundcard.DeviceID;
 }
-func (p *Pipeline) SetProperty(name string,val interface{}) error {
+func (p *Pipeline) SetProperty(name string,val int) error {
 	return fmt.Errorf("unknown prop");
 }
 
