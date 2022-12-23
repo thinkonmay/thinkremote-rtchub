@@ -84,12 +84,11 @@ func (p *Pipeline) SetProperty(name string,val int) error {
 
 func (p *Pipeline) SetSource(source interface{}) error {
 	if source.(*tool.Soundcard).DeviceID != "none" {
-		pipelineStr, := gsttest.GstTestAudio(source.(*tool.Soundcard))
+		pipelineStr := gsttest.GstTestAudio(source.(*tool.Soundcard))
 		if pipelineStr == "" {
 			return fmt.Errorf("unable to create encode pipeline with device")
 		}
 		p.pipelineStr = pipelineStr
-		p.clockRate = clockRate
 	}
 
 	pipelineStrUnsafe := C.CString(p.pipelineStr)

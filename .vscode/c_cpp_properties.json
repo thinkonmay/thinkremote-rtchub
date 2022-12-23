@@ -4,8 +4,7 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:/gstreamer/1.0/msvc_x86_64/**",
-                "C:/msys64/mingw64/include/**"
+                "C:/gstreamer-1.21.3-mingw/1.0/**"
             ],
             "defines": [
                 "_DEBUG",
