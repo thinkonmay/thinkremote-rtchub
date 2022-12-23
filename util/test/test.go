@@ -55,9 +55,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"!", "capsfilter", "name=framerateFilter",
 		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"cudaupload",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"nvh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "zerolatency=true", "rc-mode=2", "name=encoder",
+		"amfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "zerolatency=true", "rc-mode=2", "name=encoder",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "opencodec":
@@ -129,8 +127,11 @@ func GstTestAudio(video *tool.Soundcard) string {
 	testcase := FindTestCmd(video.Api,0,video.DeviceID)
 	return gstTestGeneric(video.Api,testcase)
 }
+
+
+
 func GstTestVideo(video *tool.Monitor) string {
-	video_plugins := []string{"amf","nvcodec", "media foundation","opencodec"};
+	video_plugins := []string{"nvcodec","amf", "media foundation","opencodec"};
 
 	class1 := []string{"amf","nvcodec" };
 	class2 := []string{"media foundation" };
@@ -138,10 +139,22 @@ func GstTestVideo(video *tool.Monitor) string {
 
 	available_pipelines := make(map[string]string)
 
-	for _,plugin := range video_plugins {
-		testcase := FindTestCmd(plugin,video.MonitorHandle,"")
-		pipeline := gstTestGeneric(plugin,testcase)
-		available_pipelines[plugin] = pipeline;
+	testAll := false
+	count := 0 
+	for _,_plugin := range video_plugins {
+		testcase := FindTestCmd(_plugin,video.MonitorHandle,"")
+		pipeline := gstTestGeneric(_plugin,testcase)
+		if pipeline != "" {
+			available_pipelines[_plugin] = pipeline;
+			if !testAll {
+				return pipeline
+			}
+		} 
+		count++
+	}
+
+	for { if count == len(video_plugins) { break; }
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	return filterWithClass(available_pipelines,class1,class2,class3);
@@ -156,7 +169,7 @@ func gstTestGeneric(plugin string,testcase *exec.Cmd) string {
 		failed <- true
 	}()
 	go func() {
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second)
 		success <- true
 	}()
 
