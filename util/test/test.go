@@ -56,15 +56,15 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"d3d11convert",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"amfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "rate-control=1", "gop-size=6","preset=1", "name=encoder",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",		
+		"amfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "rate-control=1", "gop-size=6","usage=1","" ,"name=encoder",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "opencodec":
 	return exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
 		fmt.Sprintf("monitor-handle=%d", handle),
 		"!", "capsfilter", "name=framerateFilter",
-		"!", fmt.Sprintf("video/x-raw,clock-rate=%d", VideoClockRate),
+		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"d3d11convert",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
@@ -133,7 +133,10 @@ func GstTestAudio(video *tool.Soundcard) string {
 
 
 func GstTestVideo(video *tool.Monitor) string {
-	video_plugins := []string{"nvcodec","amf", "media foundation","opencodec"};
+
+	// TODO
+	// video_plugins := []string{"nvcodec","amf", "media foundation","opencodec"};
+	video_plugins := []string{"nvcodec","media foundation","opencodec"};
 
 	class1 := []string{"amf","nvcodec" };
 	class2 := []string{"media foundation" };
