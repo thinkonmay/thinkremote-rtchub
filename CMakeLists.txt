@@ -72,7 +72,7 @@ target_compile_options(shared PUBLIC ${GLIB_CFLAGS}
 target_link_directories(shared PUBLIC ${INCLUDE_LIBRARY} )    
 
 target_link_libraries(shared PUBLIC 
-	libstdc++.a
+	# libstdc++.a
     ${GLIB_LIBRARIES} 
     ${GST_LIBRARIES}
     ${VIDEO_LIBRARIES}

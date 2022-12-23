@@ -10,15 +10,90 @@ import (
 )
 
 const (
-	videoClockRate = 90000
-	audioClockRate = 48000
-	pcmClockRate   = 8000
+	VideoClockRate = 90000
+	AudioClockRate = 48000
 
 	defaultAudioBitrate = 128000
 	defaultVideoBitrate = 6000
 )
 
-func formatDeviceID(in string) string {
+
+
+
+
+
+
+
+
+func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
+	switch plugin {
+	case "media foundation":
+	return exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
+		fmt.Sprintf("monitor-handle=%d", handle),
+		"!", "capsfilter", "name=framerateFilter",
+		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"d3d11convert",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"mfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "gop-size=6", "rc-mode=0", "low-latency=true", "ref=1", "quality-vs-speed=0", "name=encoder",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"appsink", "name=appsink")
+	case "nvcodec":
+	return exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
+		fmt.Sprintf("monitor-handle=%d", handle),
+		"!", "capsfilter", "name=framerateFilter",
+		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"cudaupload",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"nvh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "zerolatency=true", "rc-mode=2", "name=encoder",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"appsink", "name=appsink")
+	case "amf":
+	return exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
+		fmt.Sprintf("monitor-handle=%d", handle),
+		"!", "capsfilter", "name=framerateFilter",
+		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"cudaupload",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"nvh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "zerolatency=true", "rc-mode=2", "name=encoder",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"appsink", "name=appsink")
+	case "opencodec":
+	return exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
+		fmt.Sprintf("monitor-handle=%d", handle),
+		"!", "capsfilter", "name=framerateFilter",
+		"!", fmt.Sprintf("video/x-raw,clock-rate=%d", VideoClockRate),
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"d3d11convert",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"d3d11download",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"openh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "usage-type=1", "rate-control=1", "multi-thread=8", "name=encoder",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"appsink", "name=appsink")
+	case "wasapi2":
+	return exec.Command("gst-launch-1.0.exe", "wasapi2src", "name=source", "loopback=true", 
+		fmt.Sprintf("device=%s", formatAudioDeviceID(DeviceID)),
+		"!", "audio/x-raw",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"audioresample",
+		"!", fmt.Sprintf("audio/x-raw,clock-rate=%d", AudioClockRate),
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"audioconvert",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"opusenc", fmt.Sprintf("bitrate=%d", defaultAudioBitrate), "name=encoder",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"appsink", "name=appsink")
+	default:
+		return nil
+	}
+}
+
+
+
+func formatAudioDeviceID(in string) string {
 
 	modified := make([]byte, 0)
 	byts := []byte(in)
@@ -38,105 +113,44 @@ func formatDeviceID(in string) string {
 	ret = append(ret, []byte("\"")...)
 	return string(ret)
 }
-
-func GstTestAudio(soundcard *tool.Soundcard) (string, float64) {
-	options := make([]map[string]string, 0)
-
-	// wasapi2 has higher priority
-	if soundcard.Api == "wasapi2" {
-		options = append(options, map[string]string{
-			"element": "wasapi2src",
-			"device":  formatDeviceID(soundcard.DeviceID),
-		})
-	} else if soundcard.Api == "wasapi" {
-		options = append(options, map[string]string{
-			"element": "wasapisrc",
-			"device":  formatDeviceID(soundcard.DeviceID),
-		})
-	}
-
-	if len(options) == 0 {
-		return "", 0
-	}
-
-	result := false
-	var testcase *exec.Cmd
-
-	for _, i := range options {
-		testcase = exec.Command("gst-launch-1.0.exe",
-			i["element"], "name=source", "loopback=true", fmt.Sprintf("device=%s", i["device"]),
-			"!", "audio/x-raw",
-			"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-			"audioresample",
-			"!", fmt.Sprintf("audio/x-raw,clock-rate=%d", audioClockRate),
-			"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-			"audioconvert",
-			"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-			"opusenc", fmt.Sprintf("bitrate=%d", defaultAudioBitrate), "name=encoder",
-			"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-			"appsink", "name=appsink")
-
-		done := make(chan bool)
-		failed := make(chan bool)
-		success := make(chan bool)
-		go func() {
-			childprocess.HandleProcess(testcase)
-			failed <- true
-		}()
-		go func() {
-			time.Sleep(2 * time.Second)
-			success <- true
-		}()
-		go func() {
-			for {
-				select {
-				case <-success:
-					result = true
-					done <- true
-					return
-				case <-failed:
-					result = false
-					done <- true
-					return
-				}
+func filterWithClass(available map[string]string, classes ...[]string) string {
+	for _,class := range classes {
+		for _,candidate := range class {
+			if available[candidate] != "" {
+				return available[candidate];
 			}
-		}()
-		<-done
-		if testcase.Process != nil {
-			testcase.Process.Kill()
-		}
-
-		if result {
-			break
 		}
 	}
 
-	if result {
-		log := make([]byte, 0)
-		for _, i := range testcase.Args[1:] {
-			log = append(log, append([]byte(i), []byte(" ")...)...)
-		}
-		return string(log), audioClockRate
-	} else {
-		return "", 0
-	}
+	return ""
 }
 
-func GstTestNvCodec(source *tool.Monitor) (string, float64) {
-	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
-		fmt.Sprintf("monitor-handle=%d", source.MonitorHandle),
-		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", videoClockRate),
-		"!", "capsfilter", "name=framerateFilter",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"d3d11download",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"nvh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "zerolatency=true", "rc-mode=2", "name=encoder",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"appsink", "name=appsink")
+func GstTestAudio(video *tool.Soundcard) string {
+	testcase := FindTestCmd(video.Api,0,video.DeviceID)
+	return gstTestGeneric(video.Api,testcase)
+}
+func GstTestVideo(video *tool.Monitor) string {
+	video_plugins := []string{"amf","nvcodec", "media foundation","opencodec"};
 
-	done := make(chan bool)
-	failed := make(chan bool)
-	success := make(chan bool)
+	class1 := []string{"amf","nvcodec" };
+	class2 := []string{"media foundation" };
+	class3 := []string{"opencodec" };
+
+	available_pipelines := make(map[string]string)
+
+	for _,plugin := range video_plugins {
+		testcase := FindTestCmd(plugin,video.MonitorHandle,"")
+		pipeline := gstTestGeneric(plugin,testcase)
+		available_pipelines[plugin] = pipeline;
+	}
+
+	return filterWithClass(available_pipelines,class1,class2,class3);
+}
+
+
+func gstTestGeneric(plugin string,testcase *exec.Cmd) string {
+	done, failed, success := make(chan bool),make(chan bool),make(chan bool)
+
 	go func() {
 		childprocess.HandleProcess(testcase)
 		failed <- true
@@ -171,120 +185,8 @@ func GstTestNvCodec(source *tool.Monitor) (string, float64) {
 		for _, i := range testcase.Args[1:] {
 			log = append(log, append([]byte(i), []byte(" ")...)...)
 		}
-		return string(log), videoClockRate
+		return string(log)
 	} else {
-		return "", 0
-	}
-}
-
-func GstTestMediaFoundation(source *tool.Monitor) (string, float64) {
-	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
-		fmt.Sprintf("monitor-handle=%d", source.MonitorHandle),
-		"!", "capsfilter", "name=framerateFilter",
-		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", videoClockRate),
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"d3d11convert",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"mfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "gop-size=6", "rc-mode=0", "low-latency=true", "ref=1", "quality-vs-speed=0", "name=encoder",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"appsink", "name=appsink")
-
-	done := make(chan bool)
-	failed := make(chan bool)
-	success := make(chan bool)
-	go func() {
-		childprocess.HandleProcess(testcase)
-		failed <- true
-	}()
-	go func() {
-		time.Sleep(2 * time.Second)
-		success <- true
-	}()
-
-	var result bool
-	go func() {
-		for {
-			select {
-			case <-success:
-				result = true
-				done <- true
-				return
-			case <-failed:
-				result = false
-				done <- true
-				return
-			}
-		}
-	}()
-	<-done
-	if testcase.Process != nil {
-		testcase.Process.Kill()
-	}
-
-	if result {
-		log := make([]byte, 0)
-		for _, i := range testcase.Args[1:] {
-			log = append(log, append([]byte(i), []byte(" ")...)...)
-		}
-		return string(log), videoClockRate
-	} else {
-		return "", 0
-	}
-}
-
-func GstTestSoftwareEncoder(source *tool.Monitor) (string, float64) {
-	testcase := exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
-		fmt.Sprintf("monitor-handle=%d", source.MonitorHandle),
-		"!", fmt.Sprintf("video/x-raw,clock-rate=%d", videoClockRate),
-		"!", "capsfilter", "name=framerateFilter",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"d3d11convert",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"d3d11download",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"openh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "usage-type=1", "rate-control=1", "multi-thread=8", "name=encoder",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"appsink", "name=appsink")
-
-	done := make(chan bool)
-	failed := make(chan bool)
-	success := make(chan bool)
-	go func() {
-		childprocess.HandleProcess(testcase)
-		failed <- true
-	}()
-	go func() {
-		time.Sleep(2 * time.Second)
-		success <- true
-	}()
-
-	var result bool
-	go func() {
-		for {
-			select {
-			case <-success:
-				result = true
-				done <- true
-				return
-			case <-failed:
-				result = false
-				done <- true
-				return
-			}
-		}
-	}()
-	<-done
-	if testcase.Process != nil {
-		testcase.Process.Kill()
-	}
-
-	if result {
-		log := make([]byte, 0)
-		for _, i := range testcase.Args[1:] {
-			log = append(log, append([]byte(i), []byte(" ")...)...)
-		}
-		return string(log), videoClockRate
-	} else {
-		return "", 0
+		return ""
 	}
 }
