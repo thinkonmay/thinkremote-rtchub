@@ -7,7 +7,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/adaptive"
+	// TODO
+	// "github.com/OnePlay-Internet/webrtc-proxy/adaptive"
 	"github.com/OnePlay-Internet/webrtc-proxy/rtppay"
 	"github.com/OnePlay-Internet/webrtc-proxy/rtppay/h264"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
@@ -39,7 +40,7 @@ type Pipeline struct {
 	rtpchan    chan *rtp.Packet
 	packetizer rtppay.Packetizer
 
-	adsContext *adaptive.AdaptiveContext
+	// adsContext *adaptive.AdaptiveContext
 
 	restartCount int
 }
@@ -55,16 +56,23 @@ func CreatePipeline(config *config.ListenerConfig,
 		rtpchan:      make(chan *rtp.Packet),
 		config:       config,
 		pipelineStr : "fakesrc ! appsink name=appsink",
+		clockRate: gsttest.VideoClockRate,
 		restartCount: 0,
 		properties: make(map[string]int),
-		adsContext :  adaptive.NewAdsContext(Ads.Recv,func(bitrate int) {
-			if pipeline.pipeline == nil {
-				return
-			}
 
-			C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(bitrate))
-		}),
+		// TODO
+		// adsContext :  adaptive.NewAdsContext(Ads.Recv,func(bitrate int) {
+		// 	if pipeline.pipeline == nil {
+		// 		return
+		// 	}
+		// 	C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(bitrate))
+		// }),
 	}
+
+	// TODO
+	go func() {
+		fmt.Printf("%s\n",<-Ads.Recv)
+	}()
 
 	go func ()  {
 		for {
@@ -95,17 +103,6 @@ func goHandlePipelineBufferVideo(buffer unsafe.Pointer, bufferLen C.int, duratio
 	}
 }
 
-func (p *Pipeline) getDecodePipeline(monitor *tool.Monitor) (string, float64) {
-	pipelineStr, clockRate := gsttest.GstTestMediaFoundation(monitor)
-	if pipelineStr == "" {
-		pipelineStr, clockRate = gsttest.GstTestNvCodec(monitor)
-		if pipelineStr == "" {
-			pipelineStr, clockRate = gsttest.GstTestSoftwareEncoder(monitor)
-		}
-	}
-	return pipelineStr, clockRate
-}
-
 func (p *Pipeline) GetSourceName() (string) {
 	return fmt.Sprintf("%d",p.monitor.MonitorHandle);
 }
@@ -126,7 +123,8 @@ func (p *Pipeline) SetProperty(name string,val int) error {
 
 
 func (p *Pipeline) SetSource(source interface{}) (errr error) {
-	if p.pipelineStr, p.clockRate = p.getDecodePipeline(source.(*tool.Monitor)); p.pipelineStr == "" {
+	p.clockRate = gsttest.VideoClockRate
+	if p.pipelineStr = gsttest.GstTestVideo(source.(*tool.Monitor)); p.pipelineStr == "" {
 		errr = fmt.Errorf("unable to create encode pipeline with device")
 		return
 	}

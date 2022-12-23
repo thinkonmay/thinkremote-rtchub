@@ -9,13 +9,8 @@ import (
 
 func main() {
 	dev := tool.GetDevice()
-	soundcards := dev.Soundcards;
-	result,_ := gsttest.GstTestAudio(&soundcards[0])
+	result := gsttest.GstTestAudio(&dev.Soundcards[0])
 	fmt.Printf("%s\n",result);
-	result,_ = gsttest.GstTestNvCodec( &dev.Monitors[0] )
-	fmt.Printf("%s\n",result)
-	result,_ = gsttest.GstTestMediaFoundation( &dev.Monitors[0] )
-	fmt.Printf("%s\n",result)
-	result,_ = gsttest.GstTestSoftwareEncoder(&dev.Monitors[0] )
+	result = gsttest.GstTestVideo(&dev.Monitors[0])
 	fmt.Printf("%s\n",result)
 }

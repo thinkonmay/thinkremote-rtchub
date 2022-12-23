@@ -51,6 +51,7 @@ func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 		config:    config,
 		pipelineStr : "fakesrc ! appsink name=appsink",
 		restartCount: 0,
+		clockRate: gsttest.AudioClockRate,
 
 		soundcard: &tool.Soundcard{
 			DeviceID: "none",
@@ -83,12 +84,11 @@ func (p *Pipeline) SetProperty(name string,val int) error {
 
 func (p *Pipeline) SetSource(source interface{}) error {
 	if source.(*tool.Soundcard).DeviceID != "none" {
-		pipelineStr, clockRate := gsttest.GstTestAudio(source.(*tool.Soundcard))
+		pipelineStr := gsttest.GstTestAudio(source.(*tool.Soundcard))
 		if pipelineStr == "" {
 			return fmt.Errorf("unable to create encode pipeline with device")
 		}
 		p.pipelineStr = pipelineStr
-		p.clockRate = clockRate
 	}
 
 	pipelineStrUnsafe := C.CString(p.pipelineStr)
