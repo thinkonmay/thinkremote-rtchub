@@ -55,7 +55,9 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"!", "capsfilter", "name=framerateFilter",
 		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"amfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "zerolatency=true", "rc-mode=2", "name=encoder",
+		"d3d11convert",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"amfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "rate-control=1", "gop-size=6","preset=1", "name=encoder",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "opencodec":
