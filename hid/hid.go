@@ -56,7 +56,7 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 	go func() {
 		for {
 			if ret.client == nil {
-				ret.client, _, err = websocket.DefaultDialer.Dial("ws://localhost:5000/Socket",nil)
+				ret.client, _, err = websocket.DefaultDialer.Dial(fmt.Sprintf("ws://%s/Socket",URL),nil)
 				if err != nil || ret.client == nil{
 					fmt.Println("hid websocket error: %s",err.Error())
 					time.Sleep(time.Second)
