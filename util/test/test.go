@@ -147,9 +147,9 @@ func GstTestVideo(video *tool.Monitor) string {
 
 	// TODO
 	// video_plugins := []string{"nvcodec","amf", "media foundation","opencodec"};
-	video_plugins := []string{"nvcodec","quicksync","media foundation","opencodec"};
+	video_plugins := []string{"quicksync","media foundation","opencodec"};
 
-	class1 := []string{"amf","nvcodec" };
+	class1 := []string{"amf","nvcodec","quicksync" };
 	class2 := []string{"media foundation" };
 	class3 := []string{"opencodec" };
 
