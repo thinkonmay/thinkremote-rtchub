@@ -58,13 +58,13 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 			if ret.client == nil {
 				ret.client, _, err = websocket.DefaultDialer.Dial(fmt.Sprintf("ws://%s/Socket",URL),nil)
 				if err != nil || ret.client == nil{
-					fmt.Println("hid websocket error: %s",err.Error())
+					fmt.Printf("hid websocket error: %s\n",err.Error())
 					time.Sleep(time.Second)
 					continue;
 				}
 				err := ret.client.WriteMessage(websocket.TextMessage,[]byte("ping"));
 				if err != nil {
-					fmt.Println("hid websocket error: %s",err.Error())
+					fmt.Printf("hid websocket error: %s\n",err.Error())
 					time.Sleep(time.Second)
 					continue;
 				}
