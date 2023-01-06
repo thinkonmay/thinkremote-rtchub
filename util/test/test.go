@@ -36,6 +36,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"d3d11convert",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"mfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "gop-size=6", "rc-mode=0", "low-latency=true", "ref=1", "quality-vs-speed=0", "name=encoder",
+		"!", "video/x-h264,stream-format=(string)byte-stream,profile=(string)main",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "nvcodec":
@@ -47,6 +48,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"cudaupload",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"nvh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "zerolatency=true", "rc-mode=2", "name=encoder",
+		"!", "video/x-h264,stream-format=(string)byte-stream,profile=(string)main",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"h264parse", "config-interval=-1",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
@@ -60,6 +62,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"d3d11convert",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",		
 		"qsvh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "rate-control=1", "gop-size=6","ref-frames=1" ,"low-latency=true","target-usage=7" ,"name=encoder",
+		"!", "video/x-h264,stream-format=(string)byte-stream,profile=(string)main",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "amf":
@@ -71,6 +74,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"d3d11convert",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",		
 		"amfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "rate-control=1", "gop-size=6","usage=1","name=encoder",
+		"!", "video/x-h264,stream-format=(string)byte-stream,profile=(string)main",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"h264parse", "config-interval=-1",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
@@ -86,6 +90,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"d3d11download",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"openh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "usage-type=1", "rate-control=1", "multi-thread=8", "name=encoder",
+		"!", "video/x-h264,stream-format=(string)byte-stream,profile=(string)main",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "wasapi2":
