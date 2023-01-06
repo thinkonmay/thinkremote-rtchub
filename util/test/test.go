@@ -48,6 +48,8 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"nvh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "zerolatency=true", "rc-mode=2", "name=encoder",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"h264parse", "config-interval=-1",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "quicksync":
 	return exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
@@ -69,6 +71,8 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"d3d11convert",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",		
 		"amfh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "rate-control=1", "gop-size=6","usage=1","name=encoder",
+		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
+		"h264parse", "config-interval=-1",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "opencodec":
