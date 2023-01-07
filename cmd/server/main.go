@@ -104,6 +104,7 @@ func main() {
 	}
 
 
+	fmt.Printf("starting websocket connection establishment with hid server at %s\n",HIDURL);
 	hid.NewHIDSingleton(HIDURL,chans.Confs["hid"])
 	prox, err := proxy.InitWebRTCProxy(nil, grpc, rtc, chans,devices, Lists,
 		func(tr *webrtc.TrackRemote) (broadcaster.Broadcaster, error) {
