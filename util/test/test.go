@@ -47,7 +47,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"cudaupload",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"nvh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "zerolatency=true", "rc-mode=2", "name=encoder",
+		"nvh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "gop-size=6","zerolatency=true","preset=5","strict-gop=true", "rc-mode=2", "name=encoder",
 		"!", "video/x-h264,stream-format=(string)byte-stream,profile=(string)main",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"h264parse", "config-interval=-1",
