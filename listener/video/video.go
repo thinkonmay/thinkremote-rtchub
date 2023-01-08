@@ -53,7 +53,7 @@ func CreatePipeline(config *config.ListenerConfig,
 					Manual *config.DataChannel) *Pipeline {
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
-		rtpchan:      make(chan *rtp.Packet),
+		rtpchan:      make(chan *rtp.Packet,50),
 		config:       config,
 		pipelineStr : "fakesrc ! appsink name=appsink",
 		clockRate: gsttest.VideoClockRate,
