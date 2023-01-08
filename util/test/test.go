@@ -45,12 +45,10 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"!", "capsfilter", "name=framerateFilter",
 		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"cudaupload",
+		"d3d11convert",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"nvh264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "gop-size=6","zerolatency=true","preset=5","strict-gop=true", "rc-mode=2", "name=encoder",
+		"nvd3d11h264enc", fmt.Sprintf("bitrate=%d", defaultVideoBitrate), "gop-size=-1","preset=5","rate-control=2","strict-gop=true", "name=encoder","repeat-sequence-header=true","zero-reorder-delay=true",
 		"!", "video/x-h264,stream-format=(string)byte-stream,profile=(string)main",
-		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
-		"h264parse", "config-interval=-1",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "quicksync":
