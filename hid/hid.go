@@ -40,6 +40,12 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 	}()
 	go func() {
 		for {
+			ret.chann<-"ping"
+			time.Sleep(1 * time.Second)
+		}
+	}()
+	go func() {
+		for {
 			message := <-ret.chann
 			if ret.client != nil {
 				err := ret.client.WriteMessage(websocket.TextMessage,[]byte(message));
