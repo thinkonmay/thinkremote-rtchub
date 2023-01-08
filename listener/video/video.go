@@ -115,6 +115,8 @@ func (p *Pipeline) SetProperty(name string,val int) error {
 	case "framerate":
 		pipeline.properties["framerate"] = val
 		C.video_pipeline_set_framerate(pipeline.pipeline,C.int(val))
+	case "reset":
+		C.pause_video_pipeline(pipeline.pipeline);
 	default:
 		return fmt.Errorf("unknown prop");
 	}

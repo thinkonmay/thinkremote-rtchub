@@ -118,3 +118,8 @@ void
 stop_video_pipeline(void* pipeline) {
     gst_element_set_state((GstElement*)pipeline, GST_STATE_NULL);
 }
+void 
+pause_video_pipeline(void* pipeline) {
+    gst_element_set_state((GstElement*)pipeline, GST_STATE_PAUSED);
+    gst_element_set_state((GstElement*)pipeline, GST_STATE_PLAYING);
+}
