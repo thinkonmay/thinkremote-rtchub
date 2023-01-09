@@ -78,9 +78,10 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 
 				go func ()  {
 					for {
-						if receive_ping == false {
+						if !receive_ping {
 							ret.client.Close()
 							ret.client = nil;
+							receive_ping = true;
 							break;
 						}
 						receive_ping = false;
