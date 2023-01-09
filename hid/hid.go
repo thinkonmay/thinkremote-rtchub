@@ -60,6 +60,7 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 
 
 	go func() {
+		receive_ping := true
 		for {
 			if ret.client == nil {
 				ret.client, _, err = websocket.DefaultDialer.Dial(fmt.Sprintf("ws://%s/Socket",URL),nil)
@@ -74,6 +75,18 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 					time.Sleep(time.Second)
 					continue;
 				}
+
+				go func ()  {
+					for {
+						if receive_ping == false {
+							ret.client.Close()
+							ret.client = nil;
+							break;
+						}
+						receive_ping = false;
+						time.Sleep(3 * time.Second);
+					}
+				}()
 			}
 
 			typ, message, err := ret.client.ReadMessage()
@@ -83,6 +96,10 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 			}
 
 			if typ ==  websocket.TextMessage {
+				if string(message) == "ping" {
+					receive_ping = true;
+					continue;
+				}
 				ret.datachaneel.Send<-string(message)
 			}
 		}
