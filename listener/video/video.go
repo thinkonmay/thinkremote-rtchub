@@ -17,7 +17,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-// #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
+// #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0
 // #cgo LDFLAGS: ${SRCDIR}/../../cgo/lib/libshared.a
 // #include "webrtc_video.h"
 import "C"
@@ -49,16 +49,16 @@ var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig,
-					Ads *config.DataChannel,
-					Manual *config.DataChannel) *Pipeline {
+	Ads *config.DataChannel,
+	Manual *config.DataChannel) *Pipeline {
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
-		rtpchan:      make(chan *rtp.Packet,50),
+		rtpchan:      make(chan *rtp.Packet, 50),
 		config:       config,
-		pipelineStr : "fakesrc ! appsink name=appsink",
-		clockRate: gsttest.VideoClockRate,
+		pipelineStr:  "fakesrc ! appsink name=appsink",
+		clockRate:    gsttest.VideoClockRate,
 		restartCount: 0,
-		properties: make(map[string]int),
+		properties:   make(map[string]int),
 
 		// TODO
 		// adsContext :  adaptive.NewAdsContext(Ads.Recv,func(bitrate int) {
@@ -71,21 +71,21 @@ func CreatePipeline(config *config.ListenerConfig,
 
 	// TODO
 	go func() {
-		fmt.Printf("%s\n",<-Ads.Recv)
+		fmt.Printf("%s\n", <-Ads.Recv)
 	}()
 
-	go func ()  {
+	go func() {
 		for {
 			data := <-Manual.Recv
 
 			var dat map[string]interface{}
-			err := json.Unmarshal([]byte(data),&dat);
+			err := json.Unmarshal([]byte(data), &dat)
 			if err != nil {
-				fmt.Printf("%s",err.Error())
+				fmt.Printf("%s", err.Error())
 				continue
 			}
 
-			pipeline.SetProperty(dat["type"].(string),int(dat[dat["type"].(string)].(float64)))
+			pipeline.SetProperty(dat["type"].(string), int(dat[dat["type"].(string)].(float64)))
 		}
 	}()
 
@@ -103,26 +103,25 @@ func goHandlePipelineBufferVideo(buffer unsafe.Pointer, bufferLen C.int, duratio
 	}
 }
 
-func (p *Pipeline) GetSourceName() (string) {
-	return fmt.Sprintf("%d",p.monitor.MonitorHandle);
+func (p *Pipeline) GetSourceName() string {
+	return fmt.Sprintf("%d", p.monitor.MonitorHandle)
 }
-func (p *Pipeline) SetProperty(name string,val int) error {
-	fmt.Printf("%s change to %d\n",name,val);
+func (p *Pipeline) SetProperty(name string, val int) error {
+	fmt.Printf("%s change to %d\n", name, val)
 	switch name {
 	case "bitrate":
 		pipeline.properties["bitrate"] = val
-		C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(val))
+		C.video_pipeline_set_bitrate(pipeline.pipeline, C.int(val))
 	case "framerate":
 		pipeline.properties["framerate"] = val
-		C.video_pipeline_set_framerate(pipeline.pipeline,C.int(val))
+		C.video_pipeline_set_framerate(pipeline.pipeline, C.int(val))
 	case "reset":
-		C.pause_video_pipeline(pipeline.pipeline);
+		C.force_gen_idr_frame_video_pipeline(pipeline.pipeline)
 	default:
-		return fmt.Errorf("unknown prop");
+		return fmt.Errorf("unknown prop")
 	}
-	return nil;
+	return nil
 }
-
 
 func (p *Pipeline) SetSource(source interface{}) (errr error) {
 	p.clockRate = gsttest.VideoClockRate
@@ -144,7 +143,7 @@ func (p *Pipeline) SetSource(source interface{}) (errr error) {
 
 	fmt.Printf("starting video pipeline: %s", p.pipelineStr)
 	p.pipeline = Pipeline
-	p.monitor = source.(*tool.Monitor);
+	p.monitor = source.(*tool.Monitor)
 	return nil
 }
 
@@ -152,8 +151,8 @@ func (p *Pipeline) SetSource(source interface{}) (errr error) {
 func handleVideoStopOrError() {
 	pipeline.Close()
 	pipeline.SetSource(pipeline.monitor)
-	for key,val := range pipeline.properties {
-		pipeline.SetProperty(key,val)
+	for key, val := range pipeline.properties {
+		pipeline.SetProperty(key, val)
 	}
 
 	pipeline.Open()

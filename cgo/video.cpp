@@ -3,6 +3,7 @@ extern "C" {
 }
 
 #include <gst/app/gstappsrc.h>
+#include <gst/video/video-event.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <glib.h>
@@ -67,6 +68,9 @@ handle_video_sample(GstElement *object, gpointer user_data) {
 void* 
 create_video_pipeline(char *pipeline, 
                       void** err) {
+    if (!pipeline)
+        return;
+
     gst_init(NULL, NULL);
 
     *err = NULL;
@@ -82,6 +86,9 @@ create_video_pipeline(char *pipeline,
 
 void 
 start_video_pipeline(void* pipeline) {
+    if (!pipeline)
+        return;
+
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
     gst_bus_add_watch(bus, gstreamer_send_video_bus_call, NULL);
     gst_object_unref(bus);
@@ -97,7 +104,12 @@ start_video_pipeline(void* pipeline) {
 
 void 
 video_pipeline_set_framerate(void* pipeline, int framerate) {
+    if (!pipeline)
+        return;
+
     GstElement *framerateFilter = gst_bin_get_by_name(GST_BIN(pipeline), "framerateFilter");
+    if (!framerateFilter)
+        return;
 
     char* capsstr = g_strdup_printf ("video/x-raw(memory:D3D11Memory),framerate=%d/1",framerate);
     GstCaps* caps = gst_caps_from_string (capsstr);
@@ -110,16 +122,32 @@ video_pipeline_set_framerate(void* pipeline, int framerate) {
 
 void 
 video_pipeline_set_bitrate(void* pipeline, int bitrate) {
+    if (!pipeline)
+        return;
+
     GstElement *encoder = gst_bin_get_by_name(GST_BIN(pipeline), "encoder");
     g_object_set(encoder, "bitrate", bitrate, NULL);
 }
 
 void 
 stop_video_pipeline(void* pipeline) {
+    if (!pipeline)
+        return;
+
     gst_element_set_state((GstElement*)pipeline, GST_STATE_NULL);
 }
 void 
-pause_video_pipeline(void* pipeline) {
-    gst_element_set_state((GstElement*)pipeline, GST_STATE_PAUSED);
-    gst_element_set_state((GstElement*)pipeline, GST_STATE_PLAYING);
+force_gen_idr_frame_video_pipeline(void* pipeline) {
+    if (!pipeline)
+        return;
+    
+    GstElement *encoder = gst_bin_get_by_name(GST_BIN(pipeline), "encoder");
+    if (!encoder)
+        return;
+
+    GstPad* srcpad = gst_element_get_static_pad(encoder,"src");
+
+    GstEvent* event = gst_video_event_new_upstream_force_key_unit(GST_CLOCK_TIME_NONE,TRUE,0);
+    gst_pad_send_event(srcpad,event);
+    gst_object_unref(srcpad);
 }
