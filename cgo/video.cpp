@@ -68,8 +68,10 @@ handle_video_sample(GstElement *object, gpointer user_data) {
 void* 
 create_video_pipeline(char *pipeline, 
                       void** err) {
-    if (!pipeline)
-        return;
+    if (!pipeline) {
+        *err = (void*)"empty pipeline";
+        return NULL;
+    }
 
     gst_init(NULL, NULL);
 
