@@ -151,10 +151,7 @@ func GstTestAudio(video *tool.Soundcard) string {
 
 
 func GstTestVideo(video *tool.Monitor) string {
-
-	// TODO
 	video_plugins := []string{"nvcodec","amf","quicksync", "media foundation","opencodec"};
-	// video_plugins := []string{"quicksync","media foundation","opencodec"};
 
 	class1 := []string{"amf","nvcodec","quicksync" };
 	class2 := []string{"media foundation" };

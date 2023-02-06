@@ -7,8 +7,7 @@ import (
 	"time"
 	"unsafe"
 
-	// TODO
-	// "github.com/OnePlay-Internet/webrtc-proxy/adaptive"
+	"github.com/OnePlay-Internet/webrtc-proxy/adaptive"
 	"github.com/OnePlay-Internet/webrtc-proxy/rtppay"
 	"github.com/OnePlay-Internet/webrtc-proxy/rtppay/h264"
 	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
@@ -40,7 +39,7 @@ type Pipeline struct {
 	rtpchan    chan *rtp.Packet
 	packetizer rtppay.Packetizer
 
-	// adsContext *adaptive.AdaptiveContext
+	adsContext *adaptive.AdaptiveContext
 
 	restartCount int
 }
@@ -60,19 +59,16 @@ func CreatePipeline(config *config.ListenerConfig,
 		restartCount: 0,
 		properties:   make(map[string]int),
 
-		// TODO
-		// adsContext :  adaptive.NewAdsContext(Ads.Recv,func(bitrate int) {
-		// 	if pipeline.pipeline == nil {
-		// 		return
-		// 	}
-		// 	C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(bitrate))
-		// }),
+		adsContext :  adaptive.NewAdsContext(Ads.Recv,
+			func(bitrate int) {
+			if pipeline.pipeline == nil {
+				return
+			}
+			C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(bitrate))
+		}, func() {
+			pipeline.SetProperty("reset",0)
+		}),
 	}
-
-	// TODO
-	go func() {
-		fmt.Printf("%s\n", <-Ads.Recv)
-	}()
 
 	go func() {
 		for {
