@@ -26,9 +26,13 @@ const (
 
 
 func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
+	path,err := childprocess.FindProcessPath(nil,"gst-launch-1.0.exe")
+	if err != nil {
+		panic(err)
+	}
 	switch plugin {
 	case "media foundation":
-	return exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
+	return exec.Command(path, "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
 		fmt.Sprintf("monitor-handle=%d", handle),
 		"!", "capsfilter", "name=framerateFilter",
 		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
@@ -40,7 +44,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "nvcodec":
-	return exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
+	return exec.Command(path, "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
 		fmt.Sprintf("monitor-handle=%d", handle),
 		"!", "capsfilter", "name=framerateFilter",
 		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
@@ -52,7 +56,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "quicksync":
-	return exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
+	return exec.Command(path, "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
 		fmt.Sprintf("monitor-handle=%d", handle),
 		"!", "capsfilter", "name=framerateFilter",
 		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
@@ -64,7 +68,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "amf":
-	return exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
+	return exec.Command(path, "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
 		fmt.Sprintf("monitor-handle=%d", handle),
 		"!", "capsfilter", "name=framerateFilter",
 		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
@@ -78,7 +82,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "opencodec":
-	return exec.Command("gst-launch-1.0.exe", "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
+	return exec.Command(path, "d3d11screencapturesrc", "blocksize=8192", "do-timestamp=true",
 		fmt.Sprintf("monitor-handle=%d", handle),
 		"!", "capsfilter", "name=framerateFilter",
 		"!", fmt.Sprintf("video/x-raw(memory:D3D11Memory),clock-rate=%d", VideoClockRate),
@@ -92,7 +96,7 @@ func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd{
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
 		"appsink", "name=appsink")
 	case "wasapi2":
-	return exec.Command("gst-launch-1.0.exe", "wasapi2src", "name=source", "loopback=true", 
+	return exec.Command(path, "wasapi2src", "name=source", "loopback=true", 
 		fmt.Sprintf("device=%s", formatAudioDeviceID(DeviceID)),
 		"!", "audio/x-raw",
 		"!", "queue", "max-size-time=0", "max-size-bytes=0", "max-size-buffers=3", "!",
