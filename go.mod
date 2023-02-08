@@ -1,13 +1,13 @@
-module github.com/OnePlay-Internet/webrtc-proxy
+module github.com/thinkonmay/thinkremote-rtchub
 
-go 1.18
+go 1.20
 
 require (
-	github.com/OnePlay-Internet/daemon-tool v1.0.1-0.20221216024339-94c67f78a6f2
 	github.com/gorilla/websocket v1.5.0
 	github.com/pion/rtcp v1.2.10
 	github.com/pion/rtp v1.7.13
 	github.com/pion/webrtc/v3 v3.1.53
+	github.com/thinkonmay/thinkshare-daemon v0.0.0-20230208182636-163574221976
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.27.1
 )

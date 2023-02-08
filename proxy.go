@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"time"
 
-
-	"github.com/OnePlay-Internet/webrtc-proxy/listener"
-	"github.com/OnePlay-Internet/webrtc-proxy/signalling"
-	grpc "github.com/OnePlay-Internet/webrtc-proxy/signalling/gRPC"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
-	"github.com/OnePlay-Internet/webrtc-proxy/webrtc"
 	webrtclib "github.com/pion/webrtc/v3"
+	"github.com/thinkonmay/thinkremote-rtchub/listener"
+	"github.com/thinkonmay/thinkremote-rtchub/signalling"
+	grpc "github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC"
+	"github.com/thinkonmay/thinkremote-rtchub/util/config"
+	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
+	"github.com/thinkonmay/thinkremote-rtchub/webrtc"
 )
 
 type Proxy struct {
@@ -25,25 +24,25 @@ type Proxy struct {
 	Shutdown chan bool
 }
 
-func InitWebRTCProxy(sock 		  *config.WebsocketConfig,
-					 grpc_conf 	  *config.GrpcConfig,
-					 webrtc_conf  *config.WebRTCConfig,
-					 chan_conf 	  *config.DataChannelConfig,
-					 devices 	  *tool.MediaDevice,
-					 lis 		  []listener.Listener,
-					 onTrack webrtc.OnTrackFunc,
-					 deviceSelect signalling.OnDeviceSelectFunc,
-					 ) (proxy *Proxy, err error) {
+func InitWebRTCProxy(sock *config.WebsocketConfig,
+	grpc_conf *config.GrpcConfig,
+	webrtc_conf *config.WebRTCConfig,
+	chan_conf *config.DataChannelConfig,
+	devices *tool.MediaDevice,
+	lis []listener.Listener,
+	onTrack webrtc.OnTrackFunc,
+	deviceSelect signalling.OnDeviceSelectFunc,
+) (proxy *Proxy, err error) {
 
 	fmt.Printf("started proxy\n")
 	proxy = &Proxy{
-		Shutdown:      make(chan bool),
-		chan_conf:     chan_conf,
-		listeners:     lis,
+		Shutdown:  make(chan bool),
+		chan_conf: chan_conf,
+		listeners: lis,
 	}
 
 	if grpc_conf != nil {
-		if proxy.signallingClient, err = grpc.InitGRPCClient(grpc_conf, devices, webrtc_conf, proxy.Shutdown);err != nil {
+		if proxy.signallingClient, err = grpc.InitGRPCClient(grpc_conf, devices, webrtc_conf, proxy.Shutdown); err != nil {
 			return
 		}
 	} else if sock != nil {
@@ -59,7 +58,6 @@ func InitWebRTCProxy(sock 		  *config.WebsocketConfig,
 	if proxy.webrtcClient, err = webrtc.InitWebRtcClient(onTrack, *webrtc_conf); err != nil {
 		return
 	}
-
 
 	go func() {
 		for {
@@ -136,5 +134,5 @@ func (prox *Proxy) Stop() {
 	for _, lis := range prox.listeners {
 		lis.Close()
 	}
-	prox.Shutdown<- true
+	prox.Shutdown <- true
 }

@@ -6,12 +6,12 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/rtppay"
-	"github.com/OnePlay-Internet/webrtc-proxy/rtppay/opus"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
-	gsttest "github.com/OnePlay-Internet/webrtc-proxy/util/test"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/rtp"
+	"github.com/thinkonmay/thinkremote-rtchub/rtppay"
+	"github.com/thinkonmay/thinkremote-rtchub/rtppay/opus"
+	"github.com/thinkonmay/thinkremote-rtchub/util/config"
+	gsttest "github.com/thinkonmay/thinkremote-rtchub/util/test"
+	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
 )
 
 // #cgo LDFLAGS: ${SRCDIR}/../../cgo/lib/libshared.a
@@ -25,7 +25,7 @@ func init() {
 
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
-	pipeline unsafe.Pointer
+	pipeline    unsafe.Pointer
 	pipelineStr string
 
 	soundcard *tool.Soundcard
@@ -46,12 +46,12 @@ var pipeline *Pipeline
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(config *config.ListenerConfig) *Pipeline {
 	pipeline = &Pipeline{
-		pipeline:  unsafe.Pointer(nil),
-		rtpchan:   make(chan *rtp.Packet),
-		config:    config,
-		pipelineStr : "fakesrc ! appsink name=appsink",
+		pipeline:     unsafe.Pointer(nil),
+		rtpchan:      make(chan *rtp.Packet),
+		config:       config,
+		pipelineStr:  "fakesrc ! appsink name=appsink",
 		restartCount: 0,
-		clockRate: gsttest.AudioClockRate,
+		clockRate:    gsttest.AudioClockRate,
 
 		soundcard: &tool.Soundcard{
 			DeviceID: "none",
@@ -73,14 +73,12 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 	}
 }
 
-func (p *Pipeline) GetSourceName() (string) {
-	return p.soundcard.DeviceID;
+func (p *Pipeline) GetSourceName() string {
+	return p.soundcard.DeviceID
 }
-func (p *Pipeline) SetProperty(name string,val int) error {
-	return fmt.Errorf("unknown prop");
+func (p *Pipeline) SetProperty(name string, val int) error {
+	return fmt.Errorf("unknown prop")
 }
-
-
 
 func (p *Pipeline) SetSource(source interface{}) error {
 	if source.(*tool.Soundcard).DeviceID != "none" {
@@ -100,7 +98,6 @@ func (p *Pipeline) SetSource(source interface{}) error {
 		C.stop_audio_pipeline(Pipeline)
 		return fmt.Errorf("%s", tool.ToGoString(err))
 	}
-
 
 	p.pipeline = Pipeline
 	return nil

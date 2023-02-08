@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/rtp"
+	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0

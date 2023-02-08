@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/broadcaster"
-	"github.com/OnePlay-Internet/webrtc-proxy/listener"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/rtcp"
 	webrtc "github.com/pion/webrtc/v3"
+	"github.com/thinkonmay/thinkremote-rtchub/broadcaster"
+	"github.com/thinkonmay/thinkremote-rtchub/listener"
+	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
 type OnTrackFunc func(*webrtc.TrackRemote) (broadcaster.Broadcaster, error)
@@ -220,7 +220,7 @@ func ondataChannel(channel *webrtc.DataChannel, chans *config.DataChannelConfig)
 func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig) {
 	chans.Mutext = &sync.Mutex{}
 
-	for Name,_ := range chans.Confs {
+	for Name, _ := range chans.Confs {
 		fmt.Printf("new datachannel\n")
 		channel, err := client.conn.CreateDataChannel(Name, nil)
 		if err != nil {

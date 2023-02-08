@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/gorilla/websocket"
+	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
 const (
@@ -14,33 +14,32 @@ const (
 
 type HIDSingleton struct {
 	datachaneel *config.DataChannel
-	client *websocket.Conn
-	URL string
+	client      *websocket.Conn
+	URL         string
 
 	chann chan string
 }
 
-
-func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
+func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton {
 	var err error
 	ret := HIDSingleton{
-		URL: URL,
+		URL:         URL,
 		datachaneel: DataChannel,
 	}
 
 	if ret.URL == "" {
-		ret.URL = HIDdefaultEndpoint	
+		ret.URL = HIDdefaultEndpoint
 	}
 
-	ret.chann = make(chan string,100);
+	ret.chann = make(chan string, 100)
 	go func() {
 		for {
-			ret.chann<-<-DataChannel.Recv
+			ret.chann <- <-DataChannel.Recv
 		}
 	}()
 	go func() {
 		for {
-			ret.chann<-"ping"
+			ret.chann <- "ping"
 			time.Sleep(1 * time.Second)
 		}
 	}()
@@ -48,7 +47,7 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 		for {
 			message := <-ret.chann
 			if ret.client != nil {
-				err := ret.client.WriteMessage(websocket.TextMessage,[]byte(message));
+				err := ret.client.WriteMessage(websocket.TextMessage, []byte(message))
 				if err != nil {
 					ret.client = nil
 				}
@@ -56,36 +55,33 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 		}
 	}()
 
-
-
-
 	go func() {
 		receive_ping := true
 		for {
 			if ret.client == nil {
-				ret.client, _, err = websocket.DefaultDialer.Dial(fmt.Sprintf("ws://%s/Socket",URL),nil)
-				if err != nil || ret.client == nil{
-					fmt.Println("hid websocket error: %s",err.Error())
+				ret.client, _, err = websocket.DefaultDialer.Dial(fmt.Sprintf("ws://%s/Socket", URL), nil)
+				if err != nil || ret.client == nil {
+					fmt.Println("hid websocket error: %s", err.Error())
 					time.Sleep(time.Second)
-					continue;
+					continue
 				}
-				err := ret.client.WriteMessage(websocket.TextMessage,[]byte("ping"));
+				err := ret.client.WriteMessage(websocket.TextMessage, []byte("ping"))
 				if err != nil {
-					fmt.Println("hid websocket error: %s",err.Error())
+					fmt.Println("hid websocket error: %s", err.Error())
 					time.Sleep(time.Second)
-					continue;
+					continue
 				}
 
-				go func ()  {
+				go func() {
 					for {
 						if !receive_ping {
 							ret.client.Close()
-							ret.client = nil;
-							receive_ping = true;
-							break;
+							ret.client = nil
+							receive_ping = true
+							break
 						}
-						receive_ping = false;
-						time.Sleep(3 * time.Second);
+						receive_ping = false
+						time.Sleep(3 * time.Second)
 					}
 				}()
 			}
@@ -93,22 +89,18 @@ func NewHIDSingleton(URL string, DataChannel *config.DataChannel) *HIDSingleton{
 			typ, message, err := ret.client.ReadMessage()
 			if err != nil || typ == websocket.CloseMessage {
 				ret.client.Close()
-				ret.client = nil;
+				ret.client = nil
 			}
 
-			if typ ==  websocket.TextMessage {
+			if typ == websocket.TextMessage {
 				if string(message) == "ping" {
-					receive_ping = true;
-					continue;
+					receive_ping = true
+					continue
 				}
-				ret.datachaneel.Send<-string(message)
+				ret.datachaneel.Send <- string(message)
 			}
 		}
 	}()
 
-	return &ret;
+	return &ret
 }
-
-
-
-

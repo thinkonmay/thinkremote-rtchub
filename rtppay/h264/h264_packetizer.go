@@ -4,9 +4,9 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/util/io"
 	"github.com/pion/randutil"
 	"github.com/pion/rtp"
+	"github.com/thinkonmay/thinkremote-rtchub/util/io"
 )
 
 func min(a, b int) int {
@@ -23,44 +23,39 @@ const (
 	unknownStr = "unknown"
 
 	rtpOutboundMTU = 1200
-
-
-	
 )
 
 // https://stackoverflow.com/questions/24884827/possible-locations-for-sequence-picture-parameter-sets-for-h-264-stream/24890903#24890903
 const (
-	stapaNALUType  = 24		  // 00011000
-	fubNALUType    = 29		  // 00011101
-	spsNALUType    = 7		  // 00000111
-	ppsNALUType    = 8		  // 00001000
-	audNALUType    = 9		  // 00001001
-	fillerNALUType = 12		  // 00001100
-	fuaNALUType    = 28		  // 00011100
+	stapaNALUType  = 24 // 00011000
+	fubNALUType    = 29 // 00011101
+	spsNALUType    = 7  // 00000111
+	ppsNALUType    = 8  // 00001000
+	audNALUType    = 9  // 00001001
+	fillerNALUType = 12 // 00001100
+	fuaNALUType    = 28 // 00011100
 
 	fuaHeaderSize       = 2
 	stapaHeaderSize     = 1
 	stapaNALULengthSize = 2
 
-	naluTypeBitmask   = 0x1F  // 00011111
-	naluRefIdcBitmask = 0x60  // 01100000
-	fuStartBitmask    = 0x80  // 10000000
-	fuEndBitmask      = 0x40  // 01000000
-	outputStapAHeader = 0x78  // 01111000
+	naluTypeBitmask   = 0x1F // 00011111
+	naluRefIdcBitmask = 0x60 // 01100000
+	fuStartBitmask    = 0x80 // 10000000
+	fuEndBitmask      = 0x40 // 01000000
+	outputStapAHeader = 0x78 // 01111000
 )
 
 const (
-	NALU_NONE = 0
-	NALU_RAW = 1
-	NALU_AVCC = 2
+	NALU_NONE   = 0
+	NALU_RAW    = 1
+	NALU_AVCC   = 2
 	NALU_ANNEXB = 3
 )
-
 
 // H264Payloader payloads H264 packets
 type H264Payloader struct {
 	spsNalu, ppsNalu []byte
-
 
 	MTU              uint16
 	PayloadType      uint8
@@ -75,17 +70,15 @@ type H264Payloader struct {
 
 func NewH264Payloader() *H264Payloader {
 	return &H264Payloader{
-		MTU: rtpOutboundMTU,
-		PayloadType: 0,
-		SSRC: 0,
-		Sequencer: rtp.NewRandomSequencer(),
-		Timestamp: randutil.NewMathRandomGenerator().Uint32(),
-		extensionNumbers: struct{AbsSendTime int}{AbsSendTime: 22},
-		timegen: time.Now,
+		MTU:              rtpOutboundMTU,
+		PayloadType:      0,
+		SSRC:             0,
+		Sequencer:        rtp.NewRandomSequencer(),
+		Timestamp:        randutil.NewMathRandomGenerator().Uint32(),
+		extensionNumbers: struct{ AbsSendTime int }{AbsSendTime: 22},
+		timegen:          time.Now,
 	}
 }
-
-
 
 func findIndicator(nalu []byte, start int) (indStart int, indLen int) {
 	zCount := 0 // zeroCount
@@ -104,13 +97,10 @@ func findIndicator(nalu []byte, start int) (indStart int, indLen int) {
 	return -1, -1 // return -1 if no indicator found
 }
 
-
-
-
 func splitNALUs(payload []byte) (nalus [][]byte, typ int) {
 	typ = NALU_NONE
 	nalus = [][]byte{}
-	defer func ()  {
+	defer func() {
 		if len(nalus) == 0 || typ == NALU_NONE {
 			nalus = append(nalus, payload)
 			typ = NALU_RAW
@@ -144,10 +134,9 @@ func splitNALUs(payload []byte) (nalus [][]byte, typ int) {
 			}
 		}
 
-		typ = NALU_ANNEXB;
+		typ = NALU_ANNEXB
 		return
-	} 
-
+	}
 
 	// is AVCC
 	// +----------------------------------------+
@@ -166,27 +155,25 @@ func splitNALUs(payload []byte) (nalus [][]byte, typ int) {
 				break
 			}
 
-			nalus = append(nalus, nalu[:naluSz])  // append slice from payload with naluSz size
-			nalu = nalu[naluSz:]  // move pointer naluSz byte to the left
-			if len(nalu) < 4 { // break if size of nalu left smaller than 4 (sizeof uint32)
+			nalus = append(nalus, nalu[:naluSz]) // append slice from payload with naluSz size
+			nalu = nalu[naluSz:]                 // move pointer naluSz byte to the left
+			if len(nalu) < 4 {                   // break if size of nalu left smaller than 4 (sizeof uint32)
 				break
 			}
 
 			naluSz = io.U32BE(nalu) // get naluSize from 4 first bytes left
-			nalu = nalu[4:] // shift pointer 4 byte to the left
+			nalu = nalu[4:]         // shift pointer 4 byte to the left
 		}
 
 		if len(nalu) == 0 {
 			return nalus, NALU_AVCC
 		} else {
 			// reset nalus
-			nalus = [][]byte{};
+			nalus = [][]byte{}
 		}
 	}
-	return;
+	return
 }
-
-
 
 // payload fragments a H264 packet across one or more byte arrays
 func (p *H264Payloader) payload(mtu uint16, payload []byte) [][]byte {
@@ -195,14 +182,14 @@ func (p *H264Payloader) payload(mtu uint16, payload []byte) [][]byte {
 		return payloads
 	}
 
-	nalus,_ := splitNALUs(payload)
-	for _,nalu := range nalus {
+	nalus, _ := splitNALUs(payload)
+	for _, nalu := range nalus {
 		if len(nalu) == 0 {
 			continue
 		}
 
-		naluType   := nalu[0] & naluTypeBitmask     // AND operator on first byte of nal Unit
-		naluRefIdc := nalu[0] & naluRefIdcBitmask   // AND operator on first byte of nal Unit
+		naluType := nalu[0] & naluTypeBitmask     // AND operator on first byte of nal Unit
+		naluRefIdc := nalu[0] & naluRefIdcBitmask // AND operator on first byte of nal Unit
 
 		switch {
 		case naluType == audNALUType || naluType == fillerNALUType:
@@ -306,10 +293,6 @@ func (p *H264Payloader) payload(mtu uint16, payload []byte) [][]byte {
 	return payloads
 }
 
-
-
-
-
 // Packetize packetizes the payload of an RTP packet and returns one or more RTP packets
 func (p *H264Payloader) Packetize(payload []byte, samples uint32) []*rtp.Packet {
 	// Guard against an empty payload
@@ -352,4 +335,3 @@ func (p *H264Payloader) Packetize(payload []byte, samples uint32) []*rtp.Packet 
 
 	return packets
 }
-

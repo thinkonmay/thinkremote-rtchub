@@ -1,8 +1,8 @@
 package dummy
 
 import (
-	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
 	"github.com/pion/rtp"
+	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
 type DummyBroadcaster struct {

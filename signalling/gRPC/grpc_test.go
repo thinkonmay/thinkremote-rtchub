@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/webrtc/v3"
+	"github.com/thinkonmay/thinkremote-rtchub/util/config"
+	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
 )
 
 func TestClient(t *testing.T) {
@@ -18,7 +18,7 @@ func TestClient(t *testing.T) {
 	shutdown_channel := make(chan bool)
 
 	dev := tool.GetDevice()
-	client, err := InitGRPCClient(&conf,dev,nil,shutdown_channel);
+	client, err := InitGRPCClient(&conf, dev, nil, shutdown_channel)
 	if err != nil {
 		t.Error(err)
 	}

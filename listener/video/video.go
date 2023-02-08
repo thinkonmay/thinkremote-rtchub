@@ -7,13 +7,13 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/OnePlay-Internet/webrtc-proxy/adaptive"
-	"github.com/OnePlay-Internet/webrtc-proxy/rtppay"
-	"github.com/OnePlay-Internet/webrtc-proxy/rtppay/h264"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/config"
-	gsttest "github.com/OnePlay-Internet/webrtc-proxy/util/test"
-	"github.com/OnePlay-Internet/webrtc-proxy/util/tool"
 	"github.com/pion/rtp"
+	"github.com/thinkonmay/thinkremote-rtchub/adaptive"
+	"github.com/thinkonmay/thinkremote-rtchub/rtppay"
+	"github.com/thinkonmay/thinkremote-rtchub/rtppay/h264"
+	"github.com/thinkonmay/thinkremote-rtchub/util/config"
+	gsttest "github.com/thinkonmay/thinkremote-rtchub/util/test"
+	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
 )
 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0
@@ -27,7 +27,7 @@ func init() {
 
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
-	pipeline    unsafe.Pointer
+	pipeline   unsafe.Pointer
 	properties map[string]int
 
 	pipelineStr string
@@ -59,15 +59,15 @@ func CreatePipeline(config *config.ListenerConfig,
 		restartCount: 0,
 		properties:   make(map[string]int),
 
-		adsContext :  adaptive.NewAdsContext(Ads.Recv,
+		adsContext: adaptive.NewAdsContext(Ads.Recv,
 			func(bitrate int) {
-			if pipeline.pipeline == nil {
-				return
-			}
-			C.video_pipeline_set_bitrate(pipeline.pipeline,C.int(bitrate))
-		}, func() {
-			pipeline.SetProperty("reset",0)
-		}),
+				if pipeline.pipeline == nil {
+					return
+				}
+				C.video_pipeline_set_bitrate(pipeline.pipeline, C.int(bitrate))
+			}, func() {
+				pipeline.SetProperty("reset", 0)
+			}),
 	}
 
 	go func() {
