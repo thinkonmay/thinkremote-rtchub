@@ -9,12 +9,7 @@ import (
 )
 
 func FindProcessPath(process string) (string,error){
-	cmd := exec.Command("where.exe",process)
-
-	bytes,err := cmd.Output()
-	if err != nil{
-		return "",err
-	}
+	bytes,_ := exec.Command("where.exe",process).Output()
 	paths := strings.Split(string(bytes), "\n")
 	pathss := strings.Split(paths[0], "\r")
 	return pathss[0],nil
