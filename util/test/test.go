@@ -18,7 +18,7 @@ const (
 )
 
 func FindTestCmd(plugin string, handle int, DeviceID string) *exec.Cmd {
-	path, err := childprocess.FindProcessPath(nil, "gst-launch-1.0.exe")
+	path, err := childprocess.FindProcessPath("gst-launch-1.0.exe")
 	if err != nil {
 		panic(err)
 	}
@@ -154,9 +154,11 @@ func GstTestVideo(video *tool.Monitor) string {
 	testAll := false
 	count := 0
 	for _, _plugin := range video_plugins {
+		fmt.Printf("testing pipeline plugin %s, monitor handle %d\n",_plugin, video.MonitorHandle)
 		testcase := FindTestCmd(_plugin, video.MonitorHandle, "")
 		pipeline := gstTestGeneric(_plugin, testcase)
 		if pipeline != "" {
+			fmt.Printf("pipeline %s test success \n",pipeline)
 			available_pipelines[_plugin] = pipeline
 			if !testAll {
 				return pipeline

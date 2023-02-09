@@ -8,16 +8,12 @@ import (
 	"strings"
 )
 
-func FindProcessPath(dir *string,process string) (string,error){
+func FindProcessPath(process string) (string,error){
 	cmd := exec.Command("where.exe",process)
-
-	if dir != nil {
-		cmd.Dir = *dir
-	}
 
 	bytes,err := cmd.Output()
 	if err != nil{
-		return "",nil
+		return "",err
 	}
 	paths := strings.Split(string(bytes), "\n")
 	pathss := strings.Split(paths[0], "\r")
@@ -81,6 +77,7 @@ func HandleProcess(cmd *exec.Cmd) {
 		return
 	}
 	processname := cmd.Args[0]
+	fmt.Printf("handling process %s\n",processname)
 
 	stdoutIn, _ := cmd.StdoutPipe()
 	stderrIn, _ := cmd.StderrPipe()
