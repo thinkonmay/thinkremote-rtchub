@@ -15,8 +15,8 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling"
 	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
-	iceservers "github.com/thinkonmay/thinkshare-daemon/ice-servers"
-	"github.com/thinkonmay/thinkshare-daemon/session"
+	"github.com/thinkonmay/thinkshare-daemon/session/ice"
+	"github.com/thinkonmay/thinkshare-daemon/session/signaling"
 
 	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
@@ -80,14 +80,14 @@ func main() {
 		return
 	}
 
-	signaling := session.DecodeSignalingConfig(grpcString)
+	signaling := signaling.DecodeSignalingConfig(grpcString)
 	grpc := &config.GrpcConfig{
 		Port:          signaling.Grpcport,
 		ServerAddress: signaling.Grpcip,
 		Token:         token,
 	}
 
-	rtc := &config.WebRTCConfig{Ices: iceservers.DecodeWebRTCConfig(webrtcString).ICEServers}
+	rtc := &config.WebRTCConfig{Ices: ice.DecodeWebRTCConfig(webrtcString).ICEServers}
 	chans := config.NewDataChannelConfig([]string{"hid", "adaptive", "manual"})
 	br := []*config.BroadcasterConfig{}
 	Lists := []listener.Listener{
