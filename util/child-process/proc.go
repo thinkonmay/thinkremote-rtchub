@@ -9,10 +9,11 @@ import (
 )
 
 func FindProcessPath(process string) (string,error){
-	bytes,_ := exec.Command("where.exe",process).Output()
-	paths := strings.Split(string(bytes), "\n")
-	pathss := strings.Split(paths[0], "\r")
-	return pathss[0],nil
+	first := strings.Split(os.Args[0],"\\");
+	prefixs := first[:(len(first)-1)]
+	prefixs = append(prefixs, process)
+	merge := strings.Join(prefixs, "\\")
+	return merge,nil
 }
 
 func findLineEnd(dat []byte) (out [][]byte) {
