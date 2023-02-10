@@ -12,8 +12,8 @@ import (
 
 func TestClient(t *testing.T) {
 	conf := config.GrpcConfig{
-		ServerAddress: "localhost",
-		Port:          8000,
+		ServerAddress: "grpc.thinkmay.net", // chose domain
+		Port:          30000,
 	}
 	shutdown_channel := make(chan bool)
 

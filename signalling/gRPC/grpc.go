@@ -116,7 +116,7 @@ func InitGRPCClient(conf *config.GrpcConfig,
 				if err == nil {
 					ret.preflightChan <- sel
 				} else {
-					fmt.Println("%s", err.Error())
+					fmt.Printf("%s\n", err.Error())
 				}
 			default:
 				fmt.Println("Unknown packet")
