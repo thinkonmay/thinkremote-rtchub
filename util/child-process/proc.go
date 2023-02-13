@@ -16,55 +16,35 @@ func FindProcessPath(process string) (string,error){
 	return merge,nil
 }
 
-func findLineEnd(dat []byte) (out [][]byte) {
-	prev := 0
-	for pos, i := range dat {
-		if i == []byte("\n")[0] {
-			out = append(out, dat[prev:pos])
-			prev = pos + 1
-		}
-	}
-
-	out = append(out, dat[prev:])
-	// for pos,i := range out {
-	// 	count := 0;
-	// 	for _,char := range i {
-	// 		if (char == []byte(" ")[0]) {
-	// 			count++;
-	// 		}
-	// 	}
-	// 	if count == len(i)  && pos > 0{
-	// 		out = append(out[:pos-1],out[pos:]...)
-	// 	}
-	// }
-	return
-}
 
 func copyAndCapture(process string, w io.Writer, r io.Reader) {
-	prefix := []byte(fmt.Sprintf("Child process (%s):", process))
-	after := []byte("\n")
+	prefix := fmt.Sprintf("Child process (%s):", process)
 	buf := make([]byte, 1024, 1024)
 	for {
 		n, err := r.Read(buf[:])
-		if n > 0 {
-			d := buf[:n]
-			lines := findLineEnd(d)
-			for _, line := range lines {
-				out := append(prefix, line...)
-				out = append(out, after...)
-
-				_, err := w.Write(out)
-				if err != nil {
-					return
-				}
-			}
-		}
 		if err != nil {
 			// Read returns io.EOF at the end of file, which is not an error for us
 			if err == io.EOF {
 				err = nil
 			}
 			return
+		}
+
+
+		if n < 1 {
+			continue
+		}
+
+
+		lines := strings.Split(string(buf[:n]),"\n")
+		for _,line := range lines {
+			if len(line) < 2 {
+				continue
+			}
+			_,err := w.Write([]byte(fmt.Sprintf("%s%s\n",prefix,line)))
+			if err != nil {
+				return
+			}
 		}
 	}
 }
