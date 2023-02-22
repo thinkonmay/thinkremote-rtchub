@@ -18,7 +18,8 @@ func FindProcessPath(process string) (string,error){
 
 
 func copyAndCapture(process string, w io.Writer, r io.Reader) {
-	prefix := fmt.Sprintf("Child process (%s):", process)
+	procname := strings.Split(process,"\\")
+	prefix := []byte(fmt.Sprintf("Child process (%s): ", procname[len(procname)-1]))
 	buf := make([]byte, 1024, 1024)
 	for {
 		n, err := r.Read(buf[:])
