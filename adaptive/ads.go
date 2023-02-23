@@ -2,6 +2,7 @@ package adaptive
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -88,20 +89,20 @@ func (ads *AdaptiveContext) handleVideoMetric(metric *VideoMetrics) {
 	}
 
 
-	// receivedFps := (metric.FramesReceived - lastVideoMetric.FramesReceived) / (timedif / float64(time.Second.Milliseconds()))
-	// videoBandwidthConsumption := (metric.BytesReceived - lastVideoMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds()))
-	// decodeTimePerFrame := (metric.TotalDecodeTime - lastVideoMetric.TotalDecodeTime) / (metric.FramesDecoded - lastVideoMetric.FramesDecoded)
-	// videoPacketsLostpercent := (metric.PacketsLost - lastVideoMetric.PacketsLost) / (metric.PacketsReceived - lastVideoMetric.PacketsReceived)
-	// videoJitter := metric.Jitter
-	// videoJitterBufferDelay := metric.JitterBufferDelay
+	receivedFps := (metric.FramesReceived - lastVideoMetric.FramesReceived) / (timedif / float64(time.Second.Milliseconds()))
+	videoBandwidthConsumption := (metric.BytesReceived - lastVideoMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds()))
+	decodeTimePerFrame := (metric.TotalDecodeTime - lastVideoMetric.TotalDecodeTime) / (metric.FramesDecoded - lastVideoMetric.FramesDecoded)
+	videoPacketsLostpercent := (metric.PacketsLost - lastVideoMetric.PacketsLost) / (metric.PacketsReceived - lastVideoMetric.PacketsReceived)
+	videoJitter := metric.Jitter
+	videoJitterBufferDelay := metric.JitterBufferDelay
 
-	// C.ads_push_frame_decoded_per_second(ads.ctx, C.int(decodedFps))
-	// C.ads_push_frame_received_per_second(ads.ctx, C.int(receivedFps))
-	// C.ads_push_video_incoming_bandwidth_consumption(ads.ctx, C.int(videoBandwidthConsumption))
-	// C.ads_push_decode_time_per_frame(ads.ctx, C.int(decodeTimePerFrame))
-	// C.ads_push_video_packets_lost(ads.ctx, C.float(videoPacketsLostpercent))
-	// C.ads_push_video_jitter(ads.ctx, C.int(videoJitter))
-	// C.ads_push_video_jitter_buffer_delay(ads.ctx, C.int(videoJitterBufferDelay))
+	fmt.Printf("frame_decoded_per_second %f", decodedFps)
+	fmt.Printf("frame_received_per_second %f", receivedFps)
+	fmt.Printf("video_incoming_bandwidth_consumption %f", videoBandwidthConsumption)
+	fmt.Printf("decode_time_per_frame %f", decodeTimePerFrame)
+	fmt.Printf("video_packets_lost %f", videoPacketsLostpercent)
+	fmt.Printf("video_jitter %f", videoJitter)
+	fmt.Printf("video_jitter_buffer_delay %f", videoJitterBufferDelay)
 
 	ads.last.video = metric
 }
@@ -113,15 +114,15 @@ func (ads *AdaptiveContext) handleNetworkMetric(metric *NetworkMetric) {
 		return
 	}
 
-	// timedif := metric.Timestamp - lastNetworkMetric.Timestamp //nanosecond
+	timedif := metric.Timestamp - lastNetworkMetric.Timestamp //nanosecond
 
-	// totalBandwidthConsumption := (metric.BytesReceived - lastNetworkMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds()))
-	// RTT := metric.CurrentRoundTripTime * float64(time.Second.Nanoseconds())
-	// availableIncomingBandwidth := metric.AvailableIncomingBitrate
+	totalBandwidthConsumption := (metric.BytesReceived - lastNetworkMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds()))
+	RTT := metric.CurrentRoundTripTime * float64(time.Second.Nanoseconds())
+	availableIncomingBandwidth := metric.AvailableIncomingBitrate
 
-	// C.ads_push_rtt(ads.ctx, C.int(RTT))
-	// C.ads_push_total_incoming_bandwidth_consumption(ads.ctx, C.int(totalBandwidthConsumption))
-	// C.ads_push_available_incoming_bandwidth(ads.ctx, C.int(availableIncomingBandwidth))
+	fmt.Printf("rtt %f", RTT);
+	fmt.Printf("total_incoming_bandwidth_consumption %f", totalBandwidthConsumption);
+	fmt.Printf("available_incoming_bandwidth %f", availableIncomingBandwidth);
 
 	ads.last.network = lastNetworkMetric
 }
@@ -135,10 +136,10 @@ func (ads *AdaptiveContext) handleAudioMetric(metric *AudioMetric) {
 
 
 
-	// timedif := metric.Timestamp - lastAudioMetric.Timestamp //nanosecond
+	timedif := metric.Timestamp - lastAudioMetric.Timestamp //nanosecond
 
-	// audioBandwidthConsumption := (metric.BytesReceived - lastAudioMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds()))
-	// C.ads_push_audio_incoming_bandwidth_consumption(ads.ctx, C.int(audioBandwidthConsumption))
+	audioBandwidthConsumption := (metric.BytesReceived - lastAudioMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds()))
+	fmt.Printf("audio_incoming_bandwidth_consumption %f", audioBandwidthConsumption)
 
 	ads.last.audio = lastAudioMetric
 }
