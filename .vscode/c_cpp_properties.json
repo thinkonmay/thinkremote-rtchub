@@ -4,7 +4,7 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:/gstreamer/1.0/msvc_x86_64/include/**"
+                "C:/gstreamer/1.22.0/msvc_x86_64/include/**"
             ],
             "defines": [
                 "_DEBUG",
