@@ -74,7 +74,8 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		})
 		client.conn.SetLocalDescription(offer)
 		if err != nil {
-			panic(err)
+			fmt.Printf("error creating offer %s\n",err.Error())
+			return;
 		}
 		client.toSdpChannel <- &offer
 	})
@@ -109,8 +110,8 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 	})
 
 	go func() {
+		var err error
 		for {
-			var err error
 			sdp := <-client.fromSdpChannel
 
 			if sdp.Type == webrtc.SDPTypeAnswer { // answer
@@ -151,7 +152,8 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 			}
 			err = client.conn.AddICECandidate(*ice)
 			if err != nil {
-				panic(err)
+				fmt.Printf("error add ice candicate %s\n",err.Error())
+				continue
 			}
 		}
 	}()
@@ -181,7 +183,11 @@ func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 		listenerConfig := lis.GetConfig()
 		track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
 			MimeType: listenerConfig.Codec,
-		}, lis.GetSourceName(), listenerConfig.StreamID)
+		}, listenerConfig.ID, listenerConfig.StreamID)
+		if err != nil {
+			fmt.Printf("error add track %s\n", err.Error())
+			continue
+		}
 		rtpSender, err := client.conn.AddTrack(track)
 		if err != nil {
 			fmt.Printf("error add track %s\n", err.Error())
