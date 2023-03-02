@@ -8,12 +8,10 @@ import (
 	"unsafe"
 
 	"github.com/pion/rtp"
-	"github.com/thinkonmay/thinkremote-rtchub/adaptive"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/video/adaptive"
 	"github.com/thinkonmay/thinkremote-rtchub/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/rtppay/h264"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
-	gsttest "github.com/thinkonmay/thinkremote-rtchub/util/test"
-	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
 )
 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0
@@ -33,9 +31,6 @@ type Pipeline struct {
 	pipelineStr string
 	clockRate   float64
 
-	monitor *tool.Monitor
-	config  *config.ListenerConfig
-
 	rtpchan    chan *rtp.Packet
 	packetizer rtppay.Packetizer
 
@@ -47,16 +42,17 @@ type Pipeline struct {
 var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig,
-	Ads *config.DataChannel,
-	Manual *config.DataChannel) *Pipeline {
+func CreatePipeline(pipelineStr string,
+					Ads *config.DataChannel,
+					Manual *config.DataChannel) *Pipeline {
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
 		rtpchan:      make(chan *rtp.Packet, 50),
-		config:       config,
-		pipelineStr:  "fakesrc ! appsink name=appsink",
-		clockRate:    gsttest.VideoClockRate,
+		pipelineStr:  pipelineStr,
+
+		clockRate:    90000,
 		restartCount: 0,
+
 		properties:   make(map[string]int),
 
 		adsContext: adaptive.NewAdsContext(Ads.Recv,
@@ -85,6 +81,17 @@ func CreatePipeline(config *config.ListenerConfig,
 		}
 	}()
 
+	pipelineStrUnsafe := C.CString(pipeline.pipelineStr)
+	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
+
+	var err unsafe.Pointer
+	Pipeline := C.create_video_pipeline(pipelineStrUnsafe, &err)
+	if len(ToGoString(err)) != 0 {
+		C.stop_video_pipeline(Pipeline)
+	}
+
+	fmt.Printf("starting video pipeline")
+	pipeline.pipeline = Pipeline
 	return pipeline
 }
 
@@ -99,9 +106,7 @@ func goHandlePipelineBufferVideo(buffer unsafe.Pointer, bufferLen C.int, duratio
 	}
 }
 
-func (p *Pipeline) GetSourceName() string {
-	return fmt.Sprintf("%d", p.monitor.MonitorHandle)
-}
+
 func (p *Pipeline) SetProperty(name string, val int) error {
 	fmt.Printf("%s change to %d\n", name, val)
 	switch name {
@@ -119,57 +124,34 @@ func (p *Pipeline) SetProperty(name string, val int) error {
 	return nil
 }
 
-func (p *Pipeline) SetSource(source interface{}) (errr error) {
-	p.clockRate = gsttest.VideoClockRate
-	if p.pipelineStr = gsttest.GstTestVideo(source.(*tool.Monitor)); p.pipelineStr == "" {
-		errr = fmt.Errorf("unable to create encode pipeline with device")
-		return
-	}
-
-	pipelineStrUnsafe := C.CString(p.pipelineStr)
-	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
-
-	var err unsafe.Pointer
-	Pipeline := C.create_video_pipeline(pipelineStrUnsafe, &err)
-	if len(tool.ToGoString(err)) != 0 {
-		C.stop_video_pipeline(Pipeline)
-		errr = fmt.Errorf("%s", tool.ToGoString(err))
-		return
-	}
-
-	fmt.Printf("starting video pipeline: %s", p.pipelineStr)
-	p.pipeline = Pipeline
-	p.monitor = source.(*tool.Monitor)
-	return nil
-}
 
 //export handleVideoStopOrError
 func handleVideoStopOrError() {
 	pipeline.Close()
-	pipeline.SetSource(pipeline.monitor)
 	for key, val := range pipeline.properties {
 		pipeline.SetProperty(key, val)
 	}
-
 	pipeline.Open()
+
+
 	pipeline.restartCount++
 }
 
-func (p *Pipeline) GetConfig() *config.ListenerConfig {
-	return p.config
-}
 func (p *Pipeline) ReadRTP() *rtp.Packet {
 	return <-p.rtpchan
 }
 func (p *Pipeline) Open() {
-	if pipeline.pipeline == nil {
-		return
-	}
-
 	p.packetizer = h264.NewH264Payloader()
 	C.start_video_pipeline(pipeline.pipeline)
 }
 func (p *Pipeline) Close() {
 	p.packetizer = nil
 	C.stop_video_pipeline(p.pipeline)
+}
+
+func ToGoString(str unsafe.Pointer) string {
+	if str == nil {
+		return ""
+	}
+	return string(C.GoBytes(str, C.int(C.string_get_length(str))))
 }

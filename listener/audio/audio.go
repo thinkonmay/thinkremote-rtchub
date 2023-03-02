@@ -10,8 +10,6 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/rtppay/opus"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
-	gsttest "github.com/thinkonmay/thinkremote-rtchub/util/test"
-	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
 )
 
 // #cgo LDFLAGS: ${SRCDIR}/../../cgo/lib/libshared.a
@@ -28,38 +26,39 @@ type Pipeline struct {
 	pipeline    unsafe.Pointer
 	pipelineStr string
 
-	soundcard *tool.Soundcard
 	clockRate float64
 
 	rtpchan chan *rtp.Packet
-	config  *config.ListenerConfig
-
 	packetizer rtppay.Packetizer
-
 	restartCount int
-
-	lastPacketTimestamp time.Time
 }
 
 var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig) *Pipeline {
+func CreatePipeline(config *config.ListenerConfig) (*Pipeline,error) {
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
 		rtpchan:      make(chan *rtp.Packet),
-		config:       config,
 		pipelineStr:  "fakesrc ! appsink name=appsink",
 		restartCount: 0,
 		clockRate:    gsttest.AudioClockRate,
 
-		soundcard: &tool.Soundcard{
-			DeviceID: "none",
-		},
-
 		packetizer: opus.NewOpusPayloader(),
 	}
-	return pipeline
+
+	pipelineStrUnsafe := C.CString(pipeline.pipelineStr)
+	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
+
+	var err unsafe.Pointer
+	Pipeline := C.create_audio_pipeline(pipelineStrUnsafe, &err)
+	if len(tool.ToGoString(err)) != 0 {
+		C.stop_audio_pipeline(Pipeline)
+		return nil,fmt.Errorf("%s", tool.ToGoString(err))
+	}
+
+	pipeline.pipeline = Pipeline
+	return pipeline,nil
 }
 
 //export goHandlePipelineBufferAudio
@@ -73,55 +72,37 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 	}
 }
 
-func (p *Pipeline) GetSourceName() string {
-	return p.soundcard.DeviceID
-}
-func (p *Pipeline) SetProperty(name string, val int) error {
-	return fmt.Errorf("unknown prop")
-}
 
-func (p *Pipeline) SetSource(source interface{}) error {
-	if source.(*tool.Soundcard).DeviceID != "none" {
-		pipelineStr := gsttest.GstTestAudio(source.(*tool.Soundcard))
-		if pipelineStr == "" {
-			return fmt.Errorf("unable to create encode pipeline with device")
-		}
-		p.pipelineStr = pipelineStr
-	}
-
-	pipelineStrUnsafe := C.CString(p.pipelineStr)
-	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
-
-	var err unsafe.Pointer
-	Pipeline := C.create_audio_pipeline(pipelineStrUnsafe, &err)
-	if len(tool.ToGoString(err)) != 0 {
-		C.stop_audio_pipeline(Pipeline)
-		return fmt.Errorf("%s", tool.ToGoString(err))
-	}
-
-	p.pipeline = Pipeline
-	return nil
-}
 
 //export handleAudioStopOrError
 func handleAudioStopOrError() {
 	pipeline.Close()
-	pipeline.SetSource(pipeline.soundcard)
 	pipeline.Open()
+
 	pipeline.restartCount++
 }
 
 func (p *Pipeline) Open() {
-	fmt.Printf("starting audio pipeline: %s\n", p.pipelineStr)
+	fmt.Println("starting audio pipeline")
 	C.start_audio_pipeline(pipeline.pipeline)
 }
-func (p *Pipeline) GetConfig() *config.ListenerConfig {
-	return p.config
-}
+
 func (p *Pipeline) ReadRTP() *rtp.Packet {
 	return <-p.rtpchan
 }
 
 func (p *Pipeline) Close() {
+	fmt.Println("stoping audio pipeline")
 	C.stop_audio_pipeline(p.pipeline)
+}
+
+func (p *Pipeline) SetProperty(name string, val int) error {
+	return fmt.Errorf("unknown prop")
+}
+
+func ToGoString(str unsafe.Pointer) string {
+	if str == nil {
+		return ""
+	}
+	return string(C.GoBytes(str, C.int(C.string_get_length(str))))
 }

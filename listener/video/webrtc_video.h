@@ -12,5 +12,6 @@ void start_video_pipeline(void*pipeline);
 void stop_video_pipeline(void*pipeline);
 void force_gen_idr_frame_video_pipeline(void*pipeline);
 void start_video_mainloop(void);
+int  string_get_length(void* string);
 
 #endif
