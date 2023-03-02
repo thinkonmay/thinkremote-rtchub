@@ -42,7 +42,7 @@ func CreatePipeline(config *config.ListenerConfig) (*Pipeline,error) {
 		rtpchan:      make(chan *rtp.Packet),
 		pipelineStr:  "fakesrc ! appsink name=appsink",
 		restartCount: 0,
-		clockRate:    gsttest.AudioClockRate,
+		clockRate:    48000,
 
 		packetizer: opus.NewOpusPayloader(),
 	}
@@ -52,9 +52,9 @@ func CreatePipeline(config *config.ListenerConfig) (*Pipeline,error) {
 
 	var err unsafe.Pointer
 	Pipeline := C.create_audio_pipeline(pipelineStrUnsafe, &err)
-	if len(tool.ToGoString(err)) != 0 {
+	if len(ToGoString(err)) != 0 {
 		C.stop_audio_pipeline(Pipeline)
-		return nil,fmt.Errorf("%s", tool.ToGoString(err))
+		return nil,fmt.Errorf("%s", ToGoString(err))
 	}
 
 	pipeline.pipeline = Pipeline

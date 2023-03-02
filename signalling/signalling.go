@@ -2,7 +2,6 @@ package signalling
 
 import (
 	"github.com/pion/webrtc/v3"
-	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
 )
 
 type DeviceSelection struct {
@@ -16,18 +15,15 @@ type OnIceFunc func(*webrtc.ICECandidateInit)
 
 type OnSDPFunc func(*webrtc.SessionDescription)
 
-type OnDeviceSelectFunc func(selection DeviceSelection) (*tool.MediaDevice, error)
-
 type Signalling interface {
 	SendSDP(*webrtc.SessionDescription) error
 	SendICE(*webrtc.ICECandidateInit) error
 
 	OnICE(OnIceFunc)
 	OnSDP(OnSDPFunc)
-	OnDeviceSelect(OnDeviceSelectFunc)
 
 	WaitForStart()
-	WaitForConnected()
+	WaitForEnd()
 
 	Stop()
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/signalling"
 	grpc "github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
-	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
 	"github.com/thinkonmay/thinkremote-rtchub/webrtc"
 )
 
@@ -28,10 +27,8 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	grpc_conf *config.GrpcConfig,
 	webrtc_conf *config.WebRTCConfig,
 	chan_conf *config.DataChannelConfig,
-	devices *tool.MediaDevice,
 	lis []listener.Listener,
 	onTrack webrtc.OnTrackFunc,
-	deviceSelect signalling.OnDeviceSelectFunc,
 ) (proxy *Proxy, err error) {
 
 	fmt.Printf("started proxy\n")
@@ -42,7 +39,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	}
 
 	if grpc_conf != nil {
-		if proxy.signallingClient, err = grpc.InitGRPCClient(grpc_conf, devices, webrtc_conf, proxy.Shutdown); err != nil {
+		if proxy.signallingClient, err = grpc.InitGRPCClient(grpc_conf, webrtc_conf, proxy.Shutdown); err != nil {
 			return
 		}
 	} else if sock != nil {
@@ -54,7 +51,6 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	}
 
 	proxy.handleTimeout()
-	proxy.signallingClient.OnDeviceSelect(deviceSelect)
 	if proxy.webrtcClient, err = webrtc.InitWebRtcClient(onTrack, *webrtc_conf); err != nil {
 		return
 	}
@@ -107,7 +103,7 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 func (proxy *Proxy) handleTimeout() {
 	start := make(chan bool, 2)
 	go func() {
-		proxy.signallingClient.WaitForConnected()
+		proxy.signallingClient.WaitForEnd()
 		time.Sleep(30 * time.Second)
 		start <- false
 	}()
