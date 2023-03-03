@@ -7,8 +7,8 @@ import (
 	"unsafe"
 
 	"github.com/pion/rtp"
-	"github.com/thinkonmay/thinkremote-rtchub/rtppay"
-	"github.com/thinkonmay/thinkremote-rtchub/rtppay/opus"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/opus"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 

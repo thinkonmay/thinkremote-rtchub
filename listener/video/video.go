@@ -9,8 +9,8 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video/adaptive"
-	"github.com/thinkonmay/thinkremote-rtchub/rtppay"
-	"github.com/thinkonmay/thinkremote-rtchub/rtppay/h264"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
