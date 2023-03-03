@@ -2,11 +2,10 @@ package listener
 
 import (
 	"github.com/pion/rtp"
-	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
 type Listener interface {
-	GetConfig() *config.ListenerConfig
+	GetCodec() string
 	SetProperty(name string,val int) error
 
 	ReadRTP() *rtp.Packet

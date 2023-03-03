@@ -8,9 +8,10 @@ import (
 	"unsafe"
 
 	"github.com/pion/rtp"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/video/adaptive"
+	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/video/adaptive"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
@@ -33,6 +34,7 @@ type Pipeline struct {
 
 	rtpchan    chan *rtp.Packet
 	packetizer rtppay.Packetizer
+	codec		string
 
 	adsContext *adaptive.AdaptiveContext
 
@@ -49,6 +51,7 @@ func CreatePipeline(pipelineStr string,
 		pipeline:     unsafe.Pointer(nil),
 		rtpchan:      make(chan *rtp.Packet, 50),
 		pipelineStr:  pipelineStr,
+		codec:		  webrtc.MimeTypeH264,
 
 		clockRate:    90000,
 		restartCount: 0,
@@ -106,6 +109,9 @@ func goHandlePipelineBufferVideo(buffer unsafe.Pointer, bufferLen C.int, duratio
 	}
 }
 
+func (p *Pipeline) GetCodec() string {
+	return p.codec
+}
 
 func (p *Pipeline) SetProperty(name string, val int) error {
 	fmt.Printf("%s change to %d\n", name, val)

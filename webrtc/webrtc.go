@@ -143,14 +143,11 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 
 	go func() {
 		for {
-			var err error
 			ice := <-client.fromIceChannel
 			sdp := client.conn.RemoteDescription()
 			pending := client.conn.PendingRemoteDescription()
-			if sdp == pending {
-				return
-			}
-			err = client.conn.AddICECandidate(*ice)
+			if sdp == pending { return }
+			err := client.conn.AddICECandidate(*ice)
 			if err != nil {
 				fmt.Printf("error add ice candicate %s\n",err.Error())
 				continue
@@ -178,12 +175,12 @@ func handleRTCP(rtpSender *webrtc.RTPSender) {
 
 func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 	for _, lis := range listeners {
-		fmt.Printf("added track\n")
+		codec := lis.GetCodec()
+		track, err := webrtc.NewTrackLocalStaticRTP(
+			webrtc.RTPCodecCapability{ MimeType: codec, }, 
+			fmt.Sprintf("%d",time.Now().UnixNano()), 
+			fmt.Sprintf("%d",time.Now().UnixNano()))
 
-		listenerConfig := lis.GetConfig()
-		track, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
-			MimeType: listenerConfig.Codec,
-		}, listenerConfig.ID, listenerConfig.StreamID)
 		if err != nil {
 			fmt.Printf("error add track %s\n", err.Error())
 			continue
@@ -204,23 +201,19 @@ func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 func ondataChannel(channel *webrtc.DataChannel, chans *config.DataChannelConfig) {
 	chans.Mutext.Lock()
 	conf := chans.Confs[channel.Label()]
-	conf.Channel = channel
 	chans.Mutext.Unlock()
 
-	channel.OnMessage(func(msg webrtc.DataChannelMessage) {
-		conf.Recv <- string(msg.Data)
-	})
+	channel.OnMessage(func(msg webrtc.DataChannelMessage) { conf.Recv <-string(msg.Data) })
+	go func() { for { channel.SendText(<-conf.Send) } }()
+
+
+	conf.Channel = channel
 	channel.OnClose(func() {
 		chans.Mutext.Lock()
+		defer chans.Mutext.Unlock()
+
 		delete(chans.Confs, channel.Label())
-		chans.Mutext.Unlock()
 	})
-	go func() {
-		for {
-			msg := <-conf.Send
-			channel.SendText(msg)
-		}
-	}()
 }
 
 func (client *WebRTCClient) RegisterDataChannel(chans *config.DataChannelConfig) {

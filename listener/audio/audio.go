@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"github.com/pion/rtp"
+	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/opus"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
@@ -30,6 +31,8 @@ type Pipeline struct {
 
 	rtpchan chan *rtp.Packet
 	packetizer rtppay.Packetizer
+	codec        string
+
 	restartCount int
 }
 
@@ -43,6 +46,7 @@ func CreatePipeline(config *config.ListenerConfig) (*Pipeline,error) {
 		pipelineStr:  "fakesrc ! appsink name=appsink",
 		restartCount: 0,
 		clockRate:    48000,
+		codec:		  webrtc.MimeTypeOpus,
 
 		packetizer: opus.NewOpusPayloader(),
 	}
@@ -80,6 +84,10 @@ func handleAudioStopOrError() {
 	pipeline.Open()
 
 	pipeline.restartCount++
+}
+
+func (p *Pipeline) GetCodec() string {
+	return p.codec
 }
 
 func (p *Pipeline) Open() {
