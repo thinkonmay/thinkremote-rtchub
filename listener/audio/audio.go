@@ -12,7 +12,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
-// #cgo LDFLAGS: ${SRCDIR}/../../cgo/lib/libshared.a
+// #cgo LDFLAGS: ${SRCDIR}/../cgo/lib/libshared.a
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
 // #include "webrtc_audio.h"
 import "C"

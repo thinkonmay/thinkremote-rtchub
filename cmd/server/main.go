@@ -7,7 +7,6 @@ import (
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
 	"github.com/thinkonmay/thinkremote-rtchub/broadcaster"
 	"github.com/thinkonmay/thinkremote-rtchub/broadcaster/dummy"
-	sink "github.com/thinkonmay/thinkremote-rtchub/broadcaster/gstreamer"
 	"github.com/thinkonmay/thinkremote-rtchub/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkshare-daemon/session/ice"
@@ -54,7 +53,7 @@ func main() {
 
 	rtc := &config.WebRTCConfig{Ices: ice.DecodeWebRTCConfig(webrtcString).ICEServers}
 	chans := config.NewDataChannelConfig([]string{"hid", "adaptive", "manual"})
-	br := []*config.BroadcasterConfig{}
+	// br := []*config.BroadcasterConfig{}
 	Lists := []listener.Listener{
 		// audio.CreatePipeline(&config.ListenerConfig{
 		// 	StreamID: "audio",
@@ -69,12 +68,12 @@ func main() {
 	hid.NewHIDSingleton(HIDURL, chans.Confs["hid"])
 	prox, err := proxy.InitWebRTCProxy(nil, grpc, rtc, chans, Lists,
 		func(tr *webrtc.TrackRemote) (broadcaster.Broadcaster, error) {
-			for _, conf := range br {
-				if tr.Codec().MimeType == conf.Codec {
-					return sink.CreatePipeline(conf)
-				}
-			}
-			fmt.Printf("no available codec handler, using dummy sink\n")
+			// for _, conf := range br {
+			// 	if tr.Codec().MimeType == conf.Codec {
+			// 		return sink.CreatePipeline(conf)
+			// 	}
+			// }
+			// fmt.Printf("no available codec handler, using dummy sink\n")
 			return dummy.NewDummyBroadcaster(&config.BroadcasterConfig{
 				Name:  "dummy",
 				Codec: "any",

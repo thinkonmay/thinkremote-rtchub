@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 2.20.0)
 project(WebrtcProxy)
 
 
-set(CMAKE_PREFIX_PATH C:/gstreamer/1.0/msvc_x86_64)
-set(INCLUDE_LIBRARY C:/gstreamer/1.0/msvc_x86_64/lib)
+set(CMAKE_PREFIX_PATH C:/gstreamer/1.22.0/msvc_x86_64)
+set(INCLUDE_LIBRARY C:/gstreamer/1.22.0/msvc_x86_64/lib)
 
 find_package(PkgConfig REQUIRED)
 
@@ -15,7 +15,7 @@ pkg_check_modules(VIDEO REQUIRED gstreamer-video-1.0)
 
 
 file(GLOB SOURCE_LIST 
-    ${CMAKE_SOURCE_DIR}/cgo/*.cpp
+    ${CMAKE_SOURCE_DIR}/listener/cgo/*.cpp
 )
 
 
