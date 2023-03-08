@@ -45,8 +45,8 @@ var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(pipelineStr string,
-	Ads *config.DataChannel,
-	Manual *config.DataChannel) *Pipeline {
+					Ads *config.DataChannel,
+					Manual *config.DataChannel) *Pipeline {
 	pipeline = &Pipeline{
 		pipeline:    unsafe.Pointer(nil),
 		rtpchan:     make(chan *rtp.Packet, 50),

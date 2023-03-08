@@ -10,7 +10,6 @@ import (
 	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/opus"
-	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
 // #cgo LDFLAGS: ${SRCDIR}/../cgo/lib/liblistener.a
@@ -39,11 +38,11 @@ type Pipeline struct {
 var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
+func CreatePipeline(pipelinestr string) (*Pipeline) {
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
 		rtpchan:      make(chan *rtp.Packet),
-		pipelineStr:  "fakesrc ! appsink name=appsink",
+		pipelineStr:  pipelinestr,
 		restartCount: 0,
 		clockRate:    48000,
 		codec:        webrtc.MimeTypeOpus,
@@ -58,11 +57,12 @@ func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
 	Pipeline := C.create_audio_pipeline(pipelineStrUnsafe, &err)
 	if len(ToGoString(err)) != 0 {
 		C.stop_audio_pipeline(Pipeline)
-		return nil, fmt.Errorf("%s", ToGoString(err))
+		fmt.Printf("fail to %s", ToGoString(err))
+		return nil
 	}
 
 	pipeline.pipeline = Pipeline
-	return pipeline, nil
+	return pipeline
 }
 
 //export goHandlePipelineBufferAudio

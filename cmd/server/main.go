@@ -9,6 +9,8 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/broadcaster/dummy"
 	"github.com/thinkonmay/thinkremote-rtchub/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
 	"github.com/thinkonmay/thinkshare-daemon/session/ice"
 	"github.com/thinkonmay/thinkshare-daemon/session/signaling"
 
@@ -55,13 +57,10 @@ func main() {
 	chans := config.NewDataChannelConfig([]string{"hid", "adaptive", "manual"})
 	// br := []*config.BroadcasterConfig{}
 	Lists := []listener.Listener{
-		// audio.CreatePipeline(&config.ListenerConfig{
-		// 	StreamID: "audio",
-		// 	Codec:    webrtc.MimeTypeOpus,
-		// }), video.CreatePipeline(&config.ListenerConfig{
-		// 	StreamID: "video",
-		// 	Codec:    webrtc.MimeTypeH264,
-		// }, chans.Confs["adaptive"], chans.Confs["manual"]),
+		audio.CreatePipeline(""), 
+		video.CreatePipeline("" , 
+			chans.Confs["adaptive"], 
+			chans.Confs["manual"]),
 	}
 
 	fmt.Printf("starting websocket connection establishment with hid server at %s\n", HIDURL)
