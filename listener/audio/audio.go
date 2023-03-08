@@ -13,7 +13,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
-// #cgo LDFLAGS: ${SRCDIR}/../cgo/lib/libshared.a
+// #cgo LDFLAGS: ${SRCDIR}/../cgo/lib/liblistener.a
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0
 // #include "webrtc_audio.h"
 import "C"
@@ -29,9 +29,9 @@ type Pipeline struct {
 
 	clockRate float64
 
-	rtpchan chan *rtp.Packet
+	rtpchan    chan *rtp.Packet
 	packetizer rtppay.Packetizer
-	codec        string
+	codec      string
 
 	restartCount int
 }
@@ -39,14 +39,14 @@ type Pipeline struct {
 var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig) (*Pipeline,error) {
+func CreatePipeline(config *config.ListenerConfig) (*Pipeline, error) {
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
 		rtpchan:      make(chan *rtp.Packet),
 		pipelineStr:  "fakesrc ! appsink name=appsink",
 		restartCount: 0,
 		clockRate:    48000,
-		codec:		  webrtc.MimeTypeOpus,
+		codec:        webrtc.MimeTypeOpus,
 
 		packetizer: opus.NewOpusPayloader(),
 	}
@@ -58,11 +58,11 @@ func CreatePipeline(config *config.ListenerConfig) (*Pipeline,error) {
 	Pipeline := C.create_audio_pipeline(pipelineStrUnsafe, &err)
 	if len(ToGoString(err)) != 0 {
 		C.stop_audio_pipeline(Pipeline)
-		return nil,fmt.Errorf("%s", ToGoString(err))
+		return nil, fmt.Errorf("%s", ToGoString(err))
 	}
 
 	pipeline.pipeline = Pipeline
-	return pipeline,nil
+	return pipeline, nil
 }
 
 //export goHandlePipelineBufferAudio
@@ -75,8 +75,6 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 		pipeline.rtpchan <- packet
 	}
 }
-
-
 
 //export handleAudioStopOrError
 func handleAudioStopOrError() {

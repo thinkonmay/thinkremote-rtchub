@@ -14,37 +14,51 @@ pkg_check_modules(VIDEO REQUIRED gstreamer-video-1.0)
 
 
 
-file(GLOB SOURCE_LIST 
+file(GLOB SOURCE_LIST_LISTENER
     ${CMAKE_SOURCE_DIR}/listener/cgo/*.cpp
+)
+file(GLOB SOURCE_LIST_BROADCASTER
+    ${CMAKE_SOURCE_DIR}/broadcaster/cgo/*.cpp
 )
 
 
-add_library(shared STATIC ${SOURCE_LIST})
-target_include_directories(shared PUBLIC
-    ${CMAKE_SOURCE_DIR}/broadcaster/gstreamer 
+add_library(listener    STATIC ${SOURCE_LIST_LISTENER})
+add_library(broadcaster STATIC ${SOURCE_LIST_BROADCASTER})
 
+target_include_directories(listener PUBLIC
     ${CMAKE_SOURCE_DIR}/listener/audio
     ${CMAKE_SOURCE_DIR}/listener/video
-
-
-    ${CMAKE_SOURCE_DIR}/adaptive
-
-    ${CMAKE_SOURCE_DIR}/util/tool
-
+    ${GLIB_INCLUDE_DIRS} 
+    ${GST_INCLUDE_DIRS}
+    ${VIDEO_INCLUDE_DIRS}
+)
+target_include_directories(broadcaster PUBLIC
+    ${CMAKE_SOURCE_DIR}/broadcaster/microphone
     ${GLIB_INCLUDE_DIRS} 
     ${GST_INCLUDE_DIRS}
     ${VIDEO_INCLUDE_DIRS}
 )
 
-target_compile_options(shared PUBLIC ${GLIB_CFLAGS}
+target_compile_options(listener PUBLIC ${GLIB_CFLAGS}
                                      ${GST_CFLAGS}
                                      ${VIDEO_CFLAGS})
 
-target_link_directories(shared PUBLIC ${INCLUDE_LIBRARY} )    
+target_link_directories(listener PUBLIC ${INCLUDE_LIBRARY} )    
 
-target_link_libraries(shared PUBLIC 
+target_link_libraries(listener PUBLIC 
     ${GLIB_LIBRARIES} 
     ${GST_LIBRARIES}
     ${VIDEO_LIBRARIES}
 )
 
+target_compile_options(broadcaster PUBLIC ${GLIB_CFLAGS}
+                                     ${GST_CFLAGS}
+                                     ${VIDEO_CFLAGS})
+
+target_link_directories(broadcaster PUBLIC ${INCLUDE_LIBRARY} )    
+
+target_link_libraries(broadcaster PUBLIC 
+    ${GLIB_LIBRARIES} 
+    ${GST_LIBRARIES}
+    ${VIDEO_LIBRARIES}
+)

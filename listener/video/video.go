@@ -16,7 +16,7 @@ import (
 )
 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0
-// #cgo LDFLAGS: ${SRCDIR}/../cgo/lib/libshared.a
+// #cgo LDFLAGS: ${SRCDIR}/../cgo/lib/liblistener.a
 // #include "webrtc_video.h"
 import "C"
 
@@ -34,7 +34,7 @@ type Pipeline struct {
 
 	rtpchan    chan *rtp.Packet
 	packetizer rtppay.Packetizer
-	codec		string
+	codec      string
 
 	adsContext *adaptive.AdaptiveContext
 
@@ -45,18 +45,18 @@ var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(pipelineStr string,
-					Ads *config.DataChannel,
-					Manual *config.DataChannel) *Pipeline {
+	Ads *config.DataChannel,
+	Manual *config.DataChannel) *Pipeline {
 	pipeline = &Pipeline{
-		pipeline:     unsafe.Pointer(nil),
-		rtpchan:      make(chan *rtp.Packet, 50),
-		pipelineStr:  pipelineStr,
-		codec:		  webrtc.MimeTypeH264,
+		pipeline:    unsafe.Pointer(nil),
+		rtpchan:     make(chan *rtp.Packet, 50),
+		pipelineStr: pipelineStr,
+		codec:       webrtc.MimeTypeH264,
 
 		clockRate:    90000,
 		restartCount: 0,
 
-		properties:   make(map[string]int),
+		properties: make(map[string]int),
 
 		adsContext: adaptive.NewAdsContext(Ads.Recv,
 			func(bitrate int) {
@@ -130,7 +130,6 @@ func (p *Pipeline) SetProperty(name string, val int) error {
 	return nil
 }
 
-
 //export handleVideoStopOrError
 func handleVideoStopOrError() {
 	pipeline.Close()
@@ -138,7 +137,6 @@ func handleVideoStopOrError() {
 		pipeline.SetProperty(key, val)
 	}
 	pipeline.Open()
-
 
 	pipeline.restartCount++
 }
