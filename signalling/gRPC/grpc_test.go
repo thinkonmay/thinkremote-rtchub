@@ -14,9 +14,7 @@ func TestClient(t *testing.T) {
 		ServerAddress: "grpc.thinkmay.net", // chose domain
 		Port:          30000,
 	}
-	shutdown_channel := make(chan bool)
-
-	client, err := InitGRPCClient(&conf, nil, shutdown_channel)
+	client, err := InitGRPCClient(&conf)
 	if err != nil {
 		t.Error(err)
 	}
@@ -46,5 +44,5 @@ func TestClient(t *testing.T) {
 		t.Error(err)
 	}
 
-	<-shutdown_channel
+	client.WaitForEnd()
 }

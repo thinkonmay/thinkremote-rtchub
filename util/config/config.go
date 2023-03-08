@@ -51,8 +51,8 @@ func NewDataChannelConfig(names []string) *DataChannelConfig {
 
 	for _,name := range names {
 		conf.Confs[name] = &DataChannel{
-			Send:    make(chan string),
-			Recv:    make(chan string),
+			Send:    make(chan string,10),
+			Recv:    make(chan string,10),
 			Channel: nil,
 		}
 	}

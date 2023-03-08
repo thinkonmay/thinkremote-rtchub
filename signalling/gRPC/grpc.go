@@ -27,19 +27,12 @@ type GRPCclient struct {
 
 	done      bool
 	connected bool
-
-	shutdown chan bool
 }
 
-func InitGRPCClient(conf *config.GrpcConfig,
-					webrtc_conf *config.WebRTCConfig,
-					shutdown chan bool,
-					) (ret *GRPCclient, err error) {
-
+func InitGRPCClient(conf *config.GrpcConfig) (ret *GRPCclient, err error) {
 	ret = &GRPCclient{
 		sdpChan:       make(chan *webrtc.SessionDescription),
 		iceChan:       make(chan *webrtc.ICECandidateInit),
-		shutdown:      shutdown,
 
 		connected: false,
 		done:      false,
@@ -76,7 +69,6 @@ func InitGRPCClient(conf *config.GrpcConfig,
 
 				fmt.Printf("%s\n", err.Error())
 				fmt.Printf("grpc connection terminated while waiting for peer, terminating...\n")
-				ret.shutdown <- true
 			}
 
 			switch res.Type {
@@ -100,7 +92,7 @@ func InitGRPCClient(conf *config.GrpcConfig,
 			case packet.SignalingType_START:
 				ret.connected = true;
 			case packet.SignalingType_END:
-				ret.done      = true;
+				ret.Stop()
 			default:
 				fmt.Println("Unknown packet")
 			}
@@ -110,6 +102,8 @@ func InitGRPCClient(conf *config.GrpcConfig,
 }
 
 func (client *GRPCclient) SendSDP(desc *webrtc.SessionDescription) error {
+	if !client.connected { return fmt.Errorf("signaling client is closed"); }
+
 	req := packet.SignalingMessage{
 		Type: packet.SignalingType_TYPE_SDP,
 		Sdp: &packet.SDP{
@@ -127,6 +121,8 @@ func (client *GRPCclient) SendSDP(desc *webrtc.SessionDescription) error {
 }
 
 func (client *GRPCclient) SendICE(ice *webrtc.ICECandidateInit) error {
+	if !client.connected { return fmt.Errorf("signaling client is closed"); }
+
 	req := &packet.SignalingMessage{
 		Type: packet.SignalingType_TYPE_SDP,
 		Ice: &packet.ICE{
@@ -148,6 +144,7 @@ func (client *GRPCclient) OnICE(fun signalling.OnIceFunc) {
 	go func() {
 		for {
 			ice := <-client.iceChan
+			if !client.connected { continue }
 			fun(ice)
 		}
 	}()
@@ -157,6 +154,7 @@ func (client *GRPCclient) OnSDP(fun signalling.OnSDPFunc) {
 	go func() {
 		for {
 			sdp := <-client.sdpChan
+			if !client.connected { continue }
 			fun(sdp)
 		}
 	}()
@@ -173,7 +171,7 @@ func (client *GRPCclient) WaitForStart() {
 
 func (client *GRPCclient) WaitForEnd() {
 	for {
-		if client.connected {
+		if client.done {
 			return
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -182,4 +180,6 @@ func (client *GRPCclient) WaitForEnd() {
 
 func (client *GRPCclient) Stop() {
 	client.conn.Close()
+	client.connected = false
+	client.done      = true 
 }

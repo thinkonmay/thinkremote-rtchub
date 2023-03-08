@@ -15,10 +15,12 @@ pkg_check_modules(VIDEO REQUIRED gstreamer-video-1.0)
 
 
 file(GLOB SOURCE_LIST_LISTENER
-    ${CMAKE_SOURCE_DIR}/listener/cgo/*.cpp
+    ${CMAKE_SOURCE_DIR}/listener/cgo/video.cpp
+    ${CMAKE_SOURCE_DIR}/listener/cgo/audio.cpp
+    ${CMAKE_SOURCE_DIR}/listener/cgo/util.cpp
 )
 file(GLOB SOURCE_LIST_BROADCASTER
-    ${CMAKE_SOURCE_DIR}/broadcaster/cgo/*.cpp
+    ${CMAKE_SOURCE_DIR}/broadcaster/cgo/video.cpp
 )
 
 

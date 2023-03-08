@@ -7,7 +7,6 @@ import (
 	webrtclib "github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling"
-	grpc "github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 	"github.com/thinkonmay/thinkremote-rtchub/webrtc"
 )
@@ -23,33 +22,24 @@ type Proxy struct {
 	Shutdown chan bool
 }
 
-func InitWebRTCProxy(sock *config.WebsocketConfig,
-	grpc_conf *config.GrpcConfig,
-	webrtc_conf *config.WebRTCConfig,
-	chan_conf *config.DataChannelConfig,
-	lis []listener.Listener,
-	onTrack webrtc.OnTrackFunc,
-) (proxy *Proxy, err error) {
-
+func InitWebRTCProxy(grpc_conf signalling.Signalling,
+					webrtc_conf *config.WebRTCConfig,
+					chan_conf *config.DataChannelConfig,
+					lis []listener.Listener,
+					onTrack webrtc.OnTrackFunc,
+					) (proxy *Proxy, err error) {
 	fmt.Printf("started proxy\n")
 	proxy = &Proxy{
 		Shutdown:  make(chan bool),
 		chan_conf: chan_conf,
+		signallingClient: grpc_conf,
 		listeners: lis,
 	}
 
-	if grpc_conf != nil {
-		if proxy.signallingClient, err = grpc.InitGRPCClient(grpc_conf, webrtc_conf, proxy.Shutdown); err != nil { return }
-	} else if sock != nil {
-		err = fmt.Errorf("unimplemented websocket")
-		return
-	} else {
-		err = fmt.Errorf("unimplemented")
-		return
-	}
-
 	go proxy.handleTimeout()
-	if proxy.webrtcClient, err = webrtc.InitWebRtcClient(onTrack, *webrtc_conf); err != nil { return }
+	if proxy.webrtcClient, err = webrtc.InitWebRtcClient(onTrack, *webrtc_conf); err != nil { 
+		return 
+	}
 
 	go func() { for {
 			state := proxy.webrtcClient.GatherStateChange()
@@ -84,12 +74,13 @@ func (proxy *Proxy) handleTimeout() {
 	start := make(chan bool, 2)
 	go func() {
 		proxy.signallingClient.WaitForEnd()
+		fmt.Println("application ended exchanging signaling message")
 		start <-true
 	}()
 	go func() {
 		proxy.signallingClient.WaitForStart()
 		fmt.Println("application start exchanging signaling message")
-		proxy.start()
+		proxy.webrtcClient.RegisterDataChannel(proxy.chan_conf)
 		time.Sleep(30 * time.Second)
 		start <-false 
 	}()
@@ -99,9 +90,6 @@ func (proxy *Proxy) handleTimeout() {
 		fmt.Println("application exchange signaling timeout, closing")
 		proxy.Stop()
 	}
-}
-func (prox *Proxy) start() {
-	prox.webrtcClient.RegisterDataChannel(prox.chan_conf)
 }
 
 func (prox *Proxy) Stop() {

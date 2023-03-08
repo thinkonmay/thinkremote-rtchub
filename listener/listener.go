@@ -7,9 +7,9 @@ import (
 type Listener interface {
 	GetCodec() string
 	SetProperty(name string,val int) error
+	RegisterRTPHandler(string,func(*rtp.Packet)) 
+	DeregisterRTPHandler(string) 
 
-	ReadRTP() *rtp.Packet
-
-	Open()
+	Open() 
 	Close()
 }
