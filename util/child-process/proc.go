@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 )
 
 func FindProcessPath(process string) (string,error){
@@ -58,6 +59,10 @@ func HandleProcess(cmd *exec.Cmd) {
 
 	stdoutIn, _ := cmd.StdoutPipe()
 	stderrIn, _ := cmd.StderrPipe()
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow: true,
+	}
+
 	cmd.Start()
 	go func() {
 		copyAndCapture(processname, os.Stdout, stdoutIn)
