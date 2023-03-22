@@ -45,14 +45,14 @@ func main() {
 
 	chans := config.NewDataChannelConfig([]string{"hid", "adaptive", "manual"})
 
-	bytes,_ := base64.RawURLEncoding.DecodeString(videoArg)
+	bytes,_ := base64.RawStdEncoding.DecodeString(videoArg)
 	videopipeline,err := video.CreatePipeline(string(bytes), chans.Confs["adaptive"], chans.Confs["manual"])
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s",err.Error())
 		return
 	}
 
-	bytes,_ = base64.RawURLEncoding.DecodeString(audioArg)
+	bytes,_ = base64.RawStdEncoding.DecodeString(audioArg)
 	audioPipeline,err := audio.CreatePipeline(string(bytes))
 	if err != nil {
 		fmt.Printf("error initiate audio pipeline %s",err.Error())
@@ -84,7 +84,7 @@ func main() {
 				continue
 			}
 
-			prox, err := proxy.InitWebRTCProxy(signaling_client, rtc, chans, Lists,handle_track)
+			_,err = proxy.InitWebRTCProxy(signaling_client, rtc, chans, Lists,handle_track)
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 				return
