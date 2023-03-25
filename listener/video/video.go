@@ -17,7 +17,7 @@ import (
 )
 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0
-// #cgo LDFLAGS: ${SRCDIR}/../cgo/lib/liblistener.a
+// #cgo LDFLAGS: ${SRCDIR}/../../cgo/lib/libshared.a
 // #include "webrtc_video.h"
 import "C"
 

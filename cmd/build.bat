@@ -8,5 +8,4 @@ cmake .. -G "Ninja"
 ninja
 
 cd ..
-robocopy build listener/cgo/lib liblistener.a
-robocopy build broadcaster/cgo/lib libbroadcaster.a
+robocopy build cgo/lib libshared.a
