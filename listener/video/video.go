@@ -26,8 +26,6 @@ func init() {
 }
 
 
-
-
 const (
 	soft_limit = 40
 	hard_limit = 50
@@ -42,7 +40,7 @@ type Handler struct {
 type Multiplexer struct {
 	srcPkt    		chan *rtp.Packet
 	srcBuf    		chan struct {
-		buff    *[]byte
+		buff    []byte
 		samples int
 	}
 
@@ -94,7 +92,7 @@ func CreatePipeline(pipelineStr string,
 		),
 		Multiplexer: &Multiplexer{
 			srcPkt: make(chan *rtp.Packet,hard_limit),
-			srcBuf: make(chan struct{buff *[]byte; samples int},hard_limit),
+			srcBuf: make(chan struct{buff []byte; samples int},hard_limit),
 			mutex:  &sync.Mutex{},
 			handler: map[string]Handler{},
 		},
@@ -132,7 +130,7 @@ func CreatePipeline(pipelineStr string,
 		for {
 			src_buffer := <- pipeline.Multiplexer.srcBuf
 			if pipeline.closed { return }
-			packets := pipeline.packetizer.Packetize(*src_buffer.buff, uint32(src_buffer.samples))
+			packets := pipeline.packetizer.Packetize(src_buffer.buff, uint32(src_buffer.samples))
 			for _, packet := range packets {
 				pipeline.Multiplexer.srcPkt <- packet
 			}
@@ -158,9 +156,8 @@ func CreatePipeline(pipelineStr string,
 //export goHandlePipelineBufferVideo
 func goHandlePipelineBufferVideo(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
 	samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
-	c_byte := C.GoBytes(buffer, bufferLen)
-	pipeline.Multiplexer.srcBuf<-struct{buff *[]byte; samples int}{
-		buff: &c_byte,
+	pipeline.Multiplexer.srcBuf<-struct{buff []byte; samples int}{
+		buff:    C.GoBytes(buffer, bufferLen),
 		samples: int(samples),
 	}
 }
