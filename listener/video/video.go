@@ -25,6 +25,31 @@ func init() {
 	go C.start_video_mainloop()
 }
 
+
+
+
+const (
+	soft_limit = 40
+	hard_limit = 50
+)
+
+
+type Handler struct {
+	closed			bool
+	sink    		chan *rtp.Packet
+	handler         func(*rtp.Packet)
+}	
+type Multiplexer struct {
+	srcPkt    		chan *rtp.Packet
+	srcBuf    		chan struct {
+		buff    *[]byte
+		samples int
+	}
+
+	mutex 		*sync.Mutex
+	handler 	map[string]Handler
+}
+
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
 	closed     bool
@@ -35,20 +60,7 @@ type Pipeline struct {
 	clockRate   float64
 
 
-	Multiplexer struct {
-		srcPkt    		chan *rtp.Packet
-		srcBuf    		chan struct {
-			buff    *[]byte
-			samples int
-		}
-
-		mutex 		*sync.Mutex
-		handler 	map[string]struct {
-			closed			bool
-			sink    		chan *rtp.Packet
-			handler         func(*rtp.Packet)
-		}	
-	}
+	Multiplexer *Multiplexer
 
 	packetizer rtppay.Packetizer
 	codec      string
@@ -80,16 +92,11 @@ func CreatePipeline(pipelineStr string,
 			func(bitrate int) { pipeline.SetProperty("bitrate", bitrate) }, 
 			func() 			  { pipeline.SetProperty("reset", 0) },
 		),
-		Multiplexer: struct{
-			srcPkt chan *rtp.Packet; 
-			srcBuf chan struct{buff *[]byte; samples int}; 
-			mutex 	*sync.Mutex;
-			handler map[string]struct{closed bool; sink chan *rtp.Packet; handler func(*rtp.Packet)};
-		}{
-			srcPkt: make(chan *rtp.Packet,50),
-			srcBuf: make(chan struct{buff *[]byte; samples int},50),
+		Multiplexer: &Multiplexer{
+			srcPkt: make(chan *rtp.Packet,hard_limit),
+			srcBuf: make(chan struct{buff *[]byte; samples int},hard_limit),
 			mutex:  &sync.Mutex{},
-			handler: map[string]struct{closed bool; sink chan *rtp.Packet; handler func(*rtp.Packet)}{},
+			handler: map[string]Handler{},
 		},
 	}
 
@@ -199,8 +206,18 @@ func (p *Pipeline) Open() {
 	C.start_video_pipeline(pipeline.pipeline)
 }
 func (p *Pipeline) Close() {
-	p.packetizer = nil
+	keys := make([]string, 0, len(p.Multiplexer.handler))
+	for k := range p.Multiplexer.handler {
+		keys = append(keys, k)
+	}
+	
+	for _,v := range keys {
+		p.DeregisterRTPHandler(v)
+	}
+
+	fmt.Println("stopping video pipeline")
 	C.stop_video_pipeline(p.pipeline)
+	p.packetizer = nil
 }
 
 func ToGoString(str unsafe.Pointer) string {
@@ -226,7 +243,7 @@ func (p *Pipeline) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 		handler func(*rtp.Packet);
 	}{
 		closed: false,
-		sink: make(chan *rtp.Packet,50),
+		sink: make(chan *rtp.Packet,hard_limit),
 		handler: fun,
 	}
 
@@ -234,6 +251,7 @@ func (p *Pipeline) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 		for {
 			pkt := <-handler.sink
 			if handler.closed { return }
+			if len(handler.sink) > soft_limit { continue }
 			handler.handler(pkt);
 		}
 	}()
@@ -251,4 +269,5 @@ func (p *Pipeline) DeregisterRTPHandler(id string) {
 	handler.closed = true
 
 	delete(p.Multiplexer.handler,id)
+	fmt.Printf("deregister RTP handler %s\n",id)
 }
