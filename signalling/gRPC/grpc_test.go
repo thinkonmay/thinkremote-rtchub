@@ -14,7 +14,7 @@ func TestClient(t *testing.T) {
 		ServerAddress: "grpc.thinkmay.net", // chose domain
 		Port:          30000,
 	}
-	client, err := InitGRPCClient(&conf)
+	client, err := InitGRPCClient(&conf,nil)
 	if err != nil {
 		t.Error(err)
 	}

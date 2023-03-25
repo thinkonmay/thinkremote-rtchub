@@ -20,7 +20,8 @@ file(GLOB SOURCE_LIST_LISTENER
     ${CMAKE_SOURCE_DIR}/listener/cgo/util.cpp
 )
 file(GLOB SOURCE_LIST_BROADCASTER
-    ${CMAKE_SOURCE_DIR}/broadcaster/cgo/video.cpp
+    ${CMAKE_SOURCE_DIR}/broadcaster/cgo/microphone.cpp
+    ${CMAKE_SOURCE_DIR}/broadcaster/cgo/util.cpp
 )
 
 

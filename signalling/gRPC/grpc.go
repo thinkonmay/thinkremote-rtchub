@@ -18,21 +18,22 @@ type GRPCclient struct {
 	packet.UnimplementedSignalingServer
 	conn *grpc.ClientConn
 
-	stream       packet.SignalingClient
-	client       packet.Signaling_HandshakeClient
+	stream packet.SignalingClient
+	client packet.Signaling_HandshakeClient
 
-	requestCount int
-	sdpChan       chan *webrtc.SessionDescription
-	iceChan       chan *webrtc.ICECandidateInit
+	sdpChan      chan *webrtc.SessionDescription
+	iceChan      chan *webrtc.ICECandidateInit
 
 	done      bool
 	connected bool
 }
 
-func InitGRPCClient(conf *config.GrpcConfig) (ret *GRPCclient, err error) {
+func InitGRPCClient(conf *config.GrpcConfig,
+	auth *config.AuthConfig,
+) (ret *GRPCclient, err error) {
 	ret = &GRPCclient{
-		sdpChan:       make(chan *webrtc.SessionDescription),
-		iceChan:       make(chan *webrtc.ICECandidateInit),
+		sdpChan: make(chan *webrtc.SessionDescription),
+		iceChan: make(chan *webrtc.ICECandidateInit),
 
 		connected: false,
 		done:      false,
@@ -48,7 +49,7 @@ func InitGRPCClient(conf *config.GrpcConfig) (ret *GRPCclient, err error) {
 	// this is the critical step that includes your headers
 	ctx := metadata.NewOutgoingContext(
 		context.Background(),
-		metadata.Pairs("authorization", conf.Token),
+		metadata.Pairs("authorization", auth.Token),
 	)
 
 	ret.stream = packet.NewSignalingClient(ret.conn)
@@ -58,17 +59,17 @@ func InitGRPCClient(conf *config.GrpcConfig) (ret *GRPCclient, err error) {
 		return
 	}
 
-	ret.requestCount = 0
 	go func() {
 		for {
 			res, err := ret.client.Recv()
 			if err != nil {
-				if ret.done {
-					return
+				fmt.Printf("%s\n", err.Error())
+				fmt.Printf("grpc connection terminated\n")
+				if !ret.done {
+					ret.Stop()
 				}
 
-				fmt.Printf("%s\n", err.Error())
-				fmt.Printf("grpc connection terminated while waiting for peer, terminating...\n")
+				return
 			}
 
 			switch res.Type {
@@ -90,7 +91,7 @@ func InitGRPCClient(conf *config.GrpcConfig) (ret *GRPCclient, err error) {
 				fmt.Printf("ICE received\n")
 				ret.iceChan <- ice
 			case packet.SignalingType_START:
-				ret.connected = true;
+				ret.connected = true
 			case packet.SignalingType_END:
 				ret.Stop()
 			default:
@@ -102,7 +103,9 @@ func InitGRPCClient(conf *config.GrpcConfig) (ret *GRPCclient, err error) {
 }
 
 func (client *GRPCclient) SendSDP(desc *webrtc.SessionDescription) error {
-	if !client.connected { return fmt.Errorf("signaling client is closed"); }
+	if !client.connected {
+		return fmt.Errorf("signaling client is closed")
+	}
 
 	req := packet.SignalingMessage{
 		Type: packet.SignalingType_TYPE_SDP,
@@ -116,12 +119,13 @@ func (client *GRPCclient) SendSDP(desc *webrtc.SessionDescription) error {
 	if err := client.client.Send(&req); err != nil {
 		return err
 	}
-	client.requestCount++
 	return nil
 }
 
 func (client *GRPCclient) SendICE(ice *webrtc.ICECandidateInit) error {
-	if !client.connected { return fmt.Errorf("signaling client is closed"); }
+	if !client.connected {
+		return fmt.Errorf("signaling client is closed")
+	}
 
 	req := &packet.SignalingMessage{
 		Type: packet.SignalingType_TYPE_SDP,
@@ -136,7 +140,6 @@ func (client *GRPCclient) SendICE(ice *webrtc.ICECandidateInit) error {
 	if err := client.client.Send(req); err != nil {
 		return err
 	}
-	client.requestCount++
 	return nil
 }
 
@@ -144,7 +147,9 @@ func (client *GRPCclient) OnICE(fun signalling.OnIceFunc) {
 	go func() {
 		for {
 			ice := <-client.iceChan
-			if !client.connected { continue }
+			if !client.connected {
+				continue
+			}
 			fun(ice)
 		}
 	}()
@@ -154,7 +159,9 @@ func (client *GRPCclient) OnSDP(fun signalling.OnSDPFunc) {
 	go func() {
 		for {
 			sdp := <-client.sdpChan
-			if !client.connected { continue }
+			if !client.connected {
+				continue
+			}
 			fun(sdp)
 		}
 	}()
@@ -181,5 +188,5 @@ func (client *GRPCclient) WaitForEnd() {
 func (client *GRPCclient) Stop() {
 	client.conn.Close()
 	client.connected = false
-	client.done      = true 
+	client.done = true
 }

@@ -15,10 +15,12 @@ type WebsocketConfig struct {
 	ServerAddress string
 }
 
+type AuthConfig struct {
+	Token         string		`json:"token"`
+}
 type GrpcConfig struct {
-	Port          int
-	ServerAddress string
-	Token         string
+	Port          int			`json:"SignalingPort"`
+	ServerAddress string		`json:"HostName"`
 }
 
 type ListenerConfig struct {

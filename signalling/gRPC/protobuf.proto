@@ -9,8 +9,8 @@ service Signaling {
 }
 
 enum SignalingType{
-  TYPE_SDP = 0;
-  TYPE_ICE = 1;
+	TYPE_SDP = 0;
+	TYPE_ICE = 1;
 };
 
 message SDP { 
