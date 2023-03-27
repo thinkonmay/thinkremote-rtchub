@@ -13,7 +13,7 @@ import (
 
 	// "github.com/thinkonmay/thinkremote-rtchub/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
-	"github.com/thinkonmay/thinkremote-rtchub/datachannel/hid"
+	// "github.com/thinkonmay/thinkremote-rtchub/datachannel/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
@@ -97,7 +97,7 @@ func main() {
 	}
 
 	fmt.Printf("starting websocket connection establishment with hid server at %s\n", HIDURL)
-	chans.RegisterConsumer("hid",hid.NewHIDSingleton(HIDURL))
+	// chans.RegisterConsumer("hid",hid.NewHIDSingleton(HIDURL))
 	go func() {
 		for {
 			signaling_client, err := grpc.InitGRPCClient(&signaling, &auth)

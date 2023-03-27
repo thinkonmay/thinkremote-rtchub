@@ -44,7 +44,9 @@ type Datachannel struct {
 }
 
 func NewDatachannel(names []string) IDatachannel {
-	dc := &Datachannel{}
+	dc := &Datachannel{
+		groups :map[string]*DatachannelGroup{},
+	}
 
 	for _,name := range names {
 		dc.groups[name] = &DatachannelGroup{
