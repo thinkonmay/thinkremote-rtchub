@@ -65,21 +65,18 @@ func InitGRPCClient(conf *config.GrpcConfig,
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 				fmt.Printf("grpc connection terminated\n")
-				if !ret.done {
-					ret.Stop()
-				}
-
+				ret.stop()
 				return
 			}
 
 			switch res.Type {
-			case packet.SignalingType_TYPE_SDP:
+			case packet.SignalingType_tSDP:
 				sdp := &webrtc.SessionDescription{}
 				sdp.SDP = res.Sdp.SDPData
 				sdp.Type = webrtc.NewSDPType(res.Sdp.Type)
 				fmt.Printf("SDP received: %s\n", res.Sdp.SDPData)
 				ret.sdpChan <- sdp
-			case packet.SignalingType_TYPE_ICE:
+			case packet.SignalingType_tICE:
 				ice := &webrtc.ICECandidateInit{}
 
 				ice.Candidate = res.Ice.Candidate
@@ -90,10 +87,10 @@ func InitGRPCClient(conf *config.GrpcConfig,
 
 				fmt.Printf("ICE received\n")
 				ret.iceChan <- ice
-			case packet.SignalingType_START:
+			case packet.SignalingType_tSTART:
 				ret.connected = true
-			case packet.SignalingType_END:
-				ret.Stop()
+			case packet.SignalingType_tEND:
+				ret.stop()
 			default:
 				fmt.Println("Unknown packet")
 			}
@@ -108,7 +105,7 @@ func (client *GRPCclient) SendSDP(desc *webrtc.SessionDescription) error {
 	}
 
 	req := packet.SignalingMessage{
-		Type: packet.SignalingType_TYPE_SDP,
+		Type: packet.SignalingType_tSDP,
 		Sdp: &packet.SDP{
 			Type:    desc.Type.String(),
 			SDPData: desc.SDP,
@@ -128,7 +125,7 @@ func (client *GRPCclient) SendICE(ice *webrtc.ICECandidateInit) error {
 	}
 
 	req := &packet.SignalingMessage{
-		Type: packet.SignalingType_TYPE_SDP,
+		Type: packet.SignalingType_tICE,
 		Ice: &packet.ICE{
 			SDPMid:        *ice.SDPMid,
 			SDPMLineIndex: int64(*ice.SDPMLineIndex),
@@ -185,7 +182,7 @@ func (client *GRPCclient) WaitForEnd() {
 	}
 }
 
-func (client *GRPCclient) Stop() {
+func (client *GRPCclient) stop() {
 	client.conn.Close()
 	client.connected = false
 	client.done = true

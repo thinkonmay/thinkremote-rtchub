@@ -9,10 +9,11 @@ service Signaling {
 }
 
 enum SignalingType{
-	tSDP = 0;
-	tICE = 1;
-	tSTART = 2;
-	tEND = 3;
+	invalid = 0;
+	tSDP = 1;
+	tICE = 2;
+	tSTART = 3;
+	tEND = 4;
 };
 
 message SDP { 

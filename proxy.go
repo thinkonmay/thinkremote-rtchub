@@ -94,6 +94,4 @@ func (proxy *Proxy) handleTimeout() {
 
 func (prox *Proxy) Stop() {
 	prox.webrtcClient.Close()
-	prox.signallingClient.Stop()
-	prox.Shutdown <- true
 }
