@@ -5,6 +5,7 @@ import (
 	"time"
 
 	webrtclib "github.com/pion/webrtc/v3"
+	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
@@ -14,8 +15,7 @@ import (
 type Proxy struct {
 	listeners []listener.Listener
 
-	chan_conf *config.DataChannelConfig
-
+	chan_conf 		 datachannel.IDatachannel
 	signallingClient signalling.Signalling
 	webrtcClient     *webrtc.WebRTCClient
 
@@ -24,7 +24,7 @@ type Proxy struct {
 
 func InitWebRTCProxy(grpc_conf signalling.Signalling,
 	webrtc_conf *config.WebRTCConfig,
-	chan_conf *config.DataChannelConfig,
+	chan_conf datachannel.IDatachannel,
 	lis []listener.Listener,
 	onTrack webrtc.OnTrackFunc,
 ) (proxy *Proxy, err error) {
@@ -56,7 +56,7 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 			state := proxy.webrtcClient.ConnectionStateChange()
 			switch state {
 			case webrtclib.ICEConnectionStateConnected:
-			proxy.webrtcClient.Listen(proxy.listeners)
+				proxy.webrtcClient.Listen(proxy.listeners)
 			case webrtclib.ICEConnectionStateClosed:
 			case webrtclib.ICEConnectionStateFailed:
 			case webrtclib.ICEConnectionStateDisconnected:
@@ -97,7 +97,7 @@ func (proxy *Proxy) handleTimeout() {
 	go func() {
 		proxy.signallingClient.WaitForStart()
 		fmt.Println("application start exchanging signaling message")
-		proxy.webrtcClient.RegisterDataChannel(proxy.chan_conf)
+		proxy.webrtcClient.RegisterDataChannels(proxy.chan_conf)
 		time.Sleep(30 * time.Second)
 		start <- false
 	}()

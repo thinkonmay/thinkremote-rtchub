@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 )
 
 
 type AdaptiveContext struct {
 	In         chan string
+	Out        chan string
 
-	// ctx unsafe.Pointer
 	triggerVideoReset func()
 	bitrateChangeFunc func(bitrate int)
 
@@ -21,15 +23,14 @@ type AdaptiveContext struct {
 	}
 }
 
-func NewAdsContext(InChan chan string,
-				   BitrateChangeFunc func(bitrate int),
-				   TriggerVideoReset func(),
-				   ) *AdaptiveContext {
+func NewAdsContext(BitrateCallback func(bitrate int),
+				   IDRcallback func()) datachannel.DatachannelConsumer {
 	ret := &AdaptiveContext{
-		In:         InChan,
-		// ctx:        C.new_ads_context(),
-		triggerVideoReset: TriggerVideoReset,
-		bitrateChangeFunc: BitrateChangeFunc,
+		In:         make(chan string),
+		Out:        make(chan string),
+
+		triggerVideoReset: IDRcallback,
+		bitrateChangeFunc: BitrateCallback,
 		last: struct {
 			audio   *AudioMetric
 			video   *VideoMetrics
@@ -142,4 +143,12 @@ func (ads *AdaptiveContext) handleAudioMetric(metric *AudioMetric) {
 	fmt.Printf("audio_incoming_bandwidth_consumption %f", audioBandwidthConsumption)
 
 	ads.last.audio = lastAudioMetric
+}
+
+func (ads *AdaptiveContext) Send(msg string) {
+	ads.In<-msg
+}
+
+func (ads *AdaptiveContext) Recv() string {
+	return<-ads.Out
 }

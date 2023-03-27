@@ -2,7 +2,6 @@
 package video
 
 import (
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -10,10 +9,11 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
+	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video/adaptive"
-	"github.com/thinkonmay/thinkremote-rtchub/util/config"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/video/manual"
 )
 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0
@@ -63,7 +63,8 @@ type Pipeline struct {
 	packetizer rtppay.Packetizer
 	codec      string
 
-	adsContext *adaptive.AdaptiveContext
+	AdsContext     datachannel.DatachannelConsumer
+	ManualContext  datachannel.DatachannelConsumer
 
 	restartCount int
 }
@@ -71,11 +72,9 @@ type Pipeline struct {
 var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(pipelineStr string,
-					Ads *config.DataChannel,
-					Manual *config.DataChannel,
-					) (*Pipeline,error) {
-
+func CreatePipeline(pipelineStr string) (
+					*Pipeline,
+					error) {
 	pipeline = &Pipeline{
 		closed: 	 false,	
 		pipeline:    unsafe.Pointer(nil),
@@ -86,9 +85,14 @@ func CreatePipeline(pipelineStr string,
 		restartCount: 0,
 
 		properties: make(map[string]int),
-		adsContext: adaptive.NewAdsContext(Ads.Recv,
+		AdsContext: adaptive.NewAdsContext(
 			func(bitrate int) { pipeline.SetProperty("bitrate", bitrate) }, 
 			func() 			  { pipeline.SetProperty("reset", 0) },
+		),
+		ManualContext: manual.NewManualCtx(
+			func(bitrate int) 	{ pipeline.SetProperty("bitrate", bitrate) }, 
+			func(framerate int) { pipeline.SetProperty("framerate", framerate) }, 
+			func() 			  	{ pipeline.SetProperty("reset", 0) },
 		),
 		Multiplexer: &Multiplexer{
 			srcPkt: make(chan *rtp.Packet,hard_limit),
@@ -97,6 +101,9 @@ func CreatePipeline(pipelineStr string,
 			handler: map[string]Handler{},
 		},
 	}
+
+
+	
 
 
 	pipelineStrUnsafe := C.CString(pipeline.pipelineStr)
@@ -110,26 +117,6 @@ func CreatePipeline(pipelineStr string,
 		return nil,fmt.Errorf("failed to create pipeline %s",err_str); 
 	}
 
-
-	go func() {
-		for {
-			data := <-Manual.Recv
-			if pipeline.closed { return }
-			var dat map[string]interface{}
-			err := json.Unmarshal([]byte(data), &dat)
-			if err != nil {
-				fmt.Printf("%s", err.Error())
-				continue
-			}
-			_type := dat["type"].(string)
-			if dat[_type] == nil  {
-				continue
-			}
-
-			val := int(dat[_type].(float64))
-			pipeline.SetProperty(_type, val)
-		}
-	}()
 
 	go func() {
 		for {

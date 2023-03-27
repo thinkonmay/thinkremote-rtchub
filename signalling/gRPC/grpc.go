@@ -83,7 +83,7 @@ func InitGRPCClient(conf *config.GrpcConfig,
 				sdp := &webrtc.SessionDescription{}
 				sdp.SDP = res.Sdp.SDPData
 				sdp.Type = webrtc.NewSDPType(res.Sdp.Type)
-				fmt.Printf("SDP received: %s\n", res.Sdp.SDPData)
+				fmt.Printf("SDP received: %s\n", res.Sdp.Type)
 				ret.sdpChan <- sdp
 			case packet.SignalingType_tICE:
 				ice := &webrtc.ICECandidateInit{}
@@ -121,7 +121,7 @@ func (client *GRPCclient) SendSDP(desc *webrtc.SessionDescription) error {
 		},
 	}
 
-	fmt.Printf("SDP send %s\n", req.Sdp.SDPData)
+	fmt.Printf("SDP send %s\n", req.Sdp.Type)
 	if err := client.client.Send(&req); err != nil {
 		return err
 	}

@@ -12,6 +12,8 @@ import (
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
 
 	// "github.com/thinkonmay/thinkremote-rtchub/hid"
+	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
+	"github.com/thinkonmay/thinkremote-rtchub/datachannel/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
@@ -39,17 +41,20 @@ func main() {
 		}
 	}
 
-	chans := config.NewDataChannelConfig([]string{"hid", "adaptive", "manual"})
+	chans := datachannel.NewDatachannel([]string{"hid", "adaptive", "manual"})
 
 	videoPipelineString := ""
 	bytes1, _ := base64.StdEncoding.DecodeString(videoArg)
 	json.Unmarshal(bytes1, &videoPipelineString)
 	fmt.Printf(videoPipelineString)
-	videopipeline,err := video.CreatePipeline("d3d11screencapturesrc blocksize=8192 do-timestamp=true monitor-handle=65537 ! capsfilter name=framerateFilter ! video/x-raw(memory:D3D11Memory),clock-rate=90000 ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! d3d11convert ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! nvd3d11h264enc name=encoder ! video/x-h264,stream-format=(string)byte-stream,profile=(string)main ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! appsink name=appsink", chans.Confs["adaptive"], chans.Confs["manual"])
+	videopipeline,err := video.CreatePipeline("videotestsrc ! openh264enc gop-size=5 ! appsink name=appsink")
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s", err.Error())
 		return
 	}
+
+	chans.RegisterConsumer("adaptive",videopipeline.AdsContext)
+	chans.RegisterConsumer("manual",videopipeline.ManualContext)
 
 	audioPipelineString := ""
 	bytes2, _ := base64.StdEncoding.DecodeString(audioArg)
@@ -92,9 +97,7 @@ func main() {
 	}
 
 	fmt.Printf("starting websocket connection establishment with hid server at %s\n", HIDURL)
-	// hid.NewHIDSingleton(HIDURL, chans.Confs["hid"])
-	fmt.Printf("starting %s \n", HIDURL)
-
+	chans.RegisterConsumer("hid",hid.NewHIDSingleton(HIDURL))
 	go func() {
 		for {
 			signaling_client, err := grpc.InitGRPCClient(&signaling, &auth)
