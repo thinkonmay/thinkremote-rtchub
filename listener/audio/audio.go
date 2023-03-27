@@ -71,7 +71,7 @@ func CreatePipeline(pipelinestr string) (*Pipeline,error) {
 //export goHandlePipelineBufferAudio
 func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
 	samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
-	pipeline.Multiplexer.Send(C.GoBytes(buffer, bufferLen), uint32(samples) )
+	pipeline.Multiplexer.Send(buffer, uint32(bufferLen), uint32(samples) )
 }
 
 //export handleAudioStopOrError

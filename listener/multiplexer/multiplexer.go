@@ -3,25 +3,21 @@ package multiplexer
 import (
 	"fmt"
 	"sync"
+	"unsafe"
 
 	"github.com/pion/rtp"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 )
 
 const (
-	enable_soft_limit = true
+	enable_soft_limit = false 
 	soft_limit        = 40
 	hard_limit        = 50
 	no_limit          = 500
 )
 
-type RawData struct {
-	Samples uint32
-	Buff []byte
-}
 type Multiplexer struct {
 	srcPkt chan *rtp.Packet
-	In     chan *RawData
 
 	packetizer rtppay.Packetizer
 
@@ -41,23 +37,12 @@ type Handler struct {
 func NewMultiplexer(packetizer func() rtppay.Packetizer) *Multiplexer {
 	ret := &Multiplexer{
 		srcPkt:  make(chan *rtp.Packet, hard_limit),
-		In:      make(chan *RawData,hard_limit),
 		mutex:   &sync.Mutex{},
 		handler: map[string]Handler{},
 		packetizer: packetizer(),
 	}
 
 
-
-	go func() {
-		for {
-			src_buffer := <- ret.In
-			packets := ret.packetizer.Packetize(src_buffer.Buff,src_buffer.Samples)
-			for _, packet := range packets {
-				ret.srcPkt <- packet
-			}
-		}
-	}()
 
 	go func() {
 		for {
@@ -73,10 +58,10 @@ func NewMultiplexer(packetizer func() rtppay.Packetizer) *Multiplexer {
 	return ret
 }
 
-func (p *Multiplexer) Send( Buff []byte,Samples uint32) {
-	p.In<-&RawData{
-		Samples: Samples,
-		Buff: Buff,
+func (ret *Multiplexer) Send(Buff unsafe.Pointer, bufferLen uint32,Samples uint32) {
+	packets := ret.packetizer.Packetize(Buff,bufferLen,Samples)
+	for _, packet := range packets {
+		ret.srcPkt <- packet
 	}
 }
 

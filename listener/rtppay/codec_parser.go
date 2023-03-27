@@ -1,7 +1,11 @@
 package rtppay
 
-import "github.com/pion/rtp"
+import (
+	"unsafe"
+
+	"github.com/pion/rtp"
+)
 
 type Packetizer interface {
-	Packetize(payload []byte, samples uint32) []*rtp.Packet
+	Packetize(buff unsafe.Pointer, bufferLen uint32, samples uint32) []*rtp.Packet
 }

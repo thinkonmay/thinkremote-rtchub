@@ -59,21 +59,22 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 	}
 
 	go func() {
+		count := 1
 		for {
 			ret.mut.Lock()
 			for _,ac := range ret.ctxs {
-				if len(ac.vqueue) < 10 {
+				if len(ac.vqueue) < count {
 					continue
 				}
 
 
 				total_fps := 0
-				for i := 0; i < 10; i++ {
+				for i := 0; i < count; i++ {
 					vid:=<-ac.vqueue
 					total_fps = total_fps + int(vid.DecodedFps)
 				}
 
-				v_fps := total_fps/10
+				v_fps := total_fps/count
 				if v_fps < 25 {
 					ret.triggerVideoReset()
 				}

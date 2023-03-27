@@ -2,10 +2,13 @@ package opus
 
 import (
 	"time"
+	"unsafe"
 
 	"github.com/pion/randutil"
 	"github.com/pion/rtp"
 )
+
+import "C"
 
 const (
 	// Unknown defines default public constant to use for "enum" like struct
@@ -54,12 +57,13 @@ func (p *OPUSPayloader) payload(mtu uint16, payload []byte) [][]byte {
 }
 
 // Packetize packetizes the payload of an RTP packet and returns one or more RTP packets
-func (p *OPUSPayloader) Packetize(payload []byte, samples uint32) []*rtp.Packet {
+func (p *OPUSPayloader) Packetize(ptr unsafe.Pointer, buflen uint32, samples uint32) []*rtp.Packet {
 	// Guard against an empty payload
-	if len(payload) == 0 {
-		return nil
+	if buflen == 0 {
+		return []*rtp.Packet{}
 	}
 
+	payload := C.GoBytes(ptr, C.int(buflen))
 	payloads := p.payload(p.MTU-12, payload)
 	packets := make([]*rtp.Packet, len(payloads))
 
