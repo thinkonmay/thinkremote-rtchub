@@ -61,11 +61,20 @@ func InitGRPCClient(conf *config.GrpcConfig,
 
 	go func() {
 		for {
+			time.Sleep(100 * time.Millisecond)
+			if !ret.done {
+				continue
+			}
+			ret.conn.Close()
+		}
+	}()
+	go func() {
+		for {
 			res, err := ret.client.Recv()
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 				fmt.Printf("grpc connection terminated\n")
-				ret.stop()
+				ret.Stop()
 				return
 			}
 
@@ -90,7 +99,7 @@ func InitGRPCClient(conf *config.GrpcConfig,
 			case packet.SignalingType_tSTART:
 				ret.connected = true
 			case packet.SignalingType_tEND:
-				ret.stop()
+				ret.Stop()
 			default:
 				fmt.Println("Unknown packet")
 			}
@@ -182,8 +191,7 @@ func (client *GRPCclient) WaitForEnd() {
 	}
 }
 
-func (client *GRPCclient) stop() {
-	client.conn.Close()
+func (client *GRPCclient) Stop() {
 	client.connected = false
 	client.done = true
 }

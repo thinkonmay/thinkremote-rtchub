@@ -24,4 +24,6 @@ type Signalling interface {
 
 	WaitForStart()
 	WaitForEnd()
+
+	Stop()
 }

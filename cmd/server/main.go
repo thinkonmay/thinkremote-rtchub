@@ -72,7 +72,7 @@ func main() {
 	signaling := config.GrpcConfig{}
 	bytes3, _ := base64.StdEncoding.DecodeString(grpcArg)
 	err = json.Unmarshal(bytes3, &signaling)
-	signaling.ServerAddress = "localhost"
+	signaling.ServerAddress = "192.168.1.4"
 	signaling.Port = 4000
 
 	auth := config.AuthConfig{}
@@ -80,11 +80,20 @@ func main() {
 	err = json.Unmarshal(bytes4, &auth)
 	auth.Token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ3b3JrZXJfc2Vzc2lvbl9jcmVhdGVfZ2VuX3Rva2VuIiwiaWF0IjoxNjc5NzE5MTQ1LCJleHAiOjE3MTEyNTUxNDUsInN1YiI6IntcInNlc3Npb25fYWNjb3VudF9pZFwiOjQ0fSJ9.JI9e9yozVDfVD0RZnj5JR3tsw6wLlD_lQoVeTgefCKCnbXqeXuZQJjF3VWHC8g9pqCN2NECxdsJxNSHmcjQKXsJ317A4T-TGOkt_a0x7jozd4lBKOTuuWzZMHJTqP0LWm-2IMez6txiITzpkqlLhGAZkCR6YtkCt33p1Y9s1F0sIRq6RHOTOMel2VqGbp6c5kbzriMPZIRzA_3ZIew8M5KqlSd7XNzrlCU3UqlBh-wTByV1XRmrM2DNgQVs78DJSMUdZQK4ELF3hK1-sWFpIhCtGMCFu_83AtCiY-9CQv5NacBkgGlPNT1VDyPFnXbaMwF_c0Cv4Jkf3n66R3I-847rpO-rdCWiDpEOEjMPR6cp_0pPR5tGK4PbmGY73yYFnLRvHx1gRBB293ACejRYL5oYcfxXHj1LOv0y8vGYFV2qotVCKz48dkhOfDH44-aRCkdv7rCpm2JeK9RSAVNqGdDF_1ZIEUsQyd2Yc8Ss-_IPk-2SkhH5XMFd3hCMGikhZcqkxiCZaxaw_8CtWfHNzFp-YG3mEQmTr3OTpX4X_1CJBuffQ_fbafd8oBfLMxMNtd-hoQWs-KOtA8NIlALOF9sr5KUAm_WQO_DvSJv50zbZNJV5t4WhAJ8m_PJdRGWIYc7ffMQIPNP4JcTDIhB9p_M4mFGRTLTGe7DPG5sOnpUQ"
 
-	webrtc_config := webrtc.Configuration{}
 	bytes1, _ = base64.StdEncoding.DecodeString(webrtcArg)
-	err = json.Unmarshal(bytes1, &webrtc_config)
-	rtc := &config.WebRTCConfig{Ices: webrtc_config.ICEServers}
-	rtc.Ices = []webrtc.ICEServer{{URLs: []string{"stun:stun.l.google.com:19302"}}}
+	var i map[string]interface{}
+	json.Unmarshal(bytes1, &i)
+	rtc := &config.WebRTCConfig{Ices: make([]webrtc.ICEServer, 0)}
+	for _,v := range i["iceServers"].([]interface{}) {
+		ice := webrtc.ICEServer{
+			URLs: []string{v.(map[string]interface{})["url"].(string)},
+		}
+		if v.(map[string]interface{})["credential"] != nil {
+			ice.Credential = v.(map[string]interface{})["credential"].(string)
+			ice.Username = v.(map[string]interface{})["username"].(string)
+		}
+		rtc.Ices = append(rtc.Ices,ice)
+	}
 
 	fmt.Printf("starting websocket connection establishment with hid server at %s\n", HIDURL)
 	// hid.NewHIDSingleton(HIDURL, chans.Confs["hid"])
