@@ -48,7 +48,8 @@ func main() {
 	videoPipelineString := ""
 	bytes1,_ := base64.StdEncoding.DecodeString(videoArg)
 	json.Unmarshal(bytes1, &videoPipelineString)
-	videopipeline,err := video.CreatePipeline(videoPipelineString, chans.Confs["adaptive"], chans.Confs["manual"])
+	fmt.Printf(videoPipelineString)
+	videopipeline,err := video.CreatePipeline("d3d11screencapturesrc blocksize=8192 do-timestamp=true monitor-handle=65537 ! capsfilter name=framerateFilter ! video/x-raw(memory:D3D11Memory),clock-rate=90000 ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! d3d11convert ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! nvd3d11h264enc name=encoder ! video/x-h264,stream-format=(string)byte-stream,profile=(string)main ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! appsink name=appsink", chans.Confs["adaptive"], chans.Confs["manual"])
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s",err.Error())
 		return
