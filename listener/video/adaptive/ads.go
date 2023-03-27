@@ -2,45 +2,86 @@ package adaptive
 
 import (
 	"encoding/json"
-	"fmt"
+	"sync"
 	"time"
 
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 )
 
 
-type AdaptiveContext struct {
-	In         chan string
-	Out        chan string
+const (
+	queue_size = 100000
+)
+
+type AdsCtx struct {
+	vqueue chan *VideoMetric
+	aqueue chan *AudioMetric
+	nqueue chan *NetworkMetric
+}
+
+type AdsMultiCtxs struct {
+	In  chan string
+	Out chan string
 
 	triggerVideoReset func()
 	bitrateChangeFunc func(bitrate int)
 
 	last struct {
-		audio   *AudioMetric
-		video   *VideoMetrics
-		network *NetworkMetric
+		audio   *AudioMetricRaw
+		video   *VideoMetricRaw
+		network *NetworkMetricRaw
 	}
+
+
+	mut *sync.Mutex
+	ctxs map[string]*AdsCtx
 }
 
 func NewAdsContext(BitrateCallback func(bitrate int),
-				   IDRcallback func()) datachannel.DatachannelConsumer {
-	ret := &AdaptiveContext{
-		In:         make(chan string),
-		Out:        make(chan string),
+	IDRcallback func()) datachannel.DatachannelConsumer {
+	ret := &AdsMultiCtxs{
+		In:  make(chan string),
+		Out: make(chan string),
 
 		triggerVideoReset: IDRcallback,
 		bitrateChangeFunc: BitrateCallback,
 		last: struct {
-			audio   *AudioMetric
-			video   *VideoMetrics
-			network *NetworkMetric
+			audio   *AudioMetricRaw
+			video   *VideoMetricRaw
+			network *NetworkMetricRaw
 		}{
 			audio:   nil,
 			video:   nil,
 			network: nil,
 		},
+		mut: &sync.Mutex{},
+		ctxs: make(map[string]*AdsCtx),
 	}
+
+	go func() {
+		for {
+			ret.mut.Lock()
+			for _,ac := range ret.ctxs {
+				if len(ac.vqueue) < 10 {
+					continue
+				}
+
+
+				total_fps := 0
+				for i := 0; i < 10; i++ {
+					vid:=<-ac.vqueue
+					total_fps = total_fps + int(vid.DecodedFps)
+				}
+
+				v_fps := total_fps/10
+				if v_fps < 25 {
+					ret.triggerVideoReset()
+				}
+			}
+			ret.mut.Unlock()
+			time.Sleep(1 * time.Second)
+		}
+	}()
 
 	go func() {
 		for {
@@ -50,33 +91,28 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 
 			switch out["type"] {
 			case "video":
-				video := VideoMetrics{}
+				video := VideoMetricRaw{}
 				json.Unmarshal([]byte(metricRaw), &video)
 				ret.handleVideoMetric(&video)
+				break
 			case "audio":
-				audio := AudioMetric{}
+				audio := AudioMetricRaw{}
 				json.Unmarshal([]byte(metricRaw), &audio)
 				ret.handleAudioMetric(&audio)
+				break
 			case "network":
-				network := NetworkMetric{}
+				network := NetworkMetricRaw{}
 				json.Unmarshal([]byte(metricRaw), &network)
 				ret.handleNetworkMetric(&network)
+				break
 			}
 		}
 	}()
 
-	// TODO
-	// go func() {
-	// 	for {
-	// 		bitrate := C.wait_for_bitrate_change(ret.ctx)
-	// 		BitrateChangeFunc(int(bitrate))
-	// 	}
-	// }()
-
 	return ret
 }
 
-func (ads *AdaptiveContext) handleVideoMetric(metric *VideoMetrics) {
+func (ads *AdsMultiCtxs) handleVideoMetric(metric *VideoMetricRaw) {
 	lastVideoMetric := ads.last.video
 	if lastVideoMetric == nil {
 		ads.last.video = metric
@@ -84,31 +120,34 @@ func (ads *AdaptiveContext) handleVideoMetric(metric *VideoMetrics) {
 	}
 
 	timedif := (metric.Timestamp - lastVideoMetric.Timestamp) //nanosecond
-	decodedFps := (metric.FramesDecoded - lastVideoMetric.FramesDecoded) / (timedif / float64(time.Second.Milliseconds()))
-	if decodedFps < 25 { // TODO 
-		ads.triggerVideoReset()	
-	}
-
-
-	receivedFps := (metric.FramesReceived - lastVideoMetric.FramesReceived) / (timedif / float64(time.Second.Milliseconds()))
-	videoBandwidthConsumption := (metric.BytesReceived - lastVideoMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds()))
-	decodeTimePerFrame := (metric.TotalDecodeTime - lastVideoMetric.TotalDecodeTime) / (metric.FramesDecoded - lastVideoMetric.FramesDecoded)
-	videoPacketsLostpercent := (metric.PacketsLost - lastVideoMetric.PacketsLost) / (metric.PacketsReceived - lastVideoMetric.PacketsReceived)
-	videoJitter := metric.Jitter
-	videoJitterBufferDelay := metric.JitterBufferDelay
-
-	fmt.Printf("frame_decoded_per_second %f", decodedFps)
-	fmt.Printf("frame_received_per_second %f", receivedFps)
-	fmt.Printf("video_incoming_bandwidth_consumption %f", videoBandwidthConsumption)
-	fmt.Printf("decode_time_per_frame %f", decodeTimePerFrame)
-	fmt.Printf("video_packets_lost %f", videoPacketsLostpercent)
-	fmt.Printf("video_jitter %f", videoJitter)
-	fmt.Printf("video_jitter_buffer_delay %f", videoJitterBufferDelay)
 
 	ads.last.video = metric
+	video := &VideoMetric{
+		DecodedFps : (metric.FramesDecoded - lastVideoMetric.FramesDecoded) / (timedif / float64(time.Second.Milliseconds())),
+		ReceivedFps : (metric.FramesReceived - lastVideoMetric.FramesReceived) / (timedif / float64(time.Second.Milliseconds())),
+		VideoBandwidthConsumption : (metric.BytesReceived - lastVideoMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds())),
+		DecodeTimePerFrame : (metric.TotalDecodeTime - lastVideoMetric.TotalDecodeTime) / (metric.FramesDecoded - lastVideoMetric.FramesDecoded),
+		VideoPacketsLostpercent : (metric.PacketsLost - lastVideoMetric.PacketsLost) / (metric.PacketsReceived - lastVideoMetric.PacketsReceived),
+		VideoJitter : metric.Jitter,
+		VideoJitterBufferDelay : metric.JitterBufferDelay,
+		Timestamp: metric.Timestamp,
+	}
+
+	if ads.ctxs[metric.Source] == nil {
+		ads.mut.Lock()
+		ads.ctxs[metric.Source] = &AdsCtx{
+			aqueue: make(chan *AudioMetric,queue_size),
+			vqueue: make(chan *VideoMetric,queue_size),
+			nqueue: make(chan *NetworkMetric,queue_size),
+		}
+		ads.mut.Unlock()
+	}
+
+	ads.ctxs[metric.Source].vqueue<-video
+
 }
 
-func (ads *AdaptiveContext) handleNetworkMetric(metric *NetworkMetric) {
+func (ads *AdsMultiCtxs) handleNetworkMetric(metric *NetworkMetricRaw) {
 	lastNetworkMetric := ads.last.network
 	if lastNetworkMetric == nil {
 		ads.last.network = metric
@@ -117,38 +156,60 @@ func (ads *AdaptiveContext) handleNetworkMetric(metric *NetworkMetric) {
 
 	timedif := metric.Timestamp - lastNetworkMetric.Timestamp //nanosecond
 
-	totalBandwidthConsumption := (metric.BytesReceived - lastNetworkMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds()))
-	RTT := metric.CurrentRoundTripTime * float64(time.Second.Nanoseconds())
-	availableIncomingBandwidth := metric.AvailableIncomingBitrate
-
-	fmt.Printf("rtt %f", RTT);
-	fmt.Printf("total_incoming_bandwidth_consumption %f", totalBandwidthConsumption);
-	fmt.Printf("available_incoming_bandwidth %f", availableIncomingBandwidth);
-
 	ads.last.network = lastNetworkMetric
+	network := &NetworkMetric{
+		TotalBandwidthConsumption : (metric.BytesReceived - lastNetworkMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds())),
+		RTT : metric.CurrentRoundTripTime * float64(time.Second.Nanoseconds()),
+		AvailableIncomingBandwidth : metric.AvailableIncomingBitrate,
+		Timestamp: metric.Timestamp,
+	}
+
+	if ads.ctxs[metric.Source] == nil {
+		ads.mut.Lock()
+		ads.ctxs[metric.Source] = &AdsCtx{
+			aqueue: make(chan *AudioMetric,queue_size),
+			vqueue: make(chan *VideoMetric,queue_size),
+			nqueue: make(chan *NetworkMetric,queue_size),
+		}
+		ads.mut.Unlock()
+	}
+
+	ads.ctxs[metric.Source].nqueue<-network
 }
 
-func (ads *AdaptiveContext) handleAudioMetric(metric *AudioMetric) {
+func (ads *AdsMultiCtxs) handleAudioMetric(metric *AudioMetricRaw) {
 	lastAudioMetric := ads.last.audio
 	if lastAudioMetric == nil {
 		ads.last.audio = metric
 		return
 	}
 
-
-
 	timedif := metric.Timestamp - lastAudioMetric.Timestamp //nanosecond
 
-	audioBandwidthConsumption := (metric.BytesReceived - lastAudioMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds()))
-	fmt.Printf("audio_incoming_bandwidth_consumption %f", audioBandwidthConsumption)
 
 	ads.last.audio = lastAudioMetric
+	audio:=&AudioMetric{
+		AudioBandwidthConsumption : (metric.BytesReceived - lastAudioMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds())),
+		Timestamp: metric.Timestamp,
+	}
+
+	if ads.ctxs[metric.Source] == nil {
+		ads.mut.Lock()
+		ads.ctxs[metric.Source] = &AdsCtx{
+			aqueue: make(chan *AudioMetric,queue_size),
+			vqueue: make(chan *VideoMetric,queue_size),
+			nqueue: make(chan *NetworkMetric,queue_size),
+		}
+		ads.mut.Unlock()
+	}
+
+	ads.ctxs[metric.Source].aqueue<-audio
 }
 
-func (ads *AdaptiveContext) Send(msg string) {
-	ads.In<-msg
+func (ads *AdsMultiCtxs) Send(msg string) {
+	ads.In <- msg
 }
 
-func (ads *AdaptiveContext) Recv() string {
-	return<-ads.Out
+func (ads *AdsMultiCtxs) Recv() string {
+	return <-ads.Out
 }

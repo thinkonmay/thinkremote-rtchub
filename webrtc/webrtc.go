@@ -1,6 +1,7 @@
 package webrtc
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -238,8 +239,20 @@ func (client *WebRTCClient) RegisterDataChannel(dc datachannel.IDatachannel,grou
 	})
 
 	channel.OnOpen(func() { channel.OnMessage(func(msg webrtc.DataChannelMessage) {
-			str := string(msg.Data)
-			dc.Send(group,str)
+			if group == "adaptive" {
+				var raw map[string]interface{}
+				err := json.Unmarshal(msg.Data,&raw)
+				if err != nil {
+					return 
+				}
+
+				raw["__source__"] = rand 
+				bytes,_ := json.Marshal(raw)
+				dc.Send(group,string(bytes))
+				return
+			}
+
+			dc.Send(group,string(msg.Data))
 		})
 	})
 }

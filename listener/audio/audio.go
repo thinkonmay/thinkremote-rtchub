@@ -3,12 +3,12 @@ package audio
 
 import (
 	"fmt"
-	"sync"
 	"time"
 	"unsafe"
 
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/opus"
 )
@@ -30,26 +30,11 @@ type Pipeline struct {
 
 	clockRate float64
 
-	rtpchan    chan *rtp.Packet
-	packetizer rtppay.Packetizer
 	codec      string
 
 	restartCount int
 
-	Multiplexer struct {
-		srcPkt    		chan *rtp.Packet
-		srcBuf    		chan struct {
-			buff    *[]byte
-			samples int
-		}
-
-		mutex 		*sync.Mutex
-		handler 	map[string]struct {
-			closed			bool
-			sink    		chan *rtp.Packet
-			handler         func(*rtp.Packet)
-		}	
-	}
+	Multiplexer *multiplexer.Multiplexer
 }
 
 var pipeline *Pipeline
@@ -58,24 +43,14 @@ var pipeline *Pipeline
 func CreatePipeline(pipelinestr string) (*Pipeline,error) {
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
-		rtpchan:      make(chan *rtp.Packet),
 		pipelineStr:  pipelinestr,
 		restartCount: 0,
 		clockRate:    48000,
 		codec:        webrtc.MimeTypeOpus,
 
-		packetizer: opus.NewOpusPayloader(),
-		Multiplexer: struct{
-			srcPkt chan *rtp.Packet; 
-			srcBuf chan struct{buff *[]byte; samples int}; 
-			mutex 	*sync.Mutex;
-			handler map[string]struct{closed bool; sink chan *rtp.Packet; handler func(*rtp.Packet)};
-		}{
-			srcPkt: make(chan *rtp.Packet,50),
-			srcBuf: make(chan struct{buff *[]byte; samples int},50),
-			mutex:  &sync.Mutex{},
-			handler: map[string]struct{closed bool; sink chan *rtp.Packet; handler func(*rtp.Packet)}{},
-		},
+		Multiplexer: multiplexer.NewMultiplexer(func() rtppay.Packetizer {
+			return opus.NewOpusPayloader()
+		}),
 	}
 
 	pipelineStrUnsafe := C.CString(pipeline.pipelineStr)
@@ -90,41 +65,13 @@ func CreatePipeline(pipelinestr string) (*Pipeline,error) {
 	}
 
 
-	go func() {
-		for {
-			src_buffer := <- pipeline.Multiplexer.srcBuf
-			if pipeline.closed { return }
-			packets := pipeline.packetizer.Packetize(*src_buffer.buff, uint32(src_buffer.samples))
-			for _, packet := range packets {
-				pipeline.Multiplexer.srcPkt <- packet
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			src_pkt := <- pipeline.Multiplexer.srcPkt
-			if pipeline.closed { return }
-			pipeline.Multiplexer.mutex.Lock()
-			for _,v := range pipeline.Multiplexer.handler {
-				if v.closed { continue; }
-				v.sink <- src_pkt.Clone()
-			}
-			pipeline.Multiplexer.mutex.Unlock()
-		}
-	}()
 	return pipeline,nil
 }
 
 //export goHandlePipelineBufferAudio
 func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
 	samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
-	c_byte := C.GoBytes(buffer, bufferLen)
-	packets := pipeline.packetizer.Packetize(c_byte, samples)
-
-	for _, packet := range packets {
-		pipeline.rtpchan <- packet
-	}
+	pipeline.Multiplexer.Send(C.GoBytes(buffer, bufferLen), uint32(samples) )
 }
 
 //export handleAudioStopOrError
@@ -144,12 +91,10 @@ func (p *Pipeline) Open() {
 	C.start_audio_pipeline(pipeline.pipeline)
 }
 
-func (p *Pipeline) ReadRTP() *rtp.Packet {
-	return <-p.rtpchan
-}
 
 func (p *Pipeline) Close() {
 	fmt.Println("stoping audio pipeline")
+	p.Multiplexer.Close()
 	C.stop_audio_pipeline(p.pipeline)
 }
 
@@ -165,42 +110,12 @@ func ToGoString(str unsafe.Pointer) string {
 }
 
 
+
+
 func (p *Pipeline) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
-	if p.Multiplexer.handler == nil {
-		fmt.Println("Try to register RTP handler while pipeline not ready")
-		return
-	}
-
-
-	handler := struct{
-		closed bool; 
-		sink chan *rtp.Packet; 
-		handler func(*rtp.Packet);
-	}{
-		closed: false,
-		sink: make(chan *rtp.Packet,50),
-		handler: fun,
-	}
-
-	go func ()  {
-		for {
-			pkt := <-handler.sink
-			if handler.closed { return }
-			handler.handler(pkt);
-		}
-	}()
-
-	p.Multiplexer.mutex.Lock()
-	p.Multiplexer.handler[id] = handler;
-	p.Multiplexer.mutex.Unlock()
+	p.Multiplexer.RegisterRTPHandler(id,fun)
 }
 
 func (p *Pipeline) DeregisterRTPHandler(id string) {
-	p.Multiplexer.mutex.Lock()
-	defer p.Multiplexer.mutex.Unlock()
-
-	handler := p.Multiplexer.handler[id];
-	handler.closed = true
-
-	delete(p.Multiplexer.handler,id)
+	p.Multiplexer.DeregisterRTPHandler(id)
 }

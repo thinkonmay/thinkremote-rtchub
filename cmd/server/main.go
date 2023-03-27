@@ -21,6 +21,12 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
+const (
+	mockup_video   = "videotestsrc ! openh264enc gop-size=5 ! appsink name=appsink"
+	nvidia_default = "d3d11screencapturesrc blocksize=8192 do-timestamp=true ! capsfilter name=framerateFilter ! video/x-raw(memory:D3D11Memory),clock-rate=90000 ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! d3d11convert ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! nvd3d11h264enc bitrate=6000 gop-size=-1 preset=5 rate-control=2 strict-gop=true name=encoder repeat-sequence-header=true zero-reorder-delay=true ! video/x-h264,stream-format=(string)byte-stream,profile=(string)main ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! appsink name=appsink"
+
+)
+
 func main() {
 	args := os.Args[1:]
 	authArg, webrtcArg, videoArg, audioArg, grpcArg := "", "", "", "", ""
@@ -44,10 +50,14 @@ func main() {
 	chans := datachannel.NewDatachannel([]string{"hid", "adaptive", "manual"})
 
 	videoPipelineString := ""
-	bytes1, _ := base64.StdEncoding.DecodeString(videoArg)
-	json.Unmarshal(bytes1, &videoPipelineString)
-	fmt.Printf(videoPipelineString)
-	videopipeline,err := video.CreatePipeline("videotestsrc ! openh264enc gop-size=5 ! appsink name=appsink")
+	if videoArg == "" {
+		videoPipelineString = 	nvidia_default	
+	} else {
+		bytes1, _ := base64.StdEncoding.DecodeString(videoArg)
+		json.Unmarshal(bytes1, &videoPipelineString)
+	}
+
+	videopipeline,err := video.CreatePipeline(videoPipelineString)
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s", err.Error())
 		return
@@ -59,7 +69,7 @@ func main() {
 	audioPipelineString := ""
 	bytes2, _ := base64.StdEncoding.DecodeString(audioArg)
 	json.Unmarshal(bytes2, &audioPipelineString)
-	audioPipeline, err := audio.CreatePipeline(audioPipelineString)
+	audioPipeline, err := audio.CreatePipeline("fakesrc ! queue ! appsink name=appsink")
 	if err != nil {
 		fmt.Printf("error initiate audio pipeline %s", err.Error())
 		return
@@ -81,7 +91,7 @@ func main() {
 	err = json.Unmarshal(bytes4, &auth)
 	auth.Token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ3b3JrZXJfc2Vzc2lvbl9jcmVhdGVfZ2VuX3Rva2VuIiwiaWF0IjoxNjc5NzE5MTQ1LCJleHAiOjE3MTEyNTUxNDUsInN1YiI6IntcInNlc3Npb25fYWNjb3VudF9pZFwiOjQ0fSJ9.JI9e9yozVDfVD0RZnj5JR3tsw6wLlD_lQoVeTgefCKCnbXqeXuZQJjF3VWHC8g9pqCN2NECxdsJxNSHmcjQKXsJ317A4T-TGOkt_a0x7jozd4lBKOTuuWzZMHJTqP0LWm-2IMez6txiITzpkqlLhGAZkCR6YtkCt33p1Y9s1F0sIRq6RHOTOMel2VqGbp6c5kbzriMPZIRzA_3ZIew8M5KqlSd7XNzrlCU3UqlBh-wTByV1XRmrM2DNgQVs78DJSMUdZQK4ELF3hK1-sWFpIhCtGMCFu_83AtCiY-9CQv5NacBkgGlPNT1VDyPFnXbaMwF_c0Cv4Jkf3n66R3I-847rpO-rdCWiDpEOEjMPR6cp_0pPR5tGK4PbmGY73yYFnLRvHx1gRBB293ACejRYL5oYcfxXHj1LOv0y8vGYFV2qotVCKz48dkhOfDH44-aRCkdv7rCpm2JeK9RSAVNqGdDF_1ZIEUsQyd2Yc8Ss-_IPk-2SkhH5XMFd3hCMGikhZcqkxiCZaxaw_8CtWfHNzFp-YG3mEQmTr3OTpX4X_1CJBuffQ_fbafd8oBfLMxMNtd-hoQWs-KOtA8NIlALOF9sr5KUAm_WQO_DvSJv50zbZNJV5t4WhAJ8m_PJdRGWIYc7ffMQIPNP4JcTDIhB9p_M4mFGRTLTGe7DPG5sOnpUQ"
 
-	bytes1, _ = base64.StdEncoding.DecodeString(webrtcArg)
+	bytes1, _ := base64.StdEncoding.DecodeString(webrtcArg)
 	var i map[string]interface{}
 	json.Unmarshal(bytes1, &i)
 	rtc := &config.WebRTCConfig{Ices: make([]webrtc.ICEServer, 0)}
