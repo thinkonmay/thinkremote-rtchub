@@ -257,11 +257,12 @@ func (webrtc *WebRTCClient)readLoopRTP(listener listener.Listener, track *webrtc
 
 	go func() { for {
 		time.Sleep(time.Second)
-		if webrtc.Closed {
+		if !webrtc.Closed {
 			continue	
 		}
 		
 		listener.DeregisterRTPHandler(id);
+		return
 	} }()
 }
 

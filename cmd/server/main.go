@@ -8,23 +8,20 @@ import (
 	"os/signal"
 	"syscall"
 
-
 	"github.com/pion/webrtc/v3"
-	"github.com/thinkonmay/thinkremote-rtchub"
+	proxy "github.com/thinkonmay/thinkremote-rtchub"
+
 	// "github.com/thinkonmay/thinkremote-rtchub/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
-	"github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC"
+	grpc "github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
-
-
-
 func main() {
 	args := os.Args[1:]
-	authArg, webrtcArg, videoArg, audioArg, grpcArg := "","","","",""
+	authArg, webrtcArg, videoArg, audioArg, grpcArg := "", "", "", "", ""
 	HIDURL := "localhost:5000"
 	for i, arg := range args {
 		if arg == "--auth" {
@@ -42,32 +39,30 @@ func main() {
 		}
 	}
 
-
 	chans := config.NewDataChannelConfig([]string{"hid", "adaptive", "manual"})
 
 	videoPipelineString := ""
-	bytes1,_ := base64.StdEncoding.DecodeString(videoArg)
+	bytes1, _ := base64.StdEncoding.DecodeString(videoArg)
 	json.Unmarshal(bytes1, &videoPipelineString)
-	videopipeline,err := video.CreatePipeline(videoPipelineString, chans.Confs["adaptive"], chans.Confs["manual"])
+	videopipeline, err := video.CreatePipeline(videoPipelineString, chans.Confs["adaptive"], chans.Confs["manual"])
 	if err != nil {
-		fmt.Printf("error initiate video pipeline %s",err.Error())
+		fmt.Printf("error initiate video pipeline %s", err.Error())
 		return
 	}
 
 	audioPipelineString := ""
-	bytes2,_ := base64.StdEncoding.DecodeString(audioArg)
+	bytes2, _ := base64.StdEncoding.DecodeString(audioArg)
 	json.Unmarshal(bytes2, &audioPipelineString)
-	audioPipeline,err := audio.CreatePipeline(audioPipelineString)
+	audioPipeline, err := audio.CreatePipeline(audioPipelineString)
 	if err != nil {
-		fmt.Printf("error initiate audio pipeline %s",err.Error())
+		fmt.Printf("error initiate audio pipeline %s", err.Error())
 		return
 	}
 
 	audioPipeline.Open()
 	videopipeline.Open()
 	Lists := []listener.Listener{audioPipeline, videopipeline}
-	handle_track := func(tr *webrtc.TrackRemote)  { }
-
+	handle_track := func(tr *webrtc.TrackRemote) {}
 
 	signaling := config.GrpcConfig{}
 	bytes3, _ := base64.StdEncoding.DecodeString(grpcArg)
@@ -84,7 +79,7 @@ func main() {
 	var i map[string]interface{}
 	json.Unmarshal(bytes1, &i)
 	rtc := &config.WebRTCConfig{Ices: make([]webrtc.ICEServer, 0)}
-	for _,v := range i["iceServers"].([]interface{}) {
+	for _, v := range i["iceServers"].([]interface{}) {
 		ice := webrtc.ICEServer{
 			URLs: []string{v.(map[string]interface{})["url"].(string)},
 		}
@@ -92,28 +87,27 @@ func main() {
 			ice.Credential = v.(map[string]interface{})["credential"].(string)
 			ice.Username = v.(map[string]interface{})["username"].(string)
 		}
-		rtc.Ices = append(rtc.Ices,ice)
+		rtc.Ices = append(rtc.Ices, ice)
 	}
 
 	fmt.Printf("starting websocket connection establishment with hid server at %s\n", HIDURL)
 	// hid.NewHIDSingleton(HIDURL, chans.Confs["hid"])
-	fmt.Printf("starting %s \n",HIDURL)
+	fmt.Printf("starting %s \n", HIDURL)
 
-	go func ()  {
+	go func() {
 		for {
-			signaling_client, err := grpc.InitGRPCClient(&signaling,&auth)
+			signaling_client, err := grpc.InitGRPCClient(&signaling, &auth)
 			if err != nil {
-				fmt.Printf("error initiate signaling client %s",err.Error())
+				fmt.Printf("error initiate signaling client %s", err.Error())
 				continue
 			}
 
-			prox,err := proxy.InitWebRTCProxy(signaling_client, rtc, chans, Lists,handle_track)
+			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, chans, Lists, handle_track)
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 				return
 			}
 			signaling_client.WaitForEnd()
-			prox.Stop()
 		}
 	}()
 
@@ -121,4 +115,3 @@ func main() {
 	signal.Notify(chann, syscall.SIGTERM, os.Interrupt)
 	<-chann
 }
-

@@ -121,8 +121,13 @@ func CreatePipeline(pipelineStr string,
 				fmt.Printf("%s", err.Error())
 				continue
 			}
+			_type := dat["type"].(string)
+			if dat[_type] == nil  {
+				continue
+			}
 
-			pipeline.SetProperty(dat["type"].(string), int(dat[dat["type"].(string)].(float64)))
+			val := int(dat[_type].(float64))
+			pipeline.SetProperty(_type, val)
 		}
 	}()
 
@@ -144,7 +149,9 @@ func CreatePipeline(pipelineStr string,
 			pipeline.Multiplexer.mutex.Lock()
 			for _,v := range pipeline.Multiplexer.handler {
 				if v.closed { continue; }
-				v.sink <- src_pkt.Clone()
+				if len(v.sink) < soft_limit {
+					v.sink <- src_pkt.Clone()
+				}
 			}
 			pipeline.Multiplexer.mutex.Unlock()
 		}
@@ -248,7 +255,6 @@ func (p *Pipeline) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 		for {
 			pkt := <-handler.sink
 			if handler.closed { return }
-			if len(handler.sink) > soft_limit { continue }
 			handler.handler(pkt);
 		}
 	}()
