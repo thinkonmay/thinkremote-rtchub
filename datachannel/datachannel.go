@@ -43,7 +43,7 @@ type Datachannel struct {
 	groups map[string]*DatachannelGroup
 }
 
-func NewDatachannel(names []string) IDatachannel {
+func NewDatachannel(names ...string) IDatachannel {
 	dc := &Datachannel{
 		groups :map[string]*DatachannelGroup{},
 	}

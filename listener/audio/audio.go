@@ -57,7 +57,7 @@ func CreatePipeline(pipelinestr string) (*Pipeline,error) {
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
 	var err unsafe.Pointer
-	fmt.Printf("starting audio pipeline")
+	fmt.Printf("starting audio pipeline %s\n",pipelinestr)
 	pipeline.pipeline = C.create_audio_pipeline(pipelineStrUnsafe, &err)
 	err_str := ToGoString(err)
 	if len(err_str) != 0 {

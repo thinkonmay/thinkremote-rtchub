@@ -85,7 +85,7 @@ func CreatePipeline(pipelineStr string) (
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 
 	var err unsafe.Pointer
-	fmt.Printf("starting video pipeline")
+	fmt.Printf("starting video pipeline %s\n",pipelineStr)
 	pipeline.pipeline = C.create_video_pipeline(pipelineStrUnsafe, &err)
 	err_str := ToGoString(err)
 	if len(err_str) != 0 {
