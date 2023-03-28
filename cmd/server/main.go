@@ -71,7 +71,7 @@ func main() {
 
 	audioPipelineString := ""
 	if videoArg == "" {
-		videoPipelineString = nvidia_default	
+		audioPipelineString = mockup_audio
 	} else {
 		bytes2, _ := base64.StdEncoding.DecodeString(audioArg)
 		err := json.Unmarshal(bytes2, &audioPipelineString)
