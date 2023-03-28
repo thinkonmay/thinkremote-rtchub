@@ -3,7 +3,6 @@ package h264
 import (
 	"encoding/binary"
 	"time"
-	"unsafe"
 
 	"github.com/pion/randutil"
 	"github.com/pion/rtp"
@@ -298,13 +297,7 @@ func (p *H264Payloader) payload(mtu uint16, payload []byte) [][]byte {
 }
 
 // Packetize packetizes the payload of an RTP packet and returns one or more RTP packets
-func (p *H264Payloader) Packetize(ptr unsafe.Pointer, buflen uint32, samples uint32) []*rtp.Packet {
-	// Guard against an empty payload
-	if buflen == 0 {
-		return []*rtp.Packet{}
-	}
-
-	payload := C.GoBytes(ptr, C.int(buflen))
+func (p *H264Payloader) Packetize(payload []byte, samples uint32) []*rtp.Packet {
 	payloads := p.payload(p.MTU-12, payload)
 	packets := make([]*rtp.Packet, len(payloads))
 

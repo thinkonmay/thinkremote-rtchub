@@ -65,6 +65,8 @@ func InitGRPCClient(conf *config.GrpcConfig,
 			if !ret.done {
 				continue
 			}
+			ret.iceChan<-nil
+			ret.sdpChan<-nil
 			ret.conn.Close()
 		}
 	}()
@@ -153,6 +155,9 @@ func (client *GRPCclient) OnICE(fun signalling.OnIceFunc) {
 	go func() {
 		for {
 			ice := <-client.iceChan
+			if ice == nil {
+				return
+			}
 			if !client.connected {
 				continue
 			}
@@ -165,6 +170,9 @@ func (client *GRPCclient) OnSDP(fun signalling.OnSDPFunc) {
 	go func() {
 		for {
 			sdp := <-client.sdpChan
+			if sdp == nil {
+				return
+			}
 			if !client.connected {
 				continue
 			}

@@ -22,6 +22,7 @@ type OnTrackFunc func(*webrtc.TrackRemote)
 type WebRTCClient struct {
 	conn   *webrtc.PeerConnection
 	Closed bool
+	Signaling bool
 
 	onTrack OnTrackFunc
 
@@ -50,6 +51,7 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		reportChan:      make(chan webrtc.StatsReport),
 		onTrack:         track,
 		Closed:          false,
+		Signaling:       true,
 	}
 
 	if client.conn, err = webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: conf.Ices}); err != nil {
@@ -115,6 +117,9 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		var err error
 		for {
 			sdp := <-client.fromSdpChannel
+			if sdp == nil {
+				return
+			}
 
 			if sdp.Type == webrtc.SDPTypeAnswer { // answer
 				err = client.conn.SetRemoteDescription(*sdp)
@@ -146,6 +151,9 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 	go func() {
 		for {
 			ice := <-client.fromIceChannel
+			if ice == nil {
+				return
+			}
 			sdp := client.conn.RemoteDescription()
 			pending := client.conn.PendingRemoteDescription()
 			if sdp == pending {
@@ -261,9 +269,6 @@ func (webrtc *WebRTCClient) readLoopRTP(listener listener.Listener, track *webrt
 	id := track.ID()
 
 	listener.RegisterRTPHandler(id, func(pk *rtp.Packet) {
-		if track == nil {
-			return
-		}
 		if err := track.WriteRTP(pk); err != nil {
 			if errors.Is(err, io.ErrClosedPipe) {
 				fmt.Printf("The peerConnection has been closed.")
@@ -290,6 +295,14 @@ func (webrtc *WebRTCClient) readLoopRTP(listener listener.Listener, track *webrt
 func (webrtc *WebRTCClient) Close() {
 	webrtc.conn.Close()
 	webrtc.Closed = true
+}
+func (webrtc *WebRTCClient) StopSignaling() {
+	fmt.Println("stopping signaling process")
+	webrtc.Signaling = false
+	webrtc.toSdpChannel<-nil
+	webrtc.fromSdpChannel<-nil
+	webrtc.toIceChannel<-nil
+	webrtc.fromIceChannel<-nil
 }
 
 func (client *WebRTCClient) GatherStateChange() webrtc.ICEGathererState {

@@ -68,16 +68,16 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 				}
 
 
-				total_fps := 0
+				fpses := []int{}
 				for i := 0; i < count; i++ {
 					vid:=<-ac.vqueue
-					total_fps = total_fps + int(vid.DecodedFps)
+					fpses = append(fpses, int(vid.DecodedFps))
 				}
 
-				v_fps := total_fps/count
-				if v_fps < 25 {
-					ret.triggerVideoReset()
-				}
+				// v_fps := fpses/count
+				// if v_fps < 25 {
+				// 	ret.triggerVideoReset()
+				// }
 			}
 			ret.mut.Unlock()
 			time.Sleep(1 * time.Second)

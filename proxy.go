@@ -68,6 +68,10 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 	go func() {
 		for {
 			ice := proxy.webrtcClient.OnLocalICE()
+			if ice == nil {
+				fmt.Println("stopping local ice thread")
+				return
+			}
 			proxy.signallingClient.SendICE(ice)
 		}
 	}()
@@ -75,6 +79,10 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 	go func() {
 		for {
 			sdp := proxy.webrtcClient.OnLocalSDP()
+			if sdp == nil {
+				fmt.Println("stopping local sdp thread")
+				return
+			}
 			proxy.signallingClient.SendSDP(sdp)
 		}
 	}()
@@ -103,6 +111,7 @@ func (proxy *Proxy) handleTimeout() {
 	}()
 
 	success := <-start
+	proxy.webrtcClient.StopSignaling()
 	if !success {
 		fmt.Println("application exchange signaling timeout, closing")
 		proxy.Stop()

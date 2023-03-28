@@ -24,17 +24,17 @@ type DatachannelConsumer interface {
 	Recv() (pkt string)
 }
 
+type Handler struct {
+	handler func(string)
+	handle_queue chan string
+}
 
 type DatachannelGroup struct {
 	send chan string
 	recv chan string
 
 	mutext *sync.Mutex
-	handlers map[string]*struct {
-		handler func(string)
-		send chan string
-	}
-
+	handlers map[string]*Handler
 
 	consumer DatachannelConsumer
 }
@@ -53,8 +53,7 @@ func NewDatachannel(names []string) IDatachannel {
 			send:    make(chan string,10),
 			recv:    make(chan string,10),
 			mutext: &sync.Mutex{},
-			handlers: map[string]*struct{handler func(string); send chan string}{},
-			consumer: nil,
+			handlers: map[string]*Handler{},
 		}
 
 		go func(group *DatachannelGroup) {
@@ -62,8 +61,8 @@ func NewDatachannel(names []string) IDatachannel {
 
 			group.mutext.Lock()
 			for _,handler := range group.handlers{
-				if len(handler.send) <10 {
-					handler.send<-msg
+				if len(handler.handle_queue) <10 {
+					handler.handle_queue<-msg
 				}
 			}
 			group.mutext.Unlock()
@@ -93,16 +92,19 @@ func (dc *Datachannel) RegisterHandle(group string, id string, handler func(pkt 
 	dc.groups[group].mutext.Lock()
 	defer dc.groups[group].mutext.Unlock()
 
-	dc.groups[group].handlers[id] = &struct{handler func(string); send chan string}{
+	dc.groups[group].handlers[id] = &Handler{
 		handler : handler,
-		send: make(chan string,10),
+		handle_queue: make(chan string,10),
 	}
 
-	go func(sender chan string, handler func(string)) { for { 
-		msg:=<-sender
-		if msg == internal_close { return }
-		handler(msg) 
-	}}(dc.groups[group].handlers[id].send,dc.groups[group].handlers[id].handler)
+	go func() { for { 
+		msg:=<-dc.groups[group].handlers[id].handle_queue
+		if msg == internal_close { 
+			fmt.Println("closed data channel handler")
+			return 
+		}
+		dc.groups[group].handlers[id].handler(msg) 
+	}}()
 }
 func (dc *Datachannel) DeregisterHandle(group string,id string) {
 	if dc.groups[group] == nil {
@@ -116,7 +118,8 @@ func (dc *Datachannel) DeregisterHandle(group string,id string) {
 	if dc.groups[group].handlers[id] == nil {
 		fmt.Printf("no handler name %s available\n",id)
 	}
-	dc.groups[group].send<-internal_close
+	fmt.Printf("deregister datachannel %s:%s available\n",group,id)
+	dc.groups[group].handlers[id].handle_queue<-internal_close
 	delete(dc.groups[group].handlers,id)
 }
 

@@ -9,15 +9,22 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 )
 
+import "C"
+
 const (
 	enable_soft_limit = false 
 	soft_limit        = 40
 	hard_limit        = 50
-	no_limit          = 500
+	no_limit          = 50
 )
+
 
 type Multiplexer struct {
 	srcPkt chan *rtp.Packet
+	raw    chan *struct{
+		buff[]byte
+		samples int
+	}
 
 	packetizer rtppay.Packetizer
 
@@ -37,6 +44,7 @@ type Handler struct {
 func NewMultiplexer(packetizer func() rtppay.Packetizer) *Multiplexer {
 	ret := &Multiplexer{
 		srcPkt:  make(chan *rtp.Packet, hard_limit),
+		raw:     make(chan *struct{buff []byte; samples int},hard_limit),
 		mutex:   &sync.Mutex{},
 		handler: map[string]Handler{},
 		packetizer: packetizer(),
@@ -44,24 +52,25 @@ func NewMultiplexer(packetizer func() rtppay.Packetizer) *Multiplexer {
 
 
 
-	go func() {
+	multiply := func() {
 		for {
-			src_pkt := <- ret.srcPkt
-			for _,v := range ret.handler {
-				if len(ret.srcPkt) > soft_limit && enable_soft_limit {
-					continue
+			src_pkt := <- ret.raw
+			packets := ret.packetizer.Packetize(src_pkt.buff,uint32(src_pkt.samples))
+			for _, packet := range packets {
+				for _,v := range ret.handler {
+					v.handler(packet); 
 				}
-				v.sink <- src_pkt
 			}
 		}
-	}()
+	}
+	go multiply()
 	return ret
 }
 
 func (ret *Multiplexer) Send(Buff unsafe.Pointer, bufferLen uint32,Samples uint32) {
-	packets := ret.packetizer.Packetize(Buff,bufferLen,Samples)
-	for _, packet := range packets {
-		ret.srcPkt <- packet
+	ret.raw<-&struct{buff []byte; samples int}{
+		buff: C.GoBytes(Buff,C.int(bufferLen)),
+		samples: int(Samples),
 	}
 }
 
@@ -84,15 +93,12 @@ func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-
 	sink := make(chan *rtp.Packet,no_limit)
 	p.handler[id] = Handler{
 		closed: false,
 		sink: sink,
 		handler: fun,
 	}
-
-	go func ()  { for { fun(<-sink); } }()
 }
 
 func (p *Multiplexer) DeregisterRTPHandler(id string) {
@@ -102,6 +108,7 @@ func (p *Multiplexer) DeregisterRTPHandler(id string) {
 	handler := p.handler[id];
 	handler.closed = true
 
+	handler.sink<-nil
 	delete(p.handler,id)
 	fmt.Printf("deregister RTP handler %s\n",id)
 }
