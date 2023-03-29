@@ -20,12 +20,12 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 				   FramerateCallback func(framerate int),
 				   IDRcallback func()) datachannel.DatachannelConsumer {
 	ret := &Manual{
-		In:         make(chan string),
-		Out:        make(chan string),
+		In:         make(chan string,100),
+		Out:        make(chan string,100),
 
 		triggerVideoReset: IDRcallback,
 		bitrateCallback: BitrateCallback,
-		framerateCallback: BitrateCallback,
+		framerateCallback: FramerateCallback,
 	}
 
 	go func() {

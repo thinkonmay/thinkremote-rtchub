@@ -7,6 +7,7 @@ import (
 
 const (
 	internal_close = "internal close"
+	limit = 10
 )
 
 type IDatachannel interface {
@@ -50,8 +51,8 @@ func NewDatachannel(names ...string) IDatachannel {
 
 	for _,name := range names {
 		dc.groups[name] = &DatachannelGroup{
-			send:    make(chan string,10),
-			recv:    make(chan string,10),
+			send:    make(chan string,limit),
+			recv:    make(chan string,limit),
 			mutext: &sync.Mutex{},
 			handlers: map[string]*Handler{},
 		}
@@ -81,6 +82,13 @@ func (dc *Datachannel) Groups()[]string {
 	return keys
 }
 func (dc *Datachannel) Send(group string, pkt string) {
+	if dc.groups[group] == nil {
+		return
+	}
+	if len(dc.groups[group].send) == limit {
+		return
+	}
+
 	dc.groups[group].send<-pkt
 }
 func (dc *Datachannel) RegisterHandle(group string, id string, handler func(pkt string)) {

@@ -260,6 +260,11 @@ func (client *WebRTCClient) RegisterDataChannel(dc datachannel.IDatachannel,grou
 				return
 			}
 
+			if group == "hid" {
+				dc.Send(group,fmt.Sprintf("%s|%s",string(msg.Data),rand))
+				return
+			}
+
 			dc.Send(group,string(msg.Data))
 		})
 	})

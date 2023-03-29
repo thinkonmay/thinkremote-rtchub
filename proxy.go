@@ -58,7 +58,9 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 			case webrtclib.ICEConnectionStateConnected:
 				proxy.webrtcClient.Listen(proxy.listeners)
 			case webrtclib.ICEConnectionStateClosed:
+				proxy.Stop()
 			case webrtclib.ICEConnectionStateFailed:
+				proxy.Stop()
 			case webrtclib.ICEConnectionStateDisconnected:
 				proxy.Stop()
 			}

@@ -28,7 +28,8 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 	var err error
 	ret := HIDAdapter{
 		URL:         URL,
-		send: make(chan string),
+		send: make(chan string,100),
+		recv: make(chan string,100),
 	}
 
 	setup := func () bool {
