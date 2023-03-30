@@ -19,7 +19,7 @@ type AdsCtx struct {
 	aqueue chan *AudioMetric
 	nqueue chan *NetworkMetric
 
-	last struct {
+	last *struct {
 		audio   *AudioMetricRaw
 		video   *VideoMetricRaw
 		network *NetworkMetricRaw
@@ -117,7 +117,7 @@ func (ads *AdsMultiCtxs) handleNewContext(source string) {
 		aqueue: make(chan *AudioMetric,queue_size),
 		vqueue: make(chan *VideoMetric,queue_size),
 		nqueue: make(chan *NetworkMetric,queue_size),
-		last: struct{audio *AudioMetricRaw; video *VideoMetricRaw; network *NetworkMetricRaw}{
+		last: &struct{audio *AudioMetricRaw; video *VideoMetricRaw; network *NetworkMetricRaw}{
 			audio: nil,
 			video: nil,
 			network: nil,
