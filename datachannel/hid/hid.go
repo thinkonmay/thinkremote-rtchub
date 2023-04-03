@@ -1,6 +1,7 @@
 package hid
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -25,7 +26,6 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 		panic("no URL provided")
 	}
 
-	var err error
 	ret := HIDAdapter{
 		URL:         URL,
 		send: make(chan string,100),
@@ -33,13 +33,16 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 	}
 
 	setup := func () bool {
-		ret.client, _, err = websocket.DefaultDialer.Dial(fmt.Sprintf("ws://%s/Socket", URL), nil)
+		var err error
+		dialer := websocket.Dialer{ HandshakeTimeout: time.Second, }
+		dial_ctx,_ := context.WithTimeout(context.TODO(),time.Second)
+		ret.client, _, err = dialer.DialContext(dial_ctx,fmt.Sprintf("ws://%s/Socket", URL), nil)
 		if err != nil || ret.client == nil {
 			fmt.Printf("hid websocket error: %s", err.Error())
 			return false
 		}
 
-		err := ret.client.WriteMessage(websocket.TextMessage, []byte("ping"))
+		err = ret.client.WriteMessage(websocket.TextMessage, []byte("ping"))
 		if err != nil {
 			fmt.Printf("hid websocket error: %s", err.Error())
 			return false
@@ -55,8 +58,6 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 					fmt.Println("fail to setup hid adapter")
 				}
 			}
-
-			time.Sleep(time.Second)
 		}
 	}()
 
@@ -77,6 +78,7 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 	go func() {
 		for {
 			if ret.client == nil {
+				time.Sleep(time.Millisecond * 100)
 				continue
 			}
 
@@ -100,5 +102,7 @@ func (hid *HIDAdapter) Recv() string {
 
 }
 func (hid *HIDAdapter) Send(msg string) {
-	hid.recv<-msg
+	if len(hid.recv) < 100 {
+		hid.recv<-msg
+	}
 }
