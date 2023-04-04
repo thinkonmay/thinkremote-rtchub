@@ -12,6 +12,7 @@ import (
 
 const (
 	queue_size = 100000
+	evaluation_period = 1
 )
 
 type AdsCtx struct {
@@ -52,30 +53,28 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 	}
 
 	go func() {
-		count := 10
 		for {
 			ret.mut.Lock()
-			for _,ac := range ret.ctxs {
-				if len(ac.vqueue) < count {
+			for name,ac := range ret.ctxs {
+				if len(ac.vqueue) < evaluation_period {
 					continue
 				}
 
 
 				fpses := []int{}
-				for i := 0; i < count; i++ {
+				for i := 0; i < evaluation_period; i++ {
 					vid:=<-ac.vqueue
 					fpses = append(fpses, int(vid.DecodedFps))
 				}
-
-				fmt.Printf("fps: %v\n",fpses)
 
 				total := 0
 				for _,v := range fpses {
 					total = total + v
 				}
-				if total / count < 25 {
+				if total / evaluation_period < 5 { //freeze
 					ret.triggerVideoReset()
 				}
+				fmt.Printf("fps for worker context %s: %v\n",name,fpses)
 			}
 			ret.mut.Unlock()
 			time.Sleep(1 * time.Second)
@@ -93,17 +92,14 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 				video := VideoMetricRaw{}
 				json.Unmarshal([]byte(metricRaw), &video)
 				ret.handleVideoMetric(&video)
-				break
 			case "audio":
 				audio := AudioMetricRaw{}
 				json.Unmarshal([]byte(metricRaw), &audio)
 				ret.handleAudioMetric(&audio)
-				break
 			case "network":
 				network := NetworkMetricRaw{}
 				json.Unmarshal([]byte(metricRaw), &network)
 				ret.handleNetworkMetric(&network)
-				break
 			}
 		}
 	}()
