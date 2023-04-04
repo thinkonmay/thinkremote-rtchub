@@ -34,7 +34,6 @@ type Multiplexer struct {
 
 type Handler struct {
 	closed  bool
-	sink    chan *rtp.Packet
 	handler func(*rtp.Packet)
 }
 
@@ -55,12 +54,14 @@ func NewMultiplexer(packetizer func() rtppay.Packetizer) *Multiplexer {
 	multiply := func() {
 		for {
 			src_pkt := <- ret.raw
-			packets := ret.packetizer.Packetize(src_pkt.buff,uint32(src_pkt.samples))
-			for _, packet := range packets {
+			go func() {
+				packets := ret.packetizer.Packetize(src_pkt.buff,uint32(src_pkt.samples))
 				for _,v := range ret.handler {
-					v.handler(packet); 
+					for _,packet := range packets {
+						v.handler(packet); 
+					}
 				}
-			}
+			}()
 		}
 	}
 	go multiply()
@@ -93,10 +94,8 @@ func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	sink := make(chan *rtp.Packet,no_limit)
 	p.handler[id] = Handler{
 		closed: false,
-		sink: sink,
 		handler: fun,
 	}
 }
@@ -108,7 +107,6 @@ func (p *Multiplexer) DeregisterRTPHandler(id string) {
 	handler := p.handler[id];
 	handler.closed = true
 
-	handler.sink<-nil
 	delete(p.handler,id)
 	fmt.Printf("deregister RTP handler %s\n",id)
 }
