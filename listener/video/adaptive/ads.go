@@ -12,7 +12,7 @@ import (
 
 const (
 	queue_size = 100000
-	evaluation_period = 1
+	evaluation_period = 10
 )
 
 type AdsCtx struct {
@@ -25,6 +25,8 @@ type AdsCtx struct {
 		video   *VideoMetricRaw
 		network *NetworkMetricRaw
 	}
+
+	print_fps_queue chan int
 }
 
 type AdsMultiCtxs struct {
@@ -50,34 +52,46 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 		bitrateChangeFunc: BitrateCallback,
 		mut: &sync.Mutex{},
 		ctxs: make(map[string]*AdsCtx),
+
 	}
 
 	go func() {
 		for {
 			ret.mut.Lock()
 			for name,ac := range ret.ctxs {
-				if len(ac.vqueue) < evaluation_period {
+				if len(ac.print_fps_queue) < evaluation_period {
 					continue
 				}
 
 
 				fpses := []int{}
 				for i := 0; i < evaluation_period; i++ {
-					vid:=<-ac.vqueue
-					fpses = append(fpses, int(vid.DecodedFps))
+					vid:=<-ac.print_fps_queue
+					fpses = append(fpses, int(vid))
 				}
 
-				total := 0
-				for _,v := range fpses {
-					total = total + v
-				}
-				if total / evaluation_period < 5 { //freeze
-					ret.triggerVideoReset()
-				}
-				fmt.Printf("fps for worker context %s: %v\n",name,fpses)
+				fmt.Printf("fps for worker context %s: %v at %s\n",name,fpses,time.Now().Format(time.RFC3339))
 			}
 			ret.mut.Unlock()
-			time.Sleep(1 * time.Second)
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+	go func() {
+		for {
+			ret.mut.Lock()
+			for _,ac := range ret.ctxs {
+				if len(ac.vqueue) == 0 {
+					continue
+				}
+
+				vid:=<-ac.vqueue
+				if vid.DecodedFps < 5 {
+					ret.triggerVideoReset()
+				}
+				ac.print_fps_queue<-int(vid.DecodedFps)
+			}
+			ret.mut.Unlock()
+			time.Sleep(10 * time.Millisecond)
 		}
 	}()
 
@@ -113,6 +127,7 @@ func (ads *AdsMultiCtxs) handleNewContext(source string) {
 		aqueue: make(chan *AudioMetric,queue_size),
 		vqueue: make(chan *VideoMetric,queue_size),
 		nqueue: make(chan *NetworkMetric,queue_size),
+		print_fps_queue: make(chan int,queue_size),
 		last: &struct{audio *AudioMetricRaw; video *VideoMetricRaw; network *NetworkMetricRaw}{
 			audio: nil,
 			video: nil,
@@ -147,8 +162,9 @@ func (ads *AdsMultiCtxs) handleVideoMetric(metric *VideoMetricRaw) {
 	}
 
 
-	ads.ctxs[metric.Source].vqueue<-video
-
+	if len(ads.ctxs[metric.Source].vqueue) < queue_size{
+		ads.ctxs[metric.Source].vqueue<-video
+	}
 }
 
 func (ads *AdsMultiCtxs) handleNetworkMetric(metric *NetworkMetricRaw) {
@@ -171,7 +187,9 @@ func (ads *AdsMultiCtxs) handleNetworkMetric(metric *NetworkMetricRaw) {
 		Timestamp					: metric.Timestamp,
 	}
 	
-	ads.ctxs[metric.Source].nqueue<-network
+	if len(ads.ctxs[metric.Source].nqueue) < queue_size{
+		ads.ctxs[metric.Source].nqueue<-network
+	}
 }
 
 func (ads *AdsMultiCtxs) handleAudioMetric(metric *AudioMetricRaw) {
@@ -192,7 +210,9 @@ func (ads *AdsMultiCtxs) handleAudioMetric(metric *AudioMetricRaw) {
 		Timestamp: metric.Timestamp,
 	}
 
-	ads.ctxs[metric.Source].aqueue<-audio
+	if len(ads.ctxs[metric.Source].aqueue) < queue_size{
+		ads.ctxs[metric.Source].aqueue<-audio
+	}
 }
 
 func (ads *AdsMultiCtxs) Send(msg string) {
