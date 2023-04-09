@@ -41,6 +41,7 @@ var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(pipelinestr string) (*Pipeline,error) {
+	pipelinestr = "audiotestsrc ! queue ! audioresample ! audio/x-raw,clock-rate=48000 ! queue ! audioconvert ! queue ! opusenc bitrate=256000 name=encoder ! queue ! appsink name=appsink"
 	pipeline = &Pipeline{
 		pipeline:     unsafe.Pointer(nil),
 		pipelineStr:  pipelinestr,
@@ -87,8 +88,11 @@ func (p *Pipeline) GetCodec() string {
 }
 
 func (p *Pipeline) Open() {
-	fmt.Println("starting audio pipeline")
-	C.start_audio_pipeline(pipeline.pipeline)
+	go func() {
+		time.Sleep(30 * time.Second)	
+		fmt.Println("starting audio pipeline")
+		C.start_audio_pipeline(pipeline.pipeline)
+	}()
 }
 
 

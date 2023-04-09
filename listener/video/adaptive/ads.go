@@ -12,7 +12,7 @@ import (
 
 const (
 	queue_size = 100000
-	evaluation_period = 10
+	evaluation_period = 30
 )
 
 type AdsCtx struct {
@@ -70,7 +70,7 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 					fpses = append(fpses, int(vid))
 				}
 
-				fmt.Printf("fps for worker context %s: %v at %s\n",name,fpses,time.Now().Format(time.RFC3339))
+				fmt.Printf("[%s] fps for worker context %s: %v ",time.Now().Format(time.RFC3339),name,fpses)
 			}
 			ret.mut.Unlock()
 			time.Sleep(10 * time.Millisecond)
