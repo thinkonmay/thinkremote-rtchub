@@ -143,10 +143,10 @@ func handleVideoStopOrError() {
 }
 
 func (p *Pipeline) Open() {
+	fmt.Println("starting video pipeline")
 	C.start_video_pipeline(pipeline.pipeline)
 }
 func (p *Pipeline) Close() {
-
 	fmt.Println("stopping video pipeline")
 	C.stop_video_pipeline(p.pipeline)
 }

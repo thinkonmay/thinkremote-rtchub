@@ -94,7 +94,6 @@ func (p *Pipeline) Open() {
 
 func (p *Pipeline) Close() {
 	fmt.Println("stoping audio pipeline")
-	p.Multiplexer.Close()
 	C.stop_audio_pipeline(p.pipeline)
 }
 
