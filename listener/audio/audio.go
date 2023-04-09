@@ -48,7 +48,7 @@ func CreatePipeline(pipelinestr string) (*Pipeline,error) {
 		clockRate:    48000,
 		codec:        webrtc.MimeTypeOpus,
 
-		Multiplexer: multiplexer.NewMultiplexer(func() rtppay.Packetizer {
+		Multiplexer: multiplexer.NewMultiplexer("audio",func() rtppay.Packetizer {
 			return opus.NewOpusPayloader()
 		}),
 	}

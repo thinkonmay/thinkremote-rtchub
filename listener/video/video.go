@@ -72,7 +72,7 @@ func CreatePipeline(pipelineStr string) (
 			func(framerate int) { pipeline.SetProperty("framerate", framerate) }, 
 			func() 			  	{ pipeline.SetProperty("reset", 0) },
 		),
-		Multiplexer: multiplexer.NewMultiplexer(func() rtppay.Packetizer {
+		Multiplexer: multiplexer.NewMultiplexer("video",func() rtppay.Packetizer {
 			return h264.NewH264Payloader()
 		}),
 	}
