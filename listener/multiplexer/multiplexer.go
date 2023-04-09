@@ -3,6 +3,7 @@ package multiplexer
 import (
 	"fmt"
 	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/pion/rtp"
@@ -20,6 +21,11 @@ const (
 
 
 type Multiplexer struct {
+	id string
+
+	recv_count int
+	send_count int
+
 	raw    chan *struct{
 		buff[]byte
 		samples int
@@ -38,8 +44,11 @@ type Handler struct {
 
 
 
-func NewMultiplexer(packetizer func() rtppay.Packetizer) *Multiplexer {
+func NewMultiplexer(id string,packetizer func() rtppay.Packetizer) *Multiplexer {
 	ret := &Multiplexer{
+		id:      id,
+		recv_count: 0,
+		send_count: 0,
 		raw:     make(chan *struct{buff []byte; samples int},hard_limit),
 		mutex:   &sync.Mutex{},
 		handler: map[string]Handler{},
@@ -47,6 +56,12 @@ func NewMultiplexer(packetizer func() rtppay.Packetizer) *Multiplexer {
 	}
 
 
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			fmt.Printf("multiplexer %s report : %d packets received, %d packets sent", ret.id,ret.recv_count,ret.send_count)
+		}
+	}()
 
 	multiply := func() {
 		for {
@@ -55,7 +70,8 @@ func NewMultiplexer(packetizer func() rtppay.Packetizer) *Multiplexer {
 			go func() {
 				for _,packet := range packets {
 					for _,handler := range ret.handler {
-						handler.handler(packet); 
+						handler.handler(packet.Clone()); 
+						ret.send_count++
 					}
 				}
 			}()
@@ -70,6 +86,7 @@ func (ret *Multiplexer) Send(Buff unsafe.Pointer, bufferLen uint32,Samples uint3
 		buff: C.GoBytes(Buff,C.int(bufferLen)),
 		samples: int(Samples),
 	}
+	ret.recv_count++
 }
 
 func (p *Multiplexer) Close() {
