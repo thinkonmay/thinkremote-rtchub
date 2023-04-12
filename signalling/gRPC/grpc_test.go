@@ -7,7 +7,6 @@ import (
 
 	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
-	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
 )
 
 func TestClient(t *testing.T) {
@@ -15,10 +14,7 @@ func TestClient(t *testing.T) {
 		ServerAddress: "grpc.thinkmay.net", // chose domain
 		Port:          30000,
 	}
-	shutdown_channel := make(chan bool)
-
-	dev := tool.GetDevice()
-	client, err := InitGRPCClient(&conf, dev, nil, shutdown_channel)
+	client, err := InitGRPCClient(&conf,nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -48,5 +44,5 @@ func TestClient(t *testing.T) {
 		t.Error(err)
 	}
 
-	<-shutdown_channel
+	client.WaitForEnd()
 }

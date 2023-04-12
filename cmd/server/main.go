@@ -1,176 +1,149 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
+	"os/signal"
+	"syscall"
 
+	"github.com/pion/webrtc/v3"
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
-	"github.com/thinkonmay/thinkremote-rtchub/broadcaster"
-	"github.com/thinkonmay/thinkremote-rtchub/broadcaster/dummy"
-	sink "github.com/thinkonmay/thinkremote-rtchub/broadcaster/gstreamer"
-	"github.com/thinkonmay/thinkremote-rtchub/hid"
+
+	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
+	"github.com/thinkonmay/thinkremote-rtchub/datachannel/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
-	"github.com/thinkonmay/thinkremote-rtchub/signalling"
-	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
-	"github.com/thinkonmay/thinkshare-daemon/session/ice"
-	"github.com/thinkonmay/thinkshare-daemon/session/signaling"
-
-	"github.com/pion/webrtc/v3"
+	grpc "github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
+const (
+	mockup_audio   = "fakesrc ! appsink name=appsink"
+	mockup_video   = "videotestsrc ! openh264enc gop-size=5 ! appsink name=appsink"
+	nvidia_default = "d3d11screencapturesrc blocksize=8192 do-timestamp=true ! capsfilter name=framerateFilter ! video/x-raw(memory:D3D11Memory),clock-rate=90000,framerate=55/1 ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! d3d11convert ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! nvd3d11h264enc bitrate=6000 gop-size=-1 preset=5 rate-control=2 strict-gop=true name=encoder repeat-sequence-header=true zero-reorder-delay=true ! video/x-h264,stream-format=(string)byte-stream,profile=(string)main ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! appsink name=appsink"
+)
+
 func main() {
-	var token string
 	args := os.Args[1:]
-
-	grpcString := ""
-	webrtcString := ""
-
+	authArg, webrtcArg, videoArg, audioArg, grpcArg := "", "", "", "", ""
 	HIDURL := "localhost:5000"
-	devices := tool.GetDevice()
-	if len(devices.Monitors) == 0 {
-		fmt.Printf("no display available")
-		return
-	}
-
 	for i, arg := range args {
-		if arg == "--token" {
-			token = args[i+1]
+		if arg == "--auth" {
+			authArg = args[i+1]
 		} else if arg == "--hid" {
 			HIDURL = args[i+1]
 		} else if arg == "--grpc" {
-			grpcString = args[i+1]
+			grpcArg = args[i+1]
 		} else if arg == "--webrtc" {
-			webrtcString = args[i+1]
-		} else if arg == "--device" {
-			fmt.Printf("=======================================================================\n")
-			fmt.Printf("MONITOR DEVICE\n")
-			for index, monitor := range devices.Monitors {
-				fmt.Printf("=======================================================================\n")
-				fmt.Printf("monitor %d\n", index)
-				fmt.Printf("monitor name 			%s\n", monitor.MonitorName)
-				fmt.Printf("monitor handle  		%d\n", monitor.MonitorHandle)
-				fmt.Printf("monitor adapter 		%s\n", monitor.Adapter)
-				fmt.Printf("monitor device  		%s\n", monitor.DeviceName)
-				fmt.Printf("=======================================================================\n")
-			}
-			fmt.Printf("\n\n\n\n")
-
-			fmt.Printf("=======================================================================\n")
-			fmt.Printf("AUDIO DEVICE\n")
-			for index, audio := range devices.Soundcards {
-				fmt.Printf("=======================================================================\n")
-				fmt.Printf("audio source 			%d\n", index)
-				fmt.Printf("audio source name 		%s\n", audio.Name)
-				fmt.Printf("audio source device id  %s\n", audio.DeviceID)
-				fmt.Printf("=======================================================================\n")
-			}
-			fmt.Printf("\n\n\n\n")
-		} else if arg == "--help" {
-			fmt.Printf("--token 	 	 |  server token\n")
-			fmt.Printf("--hid   	 	 |  HID server URL (example: localhost:5000)\n")
-			return
+			webrtcArg = args[i+1]
+		} else if arg == "--audio" {
+			audioArg = args[i+1]
+		} else if arg == "--video" {
+			videoArg = args[i+1]
 		}
 	}
-	if token == "" {
-		fmt.Printf("no available token")
+
+
+	videoPipelineString := ""
+	if videoArg == "" {
+		videoPipelineString = nvidia_default	
+	} else {
+		bytes1, _ := base64.StdEncoding.DecodeString(videoArg)
+		err := json.Unmarshal(bytes1, &videoPipelineString)
+		if err != nil {
+			fmt.Printf("error decode audio pipeline %s\n", err.Error())
+			videoPipelineString = nvidia_default	
+		}
+	}
+
+	videopipeline,err := video.CreatePipeline(videoPipelineString)
+	if err != nil {
+		fmt.Printf("error initiate video pipeline %s\n", err.Error())
 		return
 	}
 
-	signaling := signaling.DecodeSignalingConfig(grpcString)
-	grpc := &config.GrpcConfig{
-		Port:          signaling.Grpcport,
-		ServerAddress: signaling.Grpcip,
-		Token:         token,
+	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
+	chans.RegisterConsumer("adaptive",videopipeline.AdsContext)
+	chans.RegisterConsumer("manual",videopipeline.ManualContext)
+
+	audioPipelineString := ""
+	if videoArg == "" {
+		audioPipelineString = mockup_audio
+	} else {
+		bytes2, _ := base64.StdEncoding.DecodeString(audioArg)
+		err := json.Unmarshal(bytes2, &audioPipelineString)
+		if err != nil {
+			fmt.Printf("error decode audio pipeline %s\n", err.Error())
+			audioPipelineString = mockup_audio
+		}
+	}
+	
+	audioPipeline, err := audio.CreatePipeline(audioPipelineString)
+	if err != nil {
+		fmt.Printf("error initiate audio pipeline %s\n", err.Error())
+		return
 	}
 
-	rtc := &config.WebRTCConfig{Ices: ice.DecodeWebRTCConfig(webrtcString).ICEServers}
-	chans := config.NewDataChannelConfig([]string{"hid", "adaptive", "manual"})
-	br := []*config.BroadcasterConfig{}
-	Lists := []listener.Listener{
-		audio.CreatePipeline(&config.ListenerConfig{
-			StreamID: "audio",
-			Codec:    webrtc.MimeTypeOpus,
-		}), video.CreatePipeline(&config.ListenerConfig{
-			StreamID: "video",
-			Codec:    webrtc.MimeTypeH264,
-		}, chans.Confs["adaptive"], chans.Confs["manual"]),
+	audioPipeline.Open()
+	videopipeline.Open()
+	Lists := []listener.Listener{audioPipeline, videopipeline}
+	handle_track := func(tr *webrtc.TrackRemote) {}
+
+	signaling := config.GrpcConfig{}
+	bytes3, _ := base64.StdEncoding.DecodeString(grpcArg)
+	err = json.Unmarshal(bytes3, &signaling)
+	if err != nil {
+		fmt.Printf("error decode signaling config %s\n", err.Error())
+		return
+	}
+
+
+	auth := config.AuthConfig{}
+	bytes4, _ := base64.StdEncoding.DecodeString(authArg)
+	err = json.Unmarshal(bytes4, &auth)
+	if err != nil {
+		fmt.Printf("error decode auth config %s\n", err.Error())
+		return
+	}
+
+	bytes1, _ := base64.StdEncoding.DecodeString(webrtcArg)
+	var i map[string]interface{}
+	json.Unmarshal(bytes1, &i)
+	rtc := &config.WebRTCConfig{Ices: make([]webrtc.ICEServer, 0)}
+	for _, v := range i["iceServers"].([]interface{}) {
+		ice := webrtc.ICEServer{
+			URLs: []string{v.(map[string]interface{})["url"].(string)},
+		}
+		if v.(map[string]interface{})["credential"] != nil {
+			ice.Credential = v.(map[string]interface{})["credential"].(string)
+			ice.Username = v.(map[string]interface{})["username"].(string)
+		}
+		rtc.Ices = append(rtc.Ices, ice)
 	}
 
 	fmt.Printf("starting websocket connection establishment with hid server at %s\n", HIDURL)
-	hid.NewHIDSingleton(HIDURL, chans.Confs["hid"])
-	prox, err := proxy.InitWebRTCProxy(nil, grpc, rtc, chans, devices, Lists,
-		func(tr *webrtc.TrackRemote) (broadcaster.Broadcaster, error) {
-			for _, conf := range br {
-				if tr.Codec().MimeType == conf.Codec {
-					return sink.CreatePipeline(conf)
-				}
+	chans.RegisterConsumer("hid",hid.NewHIDSingleton(HIDURL))
+	go func() {
+		for {
+			signaling_client, err := grpc.InitGRPCClient(&signaling, &auth)
+			if err != nil {
+				fmt.Printf("error initiate signaling client %s\n", err.Error())
+				continue
 			}
-			fmt.Printf("no available codec handler, using dummy sink\n")
-			return dummy.NewDummyBroadcaster(&config.BroadcasterConfig{
-				Name:  "dummy",
-				Codec: "any",
-			})
-		},
-		func(selection signalling.DeviceSelection) (*tool.MediaDevice, error) {
-			monitor := func() tool.Monitor {
-				for _, monitor := range devices.Monitors {
-					sel, err := strconv.ParseInt(selection.Monitor, 10, 32)
-					if err != nil {
-						return tool.Monitor{}
-					}
 
-					if monitor.MonitorHandle == int(sel) {
-						return monitor
-					}
-				}
-				return tool.Monitor{MonitorHandle: -1}
-			}()
-			soundcard := func() tool.Soundcard {
-				for _, soundcard := range devices.Soundcards {
-					if soundcard.DeviceID == selection.SoundCard {
-						return soundcard
-					}
-				}
-				return tool.Soundcard{DeviceID: "none"}
-			}()
-
-			for _, listener := range Lists {
-				conf := listener.GetConfig()
-				if conf.StreamID == "video" {
-					err := listener.SetSource(&monitor)
-
-					framerate := selection.Framerate
-					if 10 < framerate && framerate < 200 {
-						listener.SetProperty("framerate", int(framerate))
-					}
-
-					bitrate := selection.Bitrate
-					if 100 < bitrate && bitrate < 20000 {
-						listener.SetProperty("bitrate", int(bitrate))
-					}
-
-					if err != nil {
-						return devices, err
-					}
-
-				} else if conf.StreamID == "audio" {
-					err := listener.SetSource(&soundcard)
-					if err != nil {
-						return devices, err
-					}
-				}
+			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, chans, Lists, handle_track)
+			if err != nil {
+				fmt.Printf("%s\n", err.Error())
+				return
 			}
-			return nil, nil
-		},
-	)
+			signaling_client.WaitForEnd()
+		}
+	}()
 
-	if err != nil {
-		fmt.Printf("%s\n", err.Error())
-		return
-	}
-	<-prox.Shutdown
+	chann := make(chan os.Signal, 10)
+	signal.Notify(chann, syscall.SIGTERM, os.Interrupt)
+	<-chann
 }

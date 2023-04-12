@@ -2,18 +2,18 @@
 package video
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 	"unsafe"
 
 	"github.com/pion/rtp"
-	"github.com/thinkonmay/thinkremote-rtchub/adaptive"
-	"github.com/thinkonmay/thinkremote-rtchub/rtppay"
-	"github.com/thinkonmay/thinkremote-rtchub/rtppay/h264"
-	"github.com/thinkonmay/thinkremote-rtchub/util/config"
-	gsttest "github.com/thinkonmay/thinkremote-rtchub/util/test"
-	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
+	"github.com/pion/webrtc/v3"
+	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/video/adaptive"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/video/manual"
 )
 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0
@@ -25,21 +25,24 @@ func init() {
 	go C.start_video_mainloop()
 }
 
+
+
 // Pipeline is a wrapper for a GStreamer Pipeline
 type Pipeline struct {
+	closed     bool
 	pipeline   unsafe.Pointer
 	properties map[string]int
 
 	pipelineStr string
 	clockRate   float64
 
-	monitor *tool.Monitor
-	config  *config.ListenerConfig
 
-	rtpchan    chan *rtp.Packet
-	packetizer rtppay.Packetizer
+	Multiplexer *multiplexer.Multiplexer
 
-	adsContext *adaptive.AdaptiveContext
+	codec      string
+
+	AdsContext     datachannel.DatachannelConsumer
+	ManualContext  datachannel.DatachannelConsumer
 
 	restartCount int
 }
@@ -47,70 +50,79 @@ type Pipeline struct {
 var pipeline *Pipeline
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(config *config.ListenerConfig,
-	Ads *config.DataChannel,
-	Manual *config.DataChannel) *Pipeline {
+func CreatePipeline(pipelineStr string) (
+					*Pipeline,
+					error) {
 	pipeline = &Pipeline{
-		pipeline:     unsafe.Pointer(nil),
-		rtpchan:      make(chan *rtp.Packet, 50),
-		config:       config,
-		pipelineStr:  "fakesrc ! appsink name=appsink",
-		clockRate:    gsttest.VideoClockRate,
-		restartCount: 0,
-		properties:   make(map[string]int),
+		closed: 	 false,	
+		pipeline:    unsafe.Pointer(nil),
+		pipelineStr: pipelineStr,
+		codec:       webrtc.MimeTypeH264,
 
-		adsContext: adaptive.NewAdsContext(Ads.Recv,
-			func(bitrate int) {
-				if pipeline.pipeline == nil {
-					return
-				}
-				C.video_pipeline_set_bitrate(pipeline.pipeline, C.int(bitrate))
-			}, func() {
-				pipeline.SetProperty("reset", 0)
-			}),
+		clockRate:    90000,
+		restartCount: 0,
+
+		properties: make(map[string]int),
+		AdsContext: adaptive.NewAdsContext(
+			func(bitrate int) { pipeline.SetProperty("bitrate", bitrate) }, 
+			func() 			  { pipeline.SetProperty("reset", 0) },
+		),
+		ManualContext: manual.NewManualCtx(
+			func(bitrate int) 	{ pipeline.SetProperty("bitrate", bitrate) }, 
+			func(framerate int) { pipeline.SetProperty("framerate", framerate) }, 
+			func() 			  	{ pipeline.SetProperty("reset", 0) },
+		),
+		Multiplexer: multiplexer.NewMultiplexer("video",func() rtppay.Packetizer {
+			return h264.NewH264Payloader()
+		}),
 	}
 
-	go func() {
-		for {
-			data := <-Manual.Recv
 
-			var dat map[string]interface{}
-			err := json.Unmarshal([]byte(data), &dat)
-			if err != nil {
-				fmt.Printf("%s", err.Error())
-				continue
-			}
+	
 
-			pipeline.SetProperty(dat["type"].(string), int(dat[dat["type"].(string)].(float64)))
-		}
-	}()
 
-	return pipeline
+	pipelineStrUnsafe := C.CString(pipeline.pipelineStr)
+	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
+
+	var err unsafe.Pointer
+	fmt.Printf("starting video pipeline %s\n",pipelineStr)
+	pipeline.pipeline = C.create_video_pipeline(pipelineStrUnsafe, &err)
+	err_str := ToGoString(err)
+	if len(err_str) != 0 {
+		return nil,fmt.Errorf("failed to create pipeline %s",err_str); 
+	}
+
+
+
+
+	return pipeline,nil
 }
 
 //export goHandlePipelineBufferVideo
 func goHandlePipelineBufferVideo(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
 	samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
-	c_byte := C.GoBytes(buffer, bufferLen)
-	packets := pipeline.packetizer.Packetize(c_byte, samples)
-
-	for _, packet := range packets {
-		pipeline.rtpchan <- packet
-	}
+	pipeline.Multiplexer.Send(buffer, uint32(bufferLen), uint32(samples) )
 }
 
-func (p *Pipeline) GetSourceName() string {
-	return fmt.Sprintf("%d", p.monitor.MonitorHandle)
+func (p *Pipeline) GetCodec() string {
+	return p.codec
 }
+
 func (p *Pipeline) SetProperty(name string, val int) error {
 	fmt.Printf("%s change to %d\n", name, val)
+	if p.pipeline == nil || p.properties == nil {
+		return fmt.Errorf("attemping to set property while pipeline is not running, aborting");
+	}
+
 	switch name {
 	case "bitrate":
 		pipeline.properties["bitrate"] = val
 		C.video_pipeline_set_bitrate(pipeline.pipeline, C.int(val))
+		C.force_gen_idr_frame_video_pipeline(pipeline.pipeline)
 	case "framerate":
 		pipeline.properties["framerate"] = val
 		C.video_pipeline_set_framerate(pipeline.pipeline, C.int(val))
+		C.force_gen_idr_frame_video_pipeline(pipeline.pipeline)
 	case "reset":
 		C.force_gen_idr_frame_video_pipeline(pipeline.pipeline)
 	default:
@@ -119,57 +131,40 @@ func (p *Pipeline) SetProperty(name string, val int) error {
 	return nil
 }
 
-func (p *Pipeline) SetSource(source interface{}) (errr error) {
-	p.clockRate = gsttest.VideoClockRate
-	if p.pipelineStr = gsttest.GstTestVideo(source.(*tool.Monitor)); p.pipelineStr == "" {
-		errr = fmt.Errorf("unable to create encode pipeline with device")
-		return
-	}
-
-	pipelineStrUnsafe := C.CString(p.pipelineStr)
-	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
-
-	var err unsafe.Pointer
-	Pipeline := C.create_video_pipeline(pipelineStrUnsafe, &err)
-	if len(tool.ToGoString(err)) != 0 {
-		C.stop_video_pipeline(Pipeline)
-		errr = fmt.Errorf("%s", tool.ToGoString(err))
-		return
-	}
-
-	fmt.Printf("starting video pipeline: %s", p.pipelineStr)
-	p.pipeline = Pipeline
-	p.monitor = source.(*tool.Monitor)
-	return nil
-}
-
 //export handleVideoStopOrError
 func handleVideoStopOrError() {
 	pipeline.Close()
-	pipeline.SetSource(pipeline.monitor)
 	for key, val := range pipeline.properties {
 		pipeline.SetProperty(key, val)
 	}
-
 	pipeline.Open()
+
 	pipeline.restartCount++
 }
 
-func (p *Pipeline) GetConfig() *config.ListenerConfig {
-	return p.config
-}
-func (p *Pipeline) ReadRTP() *rtp.Packet {
-	return <-p.rtpchan
-}
 func (p *Pipeline) Open() {
-	if pipeline.pipeline == nil {
-		return
-	}
-
-	p.packetizer = h264.NewH264Payloader()
+	fmt.Println("starting video pipeline")
 	C.start_video_pipeline(pipeline.pipeline)
 }
 func (p *Pipeline) Close() {
-	p.packetizer = nil
+	fmt.Println("stopping video pipeline")
 	C.stop_video_pipeline(p.pipeline)
+}
+
+func ToGoString(str unsafe.Pointer) string {
+	if str == nil {
+		return ""
+	}
+	return string(C.GoBytes(str, C.int(C.string_get_length(str))))
+}
+
+
+
+
+func (p *Pipeline) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
+	p.Multiplexer.RegisterRTPHandler(id,fun)
+}
+
+func (p *Pipeline) DeregisterRTPHandler(id string) {
+	p.Multiplexer.DeregisterRTPHandler(id)
 }

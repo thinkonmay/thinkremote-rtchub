@@ -5,56 +5,38 @@ import (
 	"time"
 
 	webrtclib "github.com/pion/webrtc/v3"
+	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling"
-	grpc "github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
-	"github.com/thinkonmay/thinkremote-rtchub/util/tool"
 	"github.com/thinkonmay/thinkremote-rtchub/webrtc"
 )
 
 type Proxy struct {
 	listeners []listener.Listener
 
-	chan_conf *config.DataChannelConfig
-
+	chan_conf 		 datachannel.IDatachannel
 	signallingClient signalling.Signalling
 	webrtcClient     *webrtc.WebRTCClient
 
 	Shutdown chan bool
 }
 
-func InitWebRTCProxy(sock *config.WebsocketConfig,
-	grpc_conf *config.GrpcConfig,
+func InitWebRTCProxy(grpc_conf signalling.Signalling,
 	webrtc_conf *config.WebRTCConfig,
-	chan_conf *config.DataChannelConfig,
-	devices *tool.MediaDevice,
+	chan_conf datachannel.IDatachannel,
 	lis []listener.Listener,
 	onTrack webrtc.OnTrackFunc,
-	deviceSelect signalling.OnDeviceSelectFunc,
 ) (proxy *Proxy, err error) {
-
 	fmt.Printf("started proxy\n")
 	proxy = &Proxy{
-		Shutdown:  make(chan bool),
-		chan_conf: chan_conf,
-		listeners: lis,
+		Shutdown:         make(chan bool),
+		chan_conf:        chan_conf,
+		signallingClient: grpc_conf,
+		listeners:        lis,
 	}
 
-	if grpc_conf != nil {
-		if proxy.signallingClient, err = grpc.InitGRPCClient(grpc_conf, devices, webrtc_conf, proxy.Shutdown); err != nil {
-			return
-		}
-	} else if sock != nil {
-		err = fmt.Errorf("Unimplemented")
-		return
-	} else {
-		err = fmt.Errorf("Unimplemented")
-		return
-	}
-
-	proxy.handleTimeout()
-	proxy.signallingClient.OnDeviceSelect(deviceSelect)
+	go proxy.handleTimeout()
 	if proxy.webrtcClient, err = webrtc.InitWebRtcClient(onTrack, *webrtc_conf); err != nil {
 		return
 	}
@@ -72,11 +54,11 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 	go func() {
 		for {
 			state := proxy.webrtcClient.ConnectionStateChange()
-
 			switch state {
 			case webrtclib.ICEConnectionStateConnected:
 				proxy.webrtcClient.Listen(proxy.listeners)
 			case webrtclib.ICEConnectionStateClosed:
+				proxy.Stop()
 			case webrtclib.ICEConnectionStateFailed:
 				proxy.Stop()
 			case webrtclib.ICEConnectionStateDisconnected:
@@ -87,12 +69,23 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 
 	go func() {
 		for {
-			proxy.signallingClient.SendICE(proxy.webrtcClient.OnLocalICE())
+			ice := proxy.webrtcClient.OnLocalICE()
+			if ice == nil {
+				fmt.Println("stopping local ice thread")
+				return
+			}
+			proxy.signallingClient.SendICE(ice)
 		}
 	}()
+
 	go func() {
 		for {
-			proxy.signallingClient.SendSDP(proxy.webrtcClient.OnLocalSDP())
+			sdp := proxy.webrtcClient.OnLocalSDP()
+			if sdp == nil {
+				fmt.Println("stopping local sdp thread")
+				return
+			}
+			proxy.signallingClient.SendSDP(sdp)
 		}
 	}()
 	proxy.signallingClient.OnICE(func(i *webrtclib.ICECandidateInit) {
@@ -107,32 +100,27 @@ func InitWebRTCProxy(sock *config.WebsocketConfig,
 func (proxy *Proxy) handleTimeout() {
 	start := make(chan bool, 2)
 	go func() {
-		proxy.signallingClient.WaitForConnected()
-		time.Sleep(30 * time.Second)
-		start <- false
-	}()
-	go func() {
-		proxy.signallingClient.WaitForStart()
+		proxy.signallingClient.WaitForEnd()
+		fmt.Println("application ended exchanging signaling message")
 		start <- true
 	}()
 	go func() {
-		if <-start {
-			proxy.Start()
-		} else {
-			fmt.Printf("application start timeout, closing\n")
-			proxy.Stop()
-		}
+		proxy.signallingClient.WaitForStart()
+		fmt.Println("application start exchanging signaling message")
+		proxy.webrtcClient.RegisterDataChannels(proxy.chan_conf)
+		time.Sleep(30 * time.Second)
+		start <- false
 	}()
-}
-func (prox *Proxy) Start() {
-	prox.webrtcClient.RegisterDataChannel(prox.chan_conf)
+
+	success := <-start
+	proxy.webrtcClient.StopSignaling()
+	if !success {
+		fmt.Println("application exchange signaling timeout, closing")
+		proxy.Stop()
+	}
 }
 
 func (prox *Proxy) Stop() {
 	prox.webrtcClient.Close()
 	prox.signallingClient.Stop()
-	for _, lis := range prox.listeners {
-		lis.Close()
-	}
-	prox.Shutdown <- true
 }

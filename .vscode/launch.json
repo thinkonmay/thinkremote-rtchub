@@ -4,44 +4,13 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
-{
-    "name": "Attach to Process",
-    "type": "go",
-    "request": "attach",
-    "mode": "local",
-    "processId": 0
-},
-
-
-
-        {
-            "name": "(gdb) Launch",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/testCGo.exe",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${fileDirname}",
-            "environment": [],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "miDebuggerPath": "C:/msys64/mingw64/bin/gdb.exe",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                },
-                {
-                    "description":  "Set Disassembly Flavor to Intel",
-                    "text": "-gdb-set disassembly-flavor intel",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-
-
+    {
+        "name": "Attach to Process",
+        "type": "go",
+        "request": "attach",
+        "mode": "local",
+        "processId": 0
+    },
         {
             "name": "Launch Package",
             "type": "go",
@@ -50,14 +19,18 @@
             "program": "${workspaceFolder}/cmd/server",
             // "cwd": "C:/Users/XPS 9500/Desktop/actions-runner/WebRTC/Thinkshare/Thinkshare/2022_10_06_10_49_21.906/Thinkshare/package/bin",
             "args": [
-            "--hid" ,
-            "localhost:5007",
-            "--token",
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWNpcGllbnQiOiI4OCIsImlzU2VydmVyIjoiVHJ1ZSIsImlkIjoiODEiLCJuYmYiOjE2NzE3MDQxNzIsImV4cCI6MTY3MTk2MzM3MiwiaWF0IjoxNjcxNzA0MTcyfQ.JWFDSXfV0Sv4rruxClxLX0hZ1Kzum2mDD55pxXTVbGQ",
-            "--grpc",
-            "eyJ3c3VybCI6IndzczovL3JlbW90ZS50aGlua21heS5uZXQvaGFuZHNoYWtlIiwiZ3JwY3BvcnQiOjMwMDAwLCJncnBjaXAiOiI1NC4xNjkuNDkuMTc2In0",
-            "--webrtc",
-            "eyJpY2VTZXJ2ZXJzIjpbeyJjcmVkZW50aWFsIjoib25lcGxheSIsImNyZWRlbnRpYWxUeXBlIjoicGFzc3dvcmQiLCJ1cmxzIjpbInR1cm46d29ya3N0YXRpb24udGhpbmttYXkubmV0OjM0NzgiXSwidXNlcm5hbWUiOiJvbmVwbGF5In0seyJjcmVkZW50aWFsVHlwZSI6InBhc3N3b3JkIiwidXJscyI6WyJzdHVuOndvcmtzdGF0aW9uLnRoaW5rbWF5Lm5ldDozNDc4Il19XX0",
+                "--hid" ,
+                "localhost:5007",
+                "--auth" ,
+                "eyJ0b2tlbiI6ImV5SmhiR2NpT2lKU1V6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpwYzNNaU9pSjNiM0pyWlhKZmMyVnpjMmx2Ymw5amNtVmhkR1ZmWjJWdVgzUnZhMlZ1SWl3aWFXRjBJam94TmpjNU5qVTNOVFV5TENKbGVIQWlPakUzTVRFeE9UTTFOVE1zSW5OMVlpSTZJbnRjSW5ObGMzTnBiMjVmWVdOamIzVnVkRjlwWkZ3aU9qUXlmU0o5LnhDdWFmZGxlTWUwVEo1WExEeG5ZRHhkM1p0VTAyMXJRWGw2OXp1LWt4THF2bVZCU1pKcjdhWklyYWtoNDJLLUZLSndYVkdVVzdPRlFBRFZtTnRRRDJJRWhhdGNULW1YcEU5OE0tVXFKM3dHckw5dG5CQUVLNUQ3RjA2Q3gxRVA3Vi1YSGxVaDNMbWt4ZExNSEtIeUZ3SGdDQXI4SHRubFlSS2Q3emNnTzgyV2pla2ZIclJSN2p3Z2hGSzFtbVU5cVhNSjZ2MVZCZmZCZDE4VGVzcVd6b05oSW9EcjZFMTJMc2F1QWhsX0lRNF9oY1JYa1JveDlBaTBtcWtjY0Z5ME1kbmktRTZ4Sjl0U2sxLTBZckVsV2QxYTBTdUtMTjlqQV92b203UUQ0RlJqd3BtMHBXTkt6dFBkSC1POG5QZUlBdHJBLXcyMmF3TnhEZVRLSWdLWVZXd1M5aU1aOThZeWFqanBpSFhRQzRlcERvV0JXYlc0MXVWd3FxZDVsdTBwUzRYWVBBN01ZeUx1NHZzLWQzVEg5bWpzNUt6WXBsMmZrMUNSbUhfZ01WUERTNm11RXRqemlHb1h1QTFnOFk5Yjc0RXJWZEtGcm1xZGh6OWxWaUJ2aFpLNWtUZDNnV29zVEdPLXpoZFhwQmMzQ0VYRzc2N3RkelhOYXpMY1lvYVNPNHVDRmQzMm5LNTFJQzVxTXhlbFdwLXhsM2F2NU1sXzR1UXJwdUtEQVUxV0hmaEJ0dXlCNzNsQ0FkUW1haGktbFpGTnRiMTlpSTZEVFZxemdoSjZMQ1FzZWJUVGtQYTZGV2JrSTlPUUFZQzlKcWQ2UnhKdU01dF91ZDNIUkpSa0Q1OVE0bThmenVmM01nLTlzdWFENGk4ZWdOLWZuQXh2UFNCcldBWXFRdTZVIn0=",
+                "--webrtc",
+                "eyJpY2VTZXJ2ZXJzIjpbeyJ1cmwiOiJzdHVuOjE0LjIyNS4yNTQuMTQwOjM0NzgiLCJ1cmxzIjoic3R1bjoxNC4yMjUuMjU0LjE0MDozNDc4In0seyJ1cmwiOiJ0dXJuOjE0LjIyNS4yNTQuMTQwOjM0NzgiLCJ1cmxzIjoidHVybjoxNC4yMjUuMjU0LjE0MDozNDc4IiwidXNlcm5hbWUiOiJzdHJpbmciLCJjcmVkZW50aWFsIjoic3RyaW5nIn1dfQ==",
+                "--grpc",
+                "eyJIb3N0TmFtZSI6InNpZ25hbGluZy50aGlua21heS5uZXQiLCJXZWJzb2NrZXRVUkwiOiJ3c3M6Ly9zaWduYWxpbmcudGhpbmttYXkubmV0L2hhbmRzaGFrZSIsIlNpZ25hbGluZ1BvcnQiOjMwMDAwfQ==",
+                "--audio",
+                "Indhc2FwaTJzcmMgbmFtZT1zb3VyY2Ugc2xhdmUtbWV0aG9kPTEgbG9vcGJhY2s9dHJ1ZSBsb3ctbGF0ZW5jeT10cnVlIGRldmljZT1cIlxce0U2MzI3Q0FELURDRUMtNDk0OS1BRThBLTk5MUU5NzZBNzlEMlxcfVwiICEgYXVkaW8veC1yYXcgISBxdWV1ZSAhIGF1ZGlvcmVzYW1wbGUgISBhdWRpby94LXJhdyxjbG9jay1yYXRlPTQ4MDAwICEgcXVldWUgISBhdWRpb2NvbnZlcnQgISBxdWV1ZSAhIG9wdXNlbmMgYXVkaW8tdHlwZT0yMDUxIHBlcmZlY3QtdGltZXN0YW1wPXRydWUgYml0cmF0ZS10eXBlPTAgaGFyZC1yZXN5bmM9dHJ1ZSBiaXRyYXRlPTI1NjAwMCBuYW1lPWVuY29kZXIgISBxdWV1ZSBtYXgtc2l6ZS10aW1lPTAgbWF4LXNpemUtYnl0ZXM9MCBtYXgtc2l6ZS1idWZmZXJzPTMgISBhcHBzaW5rIG5hbWU9YXBwc2luayI=",
+                // "--video",
+                // "ImQzZDExc2NyZWVuY2FwdHVyZXNyYyBibG9ja3NpemU9ODE5MiBkby10aW1lc3RhbXA9dHJ1ZSBtb25pdG9yLWhhbmRsZT02NTUzNyAhIGNhcHNmaWx0ZXIgbmFtZT1mcmFtZXJhdGVGaWx0ZXIgISB2aWRlby94LXJhdyhtZW1vcnk6RDNEMTFNZW1vcnkpLGNsb2NrLXJhdGU9OTAwMDAgISBxdWV1ZSBtYXgtc2l6ZS10aW1lPTAgbWF4LXNpemUtYnl0ZXM9MCBtYXgtc2l6ZS1idWZmZXJzPTMgISBkM2QxMWNvbnZlcnQgISBxdWV1ZSBtYXgtc2l6ZS10aW1lPTAgbWF4LXNpemUtYnl0ZXM9MCBtYXgtc2l6ZS1idWZmZXJzPTMgISBxc3ZoMjY0ZW5jIGJpdHJhdGU9NjAwMCByYXRlLWNvbnRyb2w9MSBnb3Atc2l6ZT0tMSByZWYtZnJhbWVzPTEgbG93LWxhdGVuY3k9dHJ1ZSB0YXJnZXQtdXNhZ2U9NyBuYW1lPWVuY29kZXIgISB2aWRlby94LWgyNjQsc3RyZWFtLWZvcm1hdD0oc3RyaW5nKWJ5dGUtc3RyZWFtLHByb2ZpbGU9KHN0cmluZyltYWluICEgcXVldWUgbWF4LXNpemUtdGltZT0wIG1heC1zaXplLWJ5dGVzPTAgbWF4LXNpemUtYnVmZmVycz0zICEgYXBwc2luayBuYW1lPWFwcHNpbmsi"
             ]
         }
     ]

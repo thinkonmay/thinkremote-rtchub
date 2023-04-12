@@ -21,15 +21,9 @@ file(GLOB SOURCE_LIST
 
 add_library(shared STATIC ${SOURCE_LIST})
 target_include_directories(shared PUBLIC
-    ${CMAKE_SOURCE_DIR}/broadcaster/gstreamer 
-
+    ${CMAKE_SOURCE_DIR}/broadcaster/microphone
     ${CMAKE_SOURCE_DIR}/listener/audio
     ${CMAKE_SOURCE_DIR}/listener/video
-
-
-    ${CMAKE_SOURCE_DIR}/adaptive
-
-    ${CMAKE_SOURCE_DIR}/util/tool
 
     ${GLIB_INCLUDE_DIRS} 
     ${GST_INCLUDE_DIRS}

@@ -18,117 +18,117 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// StreamServiceClient is the client API for StreamService service.
+// SignalingClient is the client API for Signaling service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type StreamServiceClient interface {
-	StreamRequest(ctx context.Context, opts ...grpc.CallOption) (StreamService_StreamRequestClient, error)
+type SignalingClient interface {
+	Handshake(ctx context.Context, opts ...grpc.CallOption) (Signaling_HandshakeClient, error)
 }
 
-type streamServiceClient struct {
+type signalingClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewStreamServiceClient(cc grpc.ClientConnInterface) StreamServiceClient {
-	return &streamServiceClient{cc}
+func NewSignalingClient(cc grpc.ClientConnInterface) SignalingClient {
+	return &signalingClient{cc}
 }
 
-func (c *streamServiceClient) StreamRequest(ctx context.Context, opts ...grpc.CallOption) (StreamService_StreamRequestClient, error) {
-	stream, err := c.cc.NewStream(ctx, &StreamService_ServiceDesc.Streams[0], "/protobuf.StreamService/StreamRequest", opts...)
+func (c *signalingClient) Handshake(ctx context.Context, opts ...grpc.CallOption) (Signaling_HandshakeClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Signaling_ServiceDesc.Streams[0], "/protobuf.Signaling/handshake", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &streamServiceStreamRequestClient{stream}
+	x := &signalingHandshakeClient{stream}
 	return x, nil
 }
 
-type StreamService_StreamRequestClient interface {
-	Send(*UserRequest) error
-	Recv() (*UserResponse, error)
+type Signaling_HandshakeClient interface {
+	Send(*SignalingMessage) error
+	Recv() (*SignalingMessage, error)
 	grpc.ClientStream
 }
 
-type streamServiceStreamRequestClient struct {
+type signalingHandshakeClient struct {
 	grpc.ClientStream
 }
 
-func (x *streamServiceStreamRequestClient) Send(m *UserRequest) error {
+func (x *signalingHandshakeClient) Send(m *SignalingMessage) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *streamServiceStreamRequestClient) Recv() (*UserResponse, error) {
-	m := new(UserResponse)
+func (x *signalingHandshakeClient) Recv() (*SignalingMessage, error) {
+	m := new(SignalingMessage)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-// StreamServiceServer is the server API for StreamService service.
-// All implementations must embed UnimplementedStreamServiceServer
+// SignalingServer is the server API for Signaling service.
+// All implementations must embed UnimplementedSignalingServer
 // for forward compatibility
-type StreamServiceServer interface {
-	StreamRequest(StreamService_StreamRequestServer) error
-	mustEmbedUnimplementedStreamServiceServer()
+type SignalingServer interface {
+	Handshake(Signaling_HandshakeServer) error
+	mustEmbedUnimplementedSignalingServer()
 }
 
-// UnimplementedStreamServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedStreamServiceServer struct {
+// UnimplementedSignalingServer must be embedded to have forward compatible implementations.
+type UnimplementedSignalingServer struct {
 }
 
-func (UnimplementedStreamServiceServer) StreamRequest(StreamService_StreamRequestServer) error {
-	return status.Errorf(codes.Unimplemented, "method StreamRequest not implemented")
+func (UnimplementedSignalingServer) Handshake(Signaling_HandshakeServer) error {
+	return status.Errorf(codes.Unimplemented, "method Handshake not implemented")
 }
-func (UnimplementedStreamServiceServer) mustEmbedUnimplementedStreamServiceServer() {}
+func (UnimplementedSignalingServer) mustEmbedUnimplementedSignalingServer() {}
 
-// UnsafeStreamServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to StreamServiceServer will
+// UnsafeSignalingServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to SignalingServer will
 // result in compilation errors.
-type UnsafeStreamServiceServer interface {
-	mustEmbedUnimplementedStreamServiceServer()
+type UnsafeSignalingServer interface {
+	mustEmbedUnimplementedSignalingServer()
 }
 
-func RegisterStreamServiceServer(s grpc.ServiceRegistrar, srv StreamServiceServer) {
-	s.RegisterService(&StreamService_ServiceDesc, srv)
+func RegisterSignalingServer(s grpc.ServiceRegistrar, srv SignalingServer) {
+	s.RegisterService(&Signaling_ServiceDesc, srv)
 }
 
-func _StreamService_StreamRequest_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(StreamServiceServer).StreamRequest(&streamServiceStreamRequestServer{stream})
+func _Signaling_Handshake_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(SignalingServer).Handshake(&signalingHandshakeServer{stream})
 }
 
-type StreamService_StreamRequestServer interface {
-	Send(*UserResponse) error
-	Recv() (*UserRequest, error)
+type Signaling_HandshakeServer interface {
+	Send(*SignalingMessage) error
+	Recv() (*SignalingMessage, error)
 	grpc.ServerStream
 }
 
-type streamServiceStreamRequestServer struct {
+type signalingHandshakeServer struct {
 	grpc.ServerStream
 }
 
-func (x *streamServiceStreamRequestServer) Send(m *UserResponse) error {
+func (x *signalingHandshakeServer) Send(m *SignalingMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *streamServiceStreamRequestServer) Recv() (*UserRequest, error) {
-	m := new(UserRequest)
+func (x *signalingHandshakeServer) Recv() (*SignalingMessage, error) {
+	m := new(SignalingMessage)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-// StreamService_ServiceDesc is the grpc.ServiceDesc for StreamService service.
+// Signaling_ServiceDesc is the grpc.ServiceDesc for Signaling service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var StreamService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "protobuf.StreamService",
-	HandlerType: (*StreamServiceServer)(nil),
+var Signaling_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "protobuf.Signaling",
+	HandlerType: (*SignalingServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "StreamRequest",
-			Handler:       _StreamService_StreamRequest_Handler,
+			StreamName:    "handshake",
+			Handler:       _Signaling_Handshake_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
