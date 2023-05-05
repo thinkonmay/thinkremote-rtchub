@@ -41,8 +41,6 @@ type Pipeline struct {
 	codec      string
 
 	AdsContext     datachannel.DatachannelConsumer
-
-	restartCount int
 }
 
 var pipeline *Pipeline
@@ -58,7 +56,6 @@ func CreatePipeline(pipelineStr string) (
 		codec:       webrtc.MimeTypeH264,
 
 		clockRate:    90000,
-		restartCount: 0,
 
 		properties: make(map[string]int),
 		AdsContext: adaptive.NewAdsContext(
@@ -127,12 +124,24 @@ func (p *Pipeline) SetProperty(name string, val int) error {
 //export handleVideoStopOrError
 func handleVideoStopOrError() {
 	pipeline.Close()
+
+	var err unsafe.Pointer
+	fmt.Printf("starting video pipeline %s\n",pipeline.pipelineStr)
+	pipelineStrUnsafe := C.CString(pipeline.pipelineStr)
+	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
+	pipeline.pipeline = C.create_video_pipeline(pipelineStrUnsafe, &err)
+	err_str := ToGoString(err)
+	if len(err_str) != 0 {
+		fmt.Printf("failed to create pipeline %s",err_str); 
+		return 
+	}
+
+
+
+	pipeline.Open()
 	for key, val := range pipeline.properties {
 		pipeline.SetProperty(key, val)
 	}
-	pipeline.Open()
-
-	pipeline.restartCount++
 }
 
 func (p *Pipeline) Open() {
