@@ -74,6 +74,15 @@ func goHandlePipelineBufferAudio(buffer unsafe.Pointer, bufferLen C.int, duratio
 //export handleAudioStopOrError
 func handleAudioStopOrError() {
 	pipeline.Close()
+
+	var err unsafe.Pointer
+	pipelineStrUnsafe := C.CString(pipeline.pipelineStr)
+	pipeline.pipeline = C.create_audio_pipeline(pipelineStrUnsafe, &err)
+	err_str := ToGoString(err)
+	if len(err_str) != 0 {
+		fmt.Printf("fail to create pipeline %s",err_str);
+	}
+
 	pipeline.Open()
 }
 
@@ -93,6 +102,12 @@ func (p *Pipeline) Close() {
 }
 
 func (p *Pipeline) SetProperty(name string, val int) error {
+	switch name {
+	case "audio-reset":
+		handleAudioStopOrError()
+		return nil
+	default:
+	}
 	return fmt.Errorf("unknown prop")
 }
 

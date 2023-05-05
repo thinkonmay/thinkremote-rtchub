@@ -18,6 +18,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
 	grpc "github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
 )
 
 const (
@@ -65,10 +66,6 @@ func main() {
 		return
 	}
 
-	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
-	chans.RegisterConsumer("adaptive",videopipeline.AdsContext)
-	chans.RegisterConsumer("manual",videopipeline.ManualContext)
-
 	audioPipelineString := ""
 	if videoArg == "" {
 		audioPipelineString = mockup_audio
@@ -86,6 +83,18 @@ func main() {
 		fmt.Printf("error initiate audio pipeline %s\n", err.Error())
 		return
 	}
+
+	ManualContext := manual.NewManualCtx(
+		func(bitrate int) 	{ videopipeline.SetProperty("bitrate", bitrate) }, 
+		func(framerate int) { videopipeline.SetProperty("framerate", framerate) }, 
+		func() 			  	{ videopipeline.SetProperty("reset", 0) },
+		func() 			  	{ audioPipeline.SetProperty("audio-reset", 0) },
+	)
+
+	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
+	chans.RegisterConsumer("adaptive",videopipeline.AdsContext)
+	chans.RegisterConsumer("manual",ManualContext)
+
 
 	audioPipeline.Open()
 	videopipeline.Open()

@@ -13,7 +13,6 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video/adaptive"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/video/manual"
 )
 
 // #cgo pkg-config: gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0
@@ -42,7 +41,6 @@ type Pipeline struct {
 	codec      string
 
 	AdsContext     datachannel.DatachannelConsumer
-	ManualContext  datachannel.DatachannelConsumer
 
 	restartCount int
 }
@@ -66,11 +64,6 @@ func CreatePipeline(pipelineStr string) (
 		AdsContext: adaptive.NewAdsContext(
 			func(bitrate int) { pipeline.SetProperty("bitrate", bitrate) }, 
 			func() 			  { pipeline.SetProperty("reset", 0) },
-		),
-		ManualContext: manual.NewManualCtx(
-			func(bitrate int) 	{ pipeline.SetProperty("bitrate", bitrate) }, 
-			func(framerate int) { pipeline.SetProperty("framerate", framerate) }, 
-			func() 			  	{ pipeline.SetProperty("reset", 0) },
 		),
 		Multiplexer: multiplexer.NewMultiplexer("video",func() rtppay.Packetizer {
 			return h264.NewH264Payloader()
