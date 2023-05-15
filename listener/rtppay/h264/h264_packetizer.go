@@ -9,9 +9,6 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/util/io"
 )
 
-import "C"
-
-
 func min(a, b int) int {
 	if a < b {
 		return a
