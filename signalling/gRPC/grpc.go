@@ -28,8 +28,8 @@ type GRPCclient struct {
 	connected bool
 }
 
-func InitGRPCClient(conf *config.GrpcConfig,
-	auth *config.AuthConfig,
+func InitGRPCClient(AddressStr string,
+					auth *config.AuthConfig,
 ) (ret *GRPCclient, err error) {
 	ret = &GRPCclient{
 		sdpChan: make(chan *webrtc.SessionDescription),
@@ -40,7 +40,7 @@ func InitGRPCClient(conf *config.GrpcConfig,
 	}
 
 	ret.conn, err = grpc.Dial(
-		fmt.Sprintf("%s:%d", conf.ServerAddress, conf.Port),
+		AddressStr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return

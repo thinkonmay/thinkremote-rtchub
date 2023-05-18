@@ -17,7 +17,9 @@ type AuthConfig struct {
 	Token         string		`json:"token"`
 }
 type GrpcConfig struct {
-	Port          int			`json:"SignalingPort"`
+	AudioPort         int			`json:"AudioSignalingPort"`
+	VideoPort         int			`json:"VideoSignalingPort"`
+	DataPort          int			`json:"DataSignalingPort"`
 	ServerAddress string		`json:"HostName"`
 }
 

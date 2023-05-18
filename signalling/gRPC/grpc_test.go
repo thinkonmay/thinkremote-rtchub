@@ -6,15 +6,14 @@ import (
 	"testing"
 
 	"github.com/pion/webrtc/v3"
-	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
 func TestClient(t *testing.T) {
-	conf := config.GrpcConfig{
-		ServerAddress: "grpc.thinkmay.net", // chose domain
-		Port:          30000,
-	}
-	client, err := InitGRPCClient(&conf,nil)
+	// conf := config.GrpcConfig{
+	// 	ServerAddress: "grpc.thinkmay.net", // chose domain
+	// 	Port:          30000,
+	// }
+	client, err := InitGRPCClient("",nil)
 	if err != nil {
 		t.Error(err)
 	}

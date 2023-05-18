@@ -98,7 +98,6 @@ func main() {
 
 	audioPipeline.Open()
 	videopipeline.Open()
-	Lists := []listener.Listener{audioPipeline, videopipeline}
 	handle_track := func(tr *webrtc.TrackRemote) {}
 
 	signaling := config.GrpcConfig{}
@@ -119,10 +118,10 @@ func main() {
 	}
 
 	bytes1, _ := base64.StdEncoding.DecodeString(webrtcArg)
-	var i map[string]interface{}
-	json.Unmarshal(bytes1, &i)
+	var data map[string]interface{}
+	json.Unmarshal(bytes1, &data)
 	rtc := &config.WebRTCConfig{Ices: make([]webrtc.ICEServer, 0)}
-	for _, v := range i["iceServers"].([]interface{}) {
+	for _, v := range data["iceServers"].([]interface{}) {
 		ice := webrtc.ICEServer{
 			URLs: []string{v.(map[string]interface{})["url"].(string)},
 		}
@@ -133,17 +132,63 @@ func main() {
 		rtc.Ices = append(rtc.Ices, ice)
 	}
 
+
+
 	fmt.Printf("starting websocket connection establishment with hid server at %s\n", HIDURL)
 	chans.RegisterConsumer("hid",hid.NewHIDSingleton(HIDURL))
 	go func() {
 		for {
-			signaling_client, err := grpc.InitGRPCClient(&signaling, &auth)
+			signaling_client, err := grpc.InitGRPCClient(
+				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.AudioPort), 
+				&auth)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
 				continue
 			}
 
-			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, chans, Lists, handle_track)
+			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, datachannel.NewDatachannel(), 
+										[]listener.Listener{audioPipeline}, 
+										handle_track)
+			if err != nil {
+				fmt.Printf("%s\n", err.Error())
+				return
+			}
+			signaling_client.WaitForEnd()
+		}
+	}()
+	go func() {
+		for {
+			signaling_client, err := grpc.InitGRPCClient(
+				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.VideoPort), 
+				&auth)
+			if err != nil {
+				fmt.Printf("error initiate signaling client %s\n", err.Error())
+				continue
+			}
+
+			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, datachannel.NewDatachannel(), 
+										[]listener.Listener{videopipeline}, 
+										handle_track)
+			if err != nil {
+				fmt.Printf("%s\n", err.Error())
+				return
+			}
+			signaling_client.WaitForEnd()
+		}
+	}()
+	go func() {
+		for {
+			signaling_client, err := grpc.InitGRPCClient(
+				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.DataPort), 
+				&auth)
+			if err != nil {
+				fmt.Printf("error initiate signaling client %s\n", err.Error())
+				continue
+			}
+
+			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, chans, 
+										[]listener.Listener{}, 
+										handle_track)
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 				return
