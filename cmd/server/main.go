@@ -139,7 +139,7 @@ func main() {
 	go func() {
 		for {
 			signaling_client, err := grpc.InitGRPCClient(
-				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.AudioPort), 
+				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.Audio.GrpcPort), 
 				&auth)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
@@ -159,7 +159,7 @@ func main() {
 	go func() {
 		for {
 			signaling_client, err := grpc.InitGRPCClient(
-				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.VideoPort), 
+				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.Video.GrpcPort), 
 				&auth)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
@@ -179,7 +179,7 @@ func main() {
 	go func() {
 		for {
 			signaling_client, err := grpc.InitGRPCClient(
-				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.DataPort), 
+				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.Data.GrpcPort), 
 				&auth)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())

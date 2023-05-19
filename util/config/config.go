@@ -17,10 +17,17 @@ type AuthConfig struct {
 	Token         string		`json:"token"`
 }
 type GrpcConfig struct {
-	AudioPort         int			`json:"AudioSignalingPort"`
-	VideoPort         int			`json:"VideoSignalingPort"`
-	DataPort          int			`json:"DataSignalingPort"`
-	ServerAddress string		`json:"HostName"`
+	Audio struct{
+		GrpcPort int `json:"GrpcPort"`
+	}`json:"Audio"`
+	Video struct {
+		GrpcPort int `json:"GrpcPort"`
+	}`json:"Video"`
+	Data struct {
+		GrpcPort int `json:"GrpcPort"`
+	}`json:"Data"`
+
+	ServerAddress string			`json:"HostName"`
 }
 
 type ListenerConfig struct {
