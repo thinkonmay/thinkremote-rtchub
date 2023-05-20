@@ -146,7 +146,7 @@ func main() {
 				continue
 			}
 
-			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, datachannel.NewDatachannel(), 
+			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, chans, 
 										[]listener.Listener{audioPipeline}, 
 										handle_track)
 			if err != nil {
@@ -166,7 +166,7 @@ func main() {
 				continue
 			}
 
-			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, datachannel.NewDatachannel(), 
+			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, chans, 
 										[]listener.Listener{videopipeline}, 
 										handle_track)
 			if err != nil {
@@ -176,7 +176,7 @@ func main() {
 			signaling_client.WaitForEnd()
 		}
 	}()
-	go func() {
+	_ = func() {
 		for {
 			signaling_client, err := grpc.InitGRPCClient(
 				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.Data.GrpcPort), 
@@ -195,7 +195,7 @@ func main() {
 			}
 			signaling_client.WaitForEnd()
 		}
-	}()
+	}
 
 	chann := make(chan os.Signal, 10)
 	signal.Notify(chann, syscall.SIGTERM, os.Interrupt)
