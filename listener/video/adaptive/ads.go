@@ -33,7 +33,6 @@ type AdsMultiCtxs struct {
 	In  chan string
 	Out chan string
 
-	videoResetQueue chan bool
 	triggerVideoReset func()
 	bitrateChangeFunc func(bitrate int)
 
@@ -50,7 +49,6 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 		Out: make(chan string),
 
 		triggerVideoReset: IDRcallback,
-		videoResetQueue: make(chan bool,50),
 		bitrateChangeFunc: BitrateCallback,
 		mut: &sync.Mutex{},
 		ctxs: make(map[string]*AdsCtx),
@@ -80,21 +78,6 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 	}()
 	go func() {
 		for {
-			do_reset := false
-			for i := 0; i < len(ret.videoResetQueue); i++ {
-				_=<-ret.videoResetQueue
-				do_reset = true
-			}
-
-			if do_reset {
-				ret.triggerVideoReset()
-			}
-
-			time.Sleep(500 * time.Millisecond)
-		}
-	}()
-	go func() {
-		for {
 			ret.mut.Lock()
 			for _,ac := range ret.ctxs {
 				if len(ac.vqueue) == 0 {
@@ -103,7 +86,7 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 
 				vid:=<-ac.vqueue
 				if vid.DecodedFps < 5 {
-					ret.videoResetQueue<-true
+					ret.triggerVideoReset()
 				}
 				ac.print_fps_queue<-int(vid.DecodedFps)
 			}
