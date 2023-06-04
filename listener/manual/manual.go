@@ -3,6 +3,8 @@ package manual
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 )
 
@@ -31,6 +33,12 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 		framerateCallback: FramerateCallback,
 	}
 
+	go func() { // TODO rm this if audio is fine
+		for {
+			time.Sleep(30 * time.Second)
+			ret.audioResetCallback()
+		}
+	}()
 	go func() {
 		for {
 			data := <-ret.In
