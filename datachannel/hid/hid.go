@@ -13,6 +13,10 @@ const (
 	HIDdefaultEndpoint = "localhost:5000"
 )
 
+const (
+	queue_size = 100
+)
+
 type HIDAdapter struct {
 	client      *websocket.Conn
 	URL         string
@@ -28,8 +32,8 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 
 	ret := HIDAdapter{
 		URL:         URL,
-		send: make(chan string,100),
-		recv: make(chan string,100),
+		send: make(chan string,queue_size),
+		recv: make(chan string,queue_size),
 	}
 
 	setup := func () bool {
@@ -53,11 +57,14 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 	go func() {
 		for {
 			if ret.client == nil {
-				result := setup()
-				if !result {
-					fmt.Println("fail to setup hid adapter")
+				if setup(){
+					continue
 				}
+
+				fmt.Println("fail to setup hid adapter")
 			}
+
+			time.Sleep(time.Millisecond * 1000)
 		}
 	}()
 
@@ -68,8 +75,7 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 				continue
 			}
 
-			err := ret.client.WriteMessage(websocket.TextMessage, []byte(message))
-			if err != nil {
+			if ret.client.WriteMessage(websocket.TextMessage, []byte(message)) != nil {
 				ret.client = nil
 			}
 		}
@@ -84,13 +90,14 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 
 			typ, message, err := ret.client.ReadMessage()
 			if err != nil || typ == websocket.CloseMessage {
-				ret.client.Close()
 				ret.client = nil
 			}
 
-			if typ == websocket.TextMessage {
-				ret.send <- string(message)
+			if typ != websocket.TextMessage {
+				continue
 			}
+
+			ret.send <- string(message)
 		}
 	}()
 
@@ -102,7 +109,5 @@ func (hid *HIDAdapter) Recv() string {
 
 }
 func (hid *HIDAdapter) Send(msg string) {
-	if len(hid.recv) < 100 {
-		hid.recv<-msg
-	}
+	hid.recv<-msg
 }

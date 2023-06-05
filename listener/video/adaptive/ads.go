@@ -11,7 +11,7 @@ import (
 
 
 const (
-	queue_size = 100000
+	queue_size = 1000
 	evaluation_period = 30
 )
 
@@ -47,8 +47,8 @@ type AdsMultiCtxs struct {
 func NewAdsContext(BitrateCallback func(bitrate int),
 	IDRcallback func()) datachannel.DatachannelConsumer {
 	ret := &AdsMultiCtxs{
-		in:  make(chan string),
-		out: make(chan string),
+		in:  make(chan string,queue_size),
+		out: make(chan string,queue_size),
 
 		triggerVideoReset: IDRcallback,
 		bitrateChangeFunc: BitrateCallback,
