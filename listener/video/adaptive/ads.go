@@ -26,12 +26,14 @@ type AdsCtx struct {
 		network *NetworkMetricRaw
 	}
 
-	print_fps_queue chan int
+	afterVQueue chan *VideoMetric
+	afterAQueue chan *AudioMetric
+	afterNQueue chan *NetworkMetric
 }
 
 type AdsMultiCtxs struct {
-	In  chan string
-	Out chan string
+	in  chan string
+	out chan string
 
 	triggerVideoReset func()
 	bitrateChangeFunc func(bitrate int)
@@ -45,38 +47,72 @@ type AdsMultiCtxs struct {
 func NewAdsContext(BitrateCallback func(bitrate int),
 	IDRcallback func()) datachannel.DatachannelConsumer {
 	ret := &AdsMultiCtxs{
-		In:  make(chan string),
-		Out: make(chan string),
+		in:  make(chan string),
+		out: make(chan string),
 
 		triggerVideoReset: IDRcallback,
 		bitrateChangeFunc: BitrateCallback,
 		mut: &sync.Mutex{},
 		ctxs: make(map[string]*AdsCtx),
-
 	}
 
-	go func() {
+	afterprocess := func() {
 		for {
 			ret.mut.Lock()
 			for name,ac := range ret.ctxs {
-				if len(ac.print_fps_queue) < evaluation_period {
+				if len(ac.afterVQueue) < evaluation_period {
 					continue
 				}
 
-
-				fpses := []int{}
+				metrics := []VideoMetric{}
+				receivefpses,decodefpses := []int{},[]int{}
 				for i := 0; i < evaluation_period; i++ {
-					vid:=<-ac.print_fps_queue
-					fpses = append(fpses, int(vid))
+					vid:=<-ac.afterVQueue
+					decodefpses = append(decodefpses, int(vid.DecodedFps))
+					receivefpses = append(receivefpses, int(vid.ReceivedFps))
+					metrics = append(metrics, *vid)
 				}
 
-				fmt.Printf("[%s] fps for worker context %s: %v ",time.Now().Format(time.RFC3339),name,fpses)
+				fmt.Printf("[%s] worker context %s: \n decodefps %v \n receivefps %v\n",time.Now().Format(time.RFC3339),name,decodefpses,receivefpses)
+				data,_:=json.Marshal(metrics);
+				ret.out<-string(data)
 			}
+
+			for _,ac := range ret.ctxs {
+				if len(ac.afterAQueue) < evaluation_period {
+					continue
+				}
+
+				metrics := []AudioMetric{}
+				for i := 0; i < evaluation_period; i++ {
+					vid:=<-ac.afterAQueue
+					metrics = append(metrics, *vid)
+				}
+
+				data,_:=json.Marshal(metrics);
+				ret.out<-string(data)
+			}
+
+			for _,ac := range ret.ctxs {
+				if len(ac.afterNQueue) < evaluation_period {
+					continue
+				}
+
+				metrics := []NetworkMetric{}
+				for i := 0; i < evaluation_period; i++ {
+					vid:=<-ac.afterNQueue
+					metrics = append(metrics, *vid)
+				}
+
+				data,_:=json.Marshal(metrics);
+				ret.out<-string(data)
+			}
+
 			ret.mut.Unlock()
 			time.Sleep(10 * time.Millisecond)
 		}
-	}()
-	go func() {
+	}
+	process := func() {
 		for {
 			ret.mut.Lock()
 			for _,ac := range ret.ctxs {
@@ -85,19 +121,39 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 				}
 
 				vid:=<-ac.vqueue
-				if vid.DecodedFps < 5 {
-					ret.triggerVideoReset()
+				if vid.DecodedFps < 5 { 
+					ret.triggerVideoReset() 
 				}
-				ac.print_fps_queue<-int(vid.DecodedFps)
+				ac.afterVQueue<-vid
 			}
+
+			for _,ac := range ret.ctxs {
+				if len(ac.aqueue) == 0 {
+					continue
+				}
+
+				data:=<-ac.aqueue
+				ac.afterAQueue<-data
+			}
+
+			for _,ac := range ret.ctxs {
+				if len(ac.nqueue) == 0 {
+					continue
+				}
+
+				data:=<-ac.nqueue
+				ac.afterNQueue<-data
+			}
+
+
 			ret.mut.Unlock()
 			time.Sleep(10 * time.Millisecond)
 		}
-	}()
+	}
 
-	go func() {
+	preprocess := func() {
 		for {
-			metricRaw := <-ret.In
+			metricRaw := <-ret.in
 			var out map[string]interface{}
 			json.Unmarshal([]byte(metricRaw), &out)
 
@@ -116,7 +172,11 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 				ret.handleNetworkMetric(&network)
 			}
 		}
-	}()
+	}
+
+	go preprocess()
+	go process()
+	go afterprocess()
 
 	return ret
 }
@@ -127,7 +187,9 @@ func (ads *AdsMultiCtxs) handleNewContext(source string) {
 		aqueue: make(chan *AudioMetric,queue_size),
 		vqueue: make(chan *VideoMetric,queue_size),
 		nqueue: make(chan *NetworkMetric,queue_size),
-		print_fps_queue: make(chan int,queue_size),
+		afterNQueue: make(chan *NetworkMetric,queue_size),
+		afterAQueue: make(chan *AudioMetric,queue_size),
+		afterVQueue: make(chan *VideoMetric,queue_size),
 		last: &struct{audio *AudioMetricRaw; video *VideoMetricRaw; network *NetworkMetricRaw}{
 			audio: nil,
 			video: nil,
@@ -216,9 +278,9 @@ func (ads *AdsMultiCtxs) handleAudioMetric(metric *AudioMetricRaw) {
 }
 
 func (ads *AdsMultiCtxs) Send(msg string) {
-	ads.In <- msg
+	ads.in <- msg
 }
 
 func (ads *AdsMultiCtxs) Recv() string {
-	return <-ads.Out
+	return <-ads.out
 }
