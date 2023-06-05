@@ -213,6 +213,7 @@ func (ads *AdsMultiCtxs) handleVideoMetric(metric *VideoMetricRaw) {
 
 	timedif := (metric.Timestamp - lastVideoMetric.Timestamp) //nanosecond
 	video := &VideoMetric{
+		Type: "VIDEO",
 		DecodedFps : 					(metric.FramesDecoded 	- lastVideoMetric.FramesDecoded) 			/ (timedif / float64(time.Second.Milliseconds())),
 		ReceivedFps : 					(metric.FramesReceived 	- lastVideoMetric.FramesReceived) 			/ (timedif / float64(time.Second.Milliseconds())),
 		VideoBandwidthConsumption : 	(metric.BytesReceived 	- lastVideoMetric.BytesReceived) 			/ (timedif / float64(time.Second.Milliseconds())),
@@ -243,6 +244,7 @@ func (ads *AdsMultiCtxs) handleNetworkMetric(metric *NetworkMetricRaw) {
 
 	timedif := metric.Timestamp - lastNetworkMetric.Timestamp //nanosecond
 	network := &NetworkMetric{
+		Type: "NETWORK",
 		TotalBandwidthConsumption 	: (metric.BytesReceived - lastNetworkMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds())),
 		RTT 						: metric.CurrentRoundTripTime * float64(time.Second.Nanoseconds()),
 		AvailableIncomingBandwidth 	: metric.AvailableIncomingBitrate,
@@ -268,6 +270,7 @@ func (ads *AdsMultiCtxs) handleAudioMetric(metric *AudioMetricRaw) {
 
 	timedif := metric.Timestamp - lastAudioMetric.Timestamp //nanosecond
 	audio:=&AudioMetric{
+		Type: "AUDIO",
 		AudioBandwidthConsumption : (metric.BytesReceived - lastAudioMetric.BytesReceived) / (timedif / float64(time.Second.Milliseconds())),
 		Timestamp: metric.Timestamp,
 	}

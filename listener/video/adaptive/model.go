@@ -36,6 +36,7 @@ type VideoMetricRaw struct {
 
 
 type VideoMetric struct {
+	Type string							   `json:"type"`
 	Timestamp float64                      `json:"timestamp"`
     DecodedFps float64                     `json:"decodedFps"`   
 	ReceivedFps float64                    `json:"receivedFps"`
@@ -70,6 +71,7 @@ type AudioMetricRaw struct {
 }
 
 type AudioMetric struct {
+	Type 					  string  `json:"type"`
 	Timestamp                 float64 `json:"timestamp"`
 	AudioBandwidthConsumption float64 `json:"audioBandwidthConsumption"`
 }
@@ -96,9 +98,10 @@ type NetworkMetricRaw struct {
 
 
 type NetworkMetric struct {
+	Type 					  string  `json:"type"`
 	Timestamp                 float64 `json:"timestamp"`
 	TotalBandwidthConsumption float64     `json:"totalBandwidthConsumption"`
-	RTT float64                           `json:"RTT"`
+	RTT 					   float64    `json:"RTT"`
 	AvailableIncomingBandwidth float64    `json:"availableIncomingBandwidth"`
 }
 
