@@ -58,15 +58,17 @@ func NewDatachannel(names ...string) IDatachannel {
 		}
 
 		go func(group *DatachannelGroup) {
-			msg := <-group.recv
+			for {
+				msg := <-group.recv
 
-			group.mutext.Lock()
-			for _,handler := range group.handlers{
-				if len(handler.handle_queue) <10 {
-					handler.handle_queue<-msg
+				group.mutext.Lock()
+				for _,handler := range group.handlers{
+					if len(handler.handle_queue) <10 {
+						handler.handle_queue<-msg
+					}
 				}
+				group.mutext.Unlock()
 			}
-			group.mutext.Unlock()
 		}(dc.groups[name])
 
 	}
