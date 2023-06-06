@@ -64,18 +64,16 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 					continue
 				}
 
-				metrics := []VideoMetric{}
 				receivefpses,decodefpses := []int{},[]int{}
 				for i := 0; i < evaluation_period; i++ {
 					vid:=<-ac.afterVQueue
 					decodefpses = append(decodefpses, int(vid.DecodedFps))
 					receivefpses = append(receivefpses, int(vid.ReceivedFps))
-					metrics = append(metrics, *vid)
+					data,_ :=json.Marshal(vid);
+					ret.out<-string(data)
 				}
 
 				fmt.Printf("[%s] worker context %s: \n decodefps %v \n receivefps %v\n",time.Now().Format(time.RFC3339),name,decodefpses,receivefpses)
-				data,_:=json.Marshal(metrics);
-				ret.out<-string(data)
 			}
 
 			for _,ac := range ret.ctxs {
@@ -83,14 +81,11 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 					continue
 				}
 
-				metrics := []AudioMetric{}
 				for i := 0; i < evaluation_period; i++ {
 					vid:=<-ac.afterAQueue
-					metrics = append(metrics, *vid)
+					data,_ :=json.Marshal(vid);
+					ret.out<-string(data)
 				}
-
-				data,_:=json.Marshal(metrics);
-				ret.out<-string(data)
 			}
 
 			for _,ac := range ret.ctxs {
@@ -98,14 +93,11 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 					continue
 				}
 
-				metrics := []NetworkMetric{}
 				for i := 0; i < evaluation_period; i++ {
 					vid:=<-ac.afterNQueue
-					metrics = append(metrics, *vid)
+					data,_ :=json.Marshal(vid);
+					ret.out<-string(data)
 				}
-
-				data,_:=json.Marshal(metrics);
-				ret.out<-string(data)
 			}
 
 			ret.mut.Unlock()
