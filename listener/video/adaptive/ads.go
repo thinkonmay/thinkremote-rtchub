@@ -57,6 +57,7 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 	}
 
 	afterprocess := func() {
+		receivefpses,decodefpses := []int{},[]int{}
 		for {
 			ret.mut.Lock()
 			for name,ac := range ret.ctxs {
@@ -64,16 +65,28 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 					continue
 				}
 
-				receivefpses,decodefpses := []int{},[]int{}
 				for i := 0; i < evaluation_period; i++ {
 					vid:=<-ac.afterVQueue
 					decodefpses = append(decodefpses, int(vid.DecodedFps))
 					receivefpses = append(receivefpses, int(vid.ReceivedFps))
-					data,_ :=json.Marshal(vid);
-					ret.out<-string(data)
 				}
 
 				fmt.Printf("[%s] worker context %s: \n decodefps %v \n receivefps %v\n",time.Now().Format(time.RFC3339),name,decodefpses,receivefpses)
+				value := struct{
+					Type string `json:"type"`
+					ReceiveFps []int `json:"receivefps"`
+					DecodeFps  []int `json:"decodefps"`
+				}{
+					Type: "VIDEO",
+					ReceiveFps: receivefpses,
+					DecodeFps: decodefpses,
+				}
+				data,err :=json.Marshal(&value);
+				if err != nil {
+					fmt.Printf("%v,%s",value,err.Error())
+				}
+				ret.out<-string(data)
+				receivefpses,decodefpses = []int{},[]int{}
 			}
 
 			for _,ac := range ret.ctxs {
@@ -82,9 +95,7 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 				}
 
 				for i := 0; i < evaluation_period; i++ {
-					vid:=<-ac.afterAQueue
-					data,_ :=json.Marshal(vid);
-					ret.out<-string(data)
+					_=<-ac.afterAQueue
 				}
 			}
 
@@ -94,9 +105,7 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 				}
 
 				for i := 0; i < evaluation_period; i++ {
-					vid:=<-ac.afterNQueue
-					data,_ :=json.Marshal(vid);
-					ret.out<-string(data)
+					_=<-ac.afterNQueue
 				}
 			}
 
