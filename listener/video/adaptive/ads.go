@@ -2,7 +2,6 @@ package adaptive
 
 import (
 	"encoding/json"
-	"fmt"
 	"sync"
 	"time"
 
@@ -57,10 +56,14 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 	}
 
 	afterprocess := func() {
-		receivefpses,decodefpses,bandwidth,packetloss,buffer := []int{},[]int{},[]int{},[]int{},[]int{}
 		for {
 			ret.mut.Lock()
 			for _,ac := range ret.ctxs {
+				receivefpses,decodefpses,
+				bandwidth,packetloss,buffer := 
+				[]int{},[]int{},[]int{},
+				[]int{},[]int{}
+
 				if len(ac.afterVQueue) < evaluation_period {
 					continue
 				}
