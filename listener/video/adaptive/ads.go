@@ -57,10 +57,10 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 	}
 
 	afterprocess := func() {
-		receivefpses,decodefpses := []int{},[]int{}
+		receivefpses,decodefpses,bandwidth,packetloss,buffer := []int{},[]int{},[]int{},[]int{},[]int{}
 		for {
 			ret.mut.Lock()
-			for name,ac := range ret.ctxs {
+			for _,ac := range ret.ctxs {
 				if len(ac.afterVQueue) < evaluation_period {
 					continue
 				}
@@ -69,22 +69,28 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 					vid:=<-ac.afterVQueue
 					decodefpses = append(decodefpses, int(vid.DecodedFps))
 					receivefpses = append(receivefpses, int(vid.ReceivedFps))
+					bandwidth   = append(bandwidth, int(vid.VideoBandwidthConsumption))
+					packetloss = append(packetloss, int(vid.VideoPacketsLostpercent))
+					buffer = append(buffer, int(vid.BufferedFrame))
 				}
 
-				fmt.Printf("[%s] worker context %s: \n decodefps %v \n receivefps %v\n",time.Now().Format(time.RFC3339),name,decodefpses,receivefpses)
 				value := struct{
 					Type string `json:"type"`
 					ReceiveFps []int `json:"receivefps"`
 					DecodeFps  []int `json:"decodefps"`
+					PacketsLoss []int `json:"packetloss"`
+					Bandwidth []int `json:"bandwidth"`
+					Buffer   []int `json:"buffer"`
 				}{
 					Type: "VIDEO",
-					ReceiveFps: receivefpses,
 					DecodeFps: decodefpses,
+					ReceiveFps: receivefpses,
+					Bandwidth : bandwidth,
+					PacketsLoss : packetloss,
+					Buffer : buffer,
 				}
-				data,err :=json.Marshal(&value);
-				if err != nil {
-					fmt.Printf("%v,%s",value,err.Error())
-				}
+
+				data,_ :=json.Marshal(&value);
 				ret.out<-string(data)
 				receivefpses,decodefpses = []int{},[]int{}
 			}
@@ -220,6 +226,7 @@ func (ads *AdsMultiCtxs) handleVideoMetric(metric *VideoMetricRaw) {
 		VideoBandwidthConsumption : 	(metric.BytesReceived 	- lastVideoMetric.BytesReceived) 			/ (timedif / float64(time.Second.Milliseconds())),
 		DecodeTimePerFrame : 			(metric.TotalDecodeTime - lastVideoMetric.TotalDecodeTime) 			/ (metric.FramesDecoded   - lastVideoMetric.FramesDecoded),
 		VideoPacketsLostpercent : 		(metric.PacketsLost 	- lastVideoMetric.PacketsLost) 			    / (metric.PacketsReceived - lastVideoMetric.PacketsReceived),
+		BufferedFrame: 					(metric.FramesReceived  - metric.FramesDecoded - metric.FramesDropped),
 		VideoJitter : metric.Jitter,
 		VideoJitterBufferDelay : metric.JitterBufferDelay,
 		Timestamp: metric.Timestamp,

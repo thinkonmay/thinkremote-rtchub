@@ -42,6 +42,7 @@ type VideoMetric struct {
 	ReceivedFps float64                    `json:"receivedFps"`
 	VideoBandwidthConsumption float64      `json:"videoBandwidthConsumption"`
 	DecodeTimePerFrame float64             `json:"decodeTimePerFrame"`
+	BufferedFrame float64             	   `json:"bufferedFrame"`
 	VideoPacketsLostpercent float64        `json:"videoPacketsLostpercent"`
 	VideoJitter float64                    `json:"videoJitter"`
 	VideoJitterBufferDelay float64         `json:"videoJitterBufferDelay"`
