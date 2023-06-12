@@ -131,8 +131,10 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 				}
 
 				vid:=<-ac.vqueue
-				if vid.DecodedFps < 5 { 
+				if vid.DecodedFps == 0 { 
 					ret.triggerVideoReset() 
+					data,_ :=json.Marshal(struct{ Type string `json:"type"` }{ Type: "FRAME_LOSS", });
+					ret.out<-string(data)
 				}
 				ac.afterVQueue<-vid
 			}
