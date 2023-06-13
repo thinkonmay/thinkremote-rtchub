@@ -123,7 +123,7 @@ func main() {
 	rtc := &config.WebRTCConfig{Ices: make([]webrtc.ICEServer, 0)}
 	for _, v := range data["iceServers"].([]interface{}) {
 		ice := webrtc.ICEServer{
-			URLs: []string{v.(map[string]interface{})["url"].(string)},
+			URLs: []string{v.(map[string]interface{})["urls"].(string)},
 		}
 		if v.(map[string]interface{})["credential"] != nil {
 			ice.Credential = v.(map[string]interface{})["credential"].(string)

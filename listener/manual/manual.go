@@ -3,7 +3,6 @@ package manual
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 )
