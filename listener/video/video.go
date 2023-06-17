@@ -3,20 +3,46 @@ package video
 
 /*
 
-#include <gst/app/gstappsrc.h>
+#include <gst/app/gstappsink.h>
 #include <gst/video/video-event.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <glib.h>
 #include <pthread.h>
 
-void PushBufferVideo	   (void  *buffer, int bufferLen , int samples) {
-    gst_println("got buffer with size %d",bufferLen);
 
-}
+static void* appsink = NULL;
+static int frame_count = 0;
+int  PopBufferVideo	   				   (void *bufferOut, int *samplesOut) {
+    if(!appsink)
+        return 0;
 
-int  PopBufferVideo	   				   (void **buffer, int *samples) {
-	return 0;
+    GstBuffer* buffer;
+    GstSample* sample = NULL;
+    gint copy_size;
+
+    g_signal_emit_by_name (appsink, "pull-sample", &sample,NULL);
+    if (!sample) 
+        return 0;
+    else if (!GST_IS_SAMPLE(sample)) 
+        return 0;
+
+    buffer = gst_sample_get_buffer(sample);
+    if (!buffer) 
+        return 0;
+
+    copy_size = gst_buffer_get_size(buffer);
+    if(!copy_size) 
+        return 0;
+
+    gst_buffer_extract(buffer, 0, bufferOut, copy_size); // linking gstreamer to go limited available stack frame // very dangerous to modify
+    gst_sample_unref (sample);
+
+    *samplesOut = GST_BUFFER_DURATION(buffer);
+
+    frame_count++;
+    GST_INFO("got buffer %d with size %d",frame_count,copy_size);
+	return copy_size;
 }
 
 
@@ -63,28 +89,7 @@ gstreamer_send_video_bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
     return TRUE;
 }
 
-GstFlowReturn
-handle_video_sample(GstElement *object, gpointer user_data) {
-    GstSample *sample = NULL;
-    GstBuffer *buffer = NULL;
-    gsize copy_size = 0;
 
-    g_signal_emit_by_name (object, "pull-sample", &sample);
-    if (sample) {
-        buffer = gst_sample_get_buffer(sample);
-        if (buffer) {
-            copy_size = gst_buffer_get_size(buffer);
-            if(copy_size) {
-                gpointer copy = malloc(copy_size);
-                gst_buffer_extract(buffer, 0, (gpointer)copy, copy_size); // linking gstreamer to go limited available stack frame // very dangerous to modify
-                PushBufferVideo(copy, copy_size, GST_BUFFER_DURATION(buffer));
-                free(copy);
-            }
-        }
-        gst_sample_unref (sample);
-    }
-    return GST_FLOW_OK;
-}
 
 void*
 create_video_pipeline(char *pipeline,
@@ -116,9 +121,7 @@ start_video_pipeline(void* pipeline) {
     gst_bus_add_watch(bus, gstreamer_send_video_bus_call, NULL);
     gst_object_unref(bus);
 
-    GstElement *appsink = gst_bin_get_by_name(GST_BIN(pipeline), "appsink");
-    g_object_set(appsink, "emit-signals", TRUE, NULL);
-    g_signal_connect(appsink, "new-sample", G_CALLBACK(handle_video_sample), NULL);
+    appsink = gst_bin_get_by_name(GST_BIN(pipeline), "appsink");
     gst_object_unref(appsink);
 
     gst_element_set_state((GstElement*)pipeline, GST_STATE_PLAYING);
@@ -150,7 +153,6 @@ video_pipeline_set_bitrate(void* pipeline, int bitrate) {
 
     GstElement *encoder = gst_bin_get_by_name(GST_BIN(pipeline), "encoder");
     g_object_set(encoder, "bitrate", bitrate, NULL);
-    g_object_set(encoder, "gop-size", 0, NULL);
 }
 
 void
@@ -250,13 +252,25 @@ func CreatePipeline(pipelineStr string) (
 		return nil, fmt.Errorf("failed to create pipeline %s", err_str)
 	}
 
+    // go func ()  {
+    //     for {
+    //         // C.force_gen_idr_frame_video_pipeline(pipeline.pipeline)
+    //         time.Sleep(1 * time.Second)
+    //     }
+    // }()
     go func ()  {
-        var buffer unsafe.Pointer
         var duration C.int
+        var size C.int
+        var samples uint32
+        buffer := make([]byte,100000)
         for {
-			size := C.PopBufferVideo(&buffer, &duration)
-			samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
-			pipeline.Multiplexer.Send(buffer, uint32(size), uint32(samples))
+			size = C.PopBufferVideo(unsafe.Pointer(&buffer[0]), &duration)
+            if (size == 0) {
+                continue
+            }
+            
+			samples = uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
+			pipeline.Multiplexer.Send(buffer[:size], samples)
         }
     }()
 	return pipeline, nil

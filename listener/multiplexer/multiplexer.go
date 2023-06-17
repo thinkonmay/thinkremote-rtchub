@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/pion/rtp"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
@@ -62,7 +61,7 @@ func NewMultiplexer(id string,packetizer func() rtppay.Packetizer) *Multiplexer 
 	go func() {
 		for {
 			time.Sleep(10 * time.Second)
-			fmt.Printf("[%s] multiplexer %s report : %d samples received, %d packets sent, total packetize time: %dns",time.Now().Format(time.RFC3339), ret.id,ret.recv_sample_count,ret.send_count,ret.total_packetize_nanosecond)
+			// fmt.Printf("[%s] multiplexer %s report : %d samples received, %d packets sent, total packetize time: %dns",time.Now().Format(time.RFC3339), ret.id,ret.recv_sample_count,ret.send_count,ret.total_packetize_nanosecond)
 			ret.recv_sample_count = 0
 			ret.send_count = 0
 			ret.total_packetize_nanosecond = 0
@@ -91,9 +90,9 @@ func NewMultiplexer(id string,packetizer func() rtppay.Packetizer) *Multiplexer 
 	return ret
 }
 
-func (ret *Multiplexer) Send(Buff unsafe.Pointer, bufferLen uint32,Samples uint32) {
+func (ret *Multiplexer) Send(Buff []byte, Samples uint32) {
 	ret.raw<-&struct{buff []byte; samples int}{
-		buff: C.GoBytes(Buff,C.int(bufferLen)),
+		buff: Buff,
 		samples: int(Samples),
 	}
 	ret.recv_sample_count = ret.recv_sample_count + int(Samples)
