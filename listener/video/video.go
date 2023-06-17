@@ -262,7 +262,7 @@ func CreatePipeline(pipelineStr string) (
         var duration C.int
         var size C.int
         var samples uint32
-        buffer := make([]byte,100000)
+        buffer := make([]byte, 100 * 1000 * 1000) //100MB
         for {
 			size = C.PopBufferVideo(unsafe.Pointer(&buffer[0]), &duration)
             if (size == 0) {

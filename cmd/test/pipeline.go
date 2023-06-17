@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	source = "tmd3d11screencapturesrc blocksize=8192 do-timestamp=true ! video/x-raw(memory:D3D11Memory),clock-rate=90000,framerate=55/1 ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! tmd3d11convert ! video/x-raw(memory:D3D11Memory),width=1920,height=1080 ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! "
+	source = "tmd3d11screencapturesrc blocksize=8192 do-timestamp=true ! video/x-raw(memory:D3D11Memory),clock-rate=90000,framerate=55/1 ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! tmd3d11convert ! video/x-raw(memory:D3D11Memory) ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! "
 	nvidia_default = source + "tmnvd3d11h264enc name=encoder ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! appsink name=appsink"
 	amd_default    = source + "tmamfh264enc 	name=encoder ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! appsink name=appsink"
 	intel_default  = source + "tmqsvh264enc 	name=encoder ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! appsink name=appsink"
