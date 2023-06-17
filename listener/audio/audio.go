@@ -17,11 +17,14 @@ import (
 
 #include <gst/app/gstappsrc.h>
 
-void PushBufferAudio	   (void  *buffer, int bufferLen , int samples) {
+void PushBufferAudio (void  *buffer, 
+                      int bufferLen, 
+                      int samples) {
 
 }
 
-int  PopBufferAudio	   	  	(void **buffer, int *samples) {
+int  PopBufferAudio	(void **buffer, 
+                     int *samples) {
 	return 0;
 }
 
@@ -31,22 +34,6 @@ void handleAudioStopOrError() {
 
 
 
-
-
-
-void*         create_audio_pipeline     (char *pipeline,
-                                         char** err);
-
-void          audio_pipeline_set_bitrate(void* pipeline,
-                                         int bitrate);
-
-void          start_audio_pipeline      (void* pipeline);
-
-void          stop_audio_pipeline       (void* pipeline);
-
-void          start_audio_mainloop      (void);
-
-void*         set_media_device();
 
 
 
@@ -204,13 +191,20 @@ func CreatePipeline(pipelinestr string) (*Pipeline, error) {
 		return nil, fmt.Errorf("fail to create pipeline %s", err_str)
 	}
 
+
+    go func ()  {
+        var buffer unsafe.Pointer
+        var duration C.int
+        for {
+            bufferLen  := C.PopBufferAudio(&buffer, &duration) 
+            samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
+            pipeline.Multiplexer.Send(buffer, uint32(bufferLen), uint32(samples))
+        }
+    }()
+
 	return pipeline, nil
 }
 
-func BufferAudio(buffer unsafe.Pointer, bufferLen C.int, duration C.int) {
-	samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
-	pipeline.Multiplexer.Send(buffer, uint32(bufferLen), uint32(samples))
-}
 
 func handleAudioStopOrError() {
 	pipeline.Close()

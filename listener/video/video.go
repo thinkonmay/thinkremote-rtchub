@@ -25,13 +25,7 @@ void handleVideoStopOrError            () {
 
 }
 
-void*create_video_pipeline(char *pipeline,char** err);
-void video_pipeline_set_bitrate(void* pipeline, int bitrate);
-void video_pipeline_set_framerate(void* pipeline, int framerate);
-void start_video_pipeline(void*pipeline);
-void stop_video_pipeline(void*pipeline);
-void force_gen_idr_frame_video_pipeline(void*pipeline);
-void start_video_mainloop(void);
+
 
 
 GMainLoop *gstreamer_video_main_loop = NULL;
@@ -255,15 +249,16 @@ func CreatePipeline(pipelineStr string) (
 		return nil, fmt.Errorf("failed to create pipeline %s", err_str)
 	}
 
+    go func ()  {
+        var buffer unsafe.Pointer
+        var duration C.int
+        for {
+			size := C.PopBufferVideo(&buffer, &duration)
+			samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
+			pipeline.Multiplexer.Send(buffer, uint32(size), uint32(samples))
+        }
+    }()
 	return pipeline, nil
-}
-
-func (pipeline *Pipeline) BufferVideo() {
-	var samplesInt C.int
-	var buffer unsafe.Pointer
-	size := C.PopBufferVideo(&buffer, &samplesInt)
-	samples := uint32(time.Duration(samplesInt).Seconds() * pipeline.clockRate)
-	pipeline.Multiplexer.Send(buffer, uint32(size), uint32(samples))
 }
 
 func (p *Pipeline) GetCodec() string {

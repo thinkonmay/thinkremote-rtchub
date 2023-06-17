@@ -21,7 +21,6 @@ func TestVideo(t *testing.T) {
 	videopipeline.RegisterRTPHandler("test2",func(pkt *rtp.Packet) {
 		fmt.Printf("packet from %s %s \n","test",pkt.String())
 	})
-
 	videopipeline.RegisterRTPHandler("test3",func(pkt *rtp.Packet) {
 		fmt.Printf("packet from %s %s \n","test",pkt.String())
 	})
