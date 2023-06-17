@@ -11,6 +11,7 @@ package video
 #include <pthread.h>
 
 void PushBufferVideo	   (void  *buffer, int bufferLen , int samples) {
+    gst_println("got buffer with size %d",bufferLen);
 
 }
 
