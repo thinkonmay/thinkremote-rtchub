@@ -3,7 +3,7 @@ package audio
 
 import (
 	"fmt"
-	"time"
+	// "time"
 	"unsafe"
 
 	"github.com/pion/rtp"
@@ -192,15 +192,15 @@ func CreatePipeline(pipelinestr string) (*Pipeline, error) {
 	}
 
 
-    go func ()  {
-        var buffer unsafe.Pointer
-        var duration C.int
-        for {
-            bufferLen  := C.PopBufferAudio(&buffer, &duration) 
-            samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
-            pipeline.Multiplexer.Send(buffer, uint32(bufferLen), uint32(samples))
-        }
-    }()
+    // go func ()  {
+    //     var buffer unsafe.Pointer
+    //     var duration C.int
+    //     for {
+    //         bufferLen  := C.PopBufferAudio(&buffer, &duration) 
+    //         samples := uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
+    //         pipeline.Multiplexer.Send(buffer, uint32(bufferLen), uint32(samples))
+    //     }
+    // }()
 
 	return pipeline, nil
 }
