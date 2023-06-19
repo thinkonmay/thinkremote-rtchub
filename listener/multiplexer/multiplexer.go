@@ -11,21 +11,22 @@ import (
 import "C"
 
 const (
-	enable_soft_limit = false 
-	soft_limit        = 40
-	hard_limit        = 50
-	no_limit          = 50
+	no_limit          = 200
+	thread_count      = 2
 )
 
-
+type sample struct {
+	data []byte 
+	samples uint32
+	id int
+}
 type Multiplexer struct {
 	id string
-
-
 
 	packetizer rtppay.Packetizer
 
 	mutex   *sync.Mutex
+	queue   chan *sample
 	handler map[string]Handler
 }
 
@@ -40,22 +41,39 @@ func NewMultiplexer(id string,packetizer func() rtppay.Packetizer) *Multiplexer 
 	ret := &Multiplexer{
 		id:      id,
 		mutex:   &sync.Mutex{},
+		queue:   make(chan *sample, no_limit),
 		handler: map[string]Handler{},
 		packetizer: packetizer(),
 	}
 
+	packetize := func() {
+		for {
+			sample := <-ret.queue
+			packets := ret.packetizer.Packetize(sample.data,sample.samples)
+
+			go func ()  {
+				for _,handler := range ret.handler {
+					for _,packet := range packets {
+						handler.handler(packet); 
+					}
+				}
+			}()
+		}
+	}
+
+	for i := 0; i < thread_count; i++ {
+		go packetize()
+	}
 	return ret
 }
 
 func (ret *Multiplexer) Send(Buff []byte, Samples uint32) {
-	go func() {
-		packets := ret.packetizer.Packetize(Buff,uint32(Samples))
-		for _,handler := range ret.handler {
-			for _,packet := range packets {
-				handler.handler(packet); 
-			}
-		}
-	}()
+	sample := &sample{
+		data: make([]byte, len(Buff)),
+		samples: Samples,
+	}
+	copy(sample.data,Buff)
+	ret.queue <- sample
 }
 
 func (p *Multiplexer) Close() {

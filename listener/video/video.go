@@ -328,11 +328,9 @@ func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 	case "bitrate":
 		pipeline.properties["bitrate"] = val
 		C.video_pipeline_set_bitrate(pipeline.pipeline, C.int(val))
-		C.video_pipeline_generate_idr(pipeline.pipeline)
 	case "framerate":
 		pipeline.properties["framerate"] = val
 		C.video_pipeline_set_framerate(pipeline.pipeline, C.int(val))
-		C.video_pipeline_generate_idr(pipeline.pipeline)
 	case "reset":
 		C.video_pipeline_generate_idr(pipeline.pipeline)
 	default:

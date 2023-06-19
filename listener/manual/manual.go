@@ -32,12 +32,6 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 		framerateCallback: FramerateCallback,
 	}
 
-	// go func() { // TODO rm this if audio is fine
-	// 	for {
-	// 		time.Sleep(30 * time.Second)
-	// 		ret.audioResetCallback()
-	// 	}
-	// }()
 	go func() {
 		for {
 			data := <-ret.In
@@ -48,17 +42,21 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 				fmt.Printf("%s", err.Error())
 				continue
 			}
+
+			if dat["type"] == nil {
+				continue
+			}
 			_type := dat["type"].(string)
-			if _type == "bitrate" {
+			if _type == "bitrate" && dat["value"] != nil{
 				_val  := dat["value"].(float64)
 				ret.bitrateCallback(int(_val))
+			} else if _type == "framerate" && dat["value"] != nil{
+				_val  := dat["value"].(float64)
+				ret.framerateCallback(int(_val))
 			} else if _type == "reset" {
 				ret.triggerVideoReset()
 			} else if _type == "audio-reset" {
 				ret.audioResetCallback()
-			} else if _type == "framerate" {
-				_val  := dat["value"].(float64)
-				ret.framerateCallback(int(_val))
 			}
 		}
 	}()
