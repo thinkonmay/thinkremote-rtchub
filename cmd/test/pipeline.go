@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/pion/rtp"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
 )
@@ -56,16 +57,20 @@ func main() {
 		return
 	}
 	videopipeline.Open()
-	go func ()  {
-		for {
-			videopipeline.SetProperty("bitrate",8000)
-			time.Sleep(time.Second)
-			videopipeline.SetProperty("framerate",70)
-			time.Sleep(time.Second)
-			videopipeline.SetProperty("reset",0)
-			time.Sleep(time.Second)
+	count := 1
+	var max int64 = 0
+	last := time.Now().UnixMicro()
+	videopipeline.RegisterRTPHandler("abc",func(pkt *rtp.Packet) {
+		diff := time.Now().UnixMicro() - last
+		last = last + diff
+		count ++;
+		
+		if diff > max && diff < 100000 {
+			fmt.Printf("%d size %d , %d\n",count,len(pkt.Payload),diff)
+			max = diff
 		}
-	}()
+		count++
+	})
 
 	<-make(chan bool, 0)
 }

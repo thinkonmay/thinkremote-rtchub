@@ -127,12 +127,7 @@ video_pipeline_stop(void* pipelineIn) {
         return;
     else if (!GST_IS_PIPELINE(pipeline->pipeline))
         return;
-    else if (!GST_IS_ELEMENT(pipeline->appsink))
-        return;
-    else if (!GST_IS_ELEMENT(pipeline->framerate_filter))
-        return;
-    else if (!GST_IS_ELEMENT(pipeline->encoder))
-        return;
+
 
     pipeline->frame_count = 0;
     gst_element_set_state(pipeline->pipeline, GST_STATE_NULL);
