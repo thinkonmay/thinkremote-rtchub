@@ -12,7 +12,7 @@ import "C"
 
 const (
 	no_limit          = 200
-	thread_count      = 2
+	thread_count      = 1
 )
 
 type sample struct {
