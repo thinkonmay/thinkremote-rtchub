@@ -174,7 +174,7 @@ type MicPipeline struct {
 func CreatePipeline(payloadType webrtc.PayloadType) ( *MicPipeline,
 	                                       error) {
     pipelineStr  := fmt.Sprintf(
-        "appsrc format=time is-live=true do-timestamp=true name=src ! application/x-rtp,payload=%d, encoding-name=OPUS ! rtpopusdepay ! decodebin ! wasapisink device=\"\\{0.0.0.00000000\\}.\\{3593f4a8-70fa-4189-af53-cb537a387f8d\\}", payloadType)
+        "appsrc format=time is-live=true do-timestamp=true name=appsrc ! application/x-rtp,payload=%d,encoding-name=OPUS,clock-rate=48000 ! rtpopusdepay ! opusdec ! audioconvert ! audioresample ! wasapisink device=\"\\{0.0.0.00000000\\}.\\{e9e2e411-614e-4ba0-8584-aca0f67853cd\\}\"", payloadType)
 	pipeline := &MicPipeline{
 		closed:      false,
 		pipeline:    nil,
