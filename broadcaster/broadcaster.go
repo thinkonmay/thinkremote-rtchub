@@ -1,10 +1,7 @@
 package broadcaster
 
-import (
-	"github.com/pion/rtp"
-)
-
 type Broadcaster interface {
-	Write(pk *rtp.Packet)
+	Push(buff []byte) 
 	Close()
+	Open()
 }
