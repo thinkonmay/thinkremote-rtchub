@@ -17,7 +17,7 @@ func TestMic(t *testing.T) {
 		t.Error(err.Error())
 		return
 	}
-	mic,err := CreatePipeline(96)
+	mic,err := CreatePipeline(audio_default)
 	if err != nil {
 		t.Error(err.Error())
 		return

@@ -7,7 +7,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	webrtc "github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
@@ -95,20 +94,6 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 	})
 
 	client.conn.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
-		go func() {
-			ticker := time.NewTicker(time.Second * 3)
-			for range ticker.C {
-				if client.Closed {
-					return
-				}
-				rtcpSendErr := client.conn.WriteRTCP([]rtcp.Packet{&rtcp.PictureLossIndication{MediaSSRC: uint32(track.SSRC())}})
-				if rtcpSendErr != nil {
-					fmt.Println(rtcpSendErr)
-					return
-				}
-			}
-		}()
-
 		fmt.Printf("new track %s\n", track.ID())
 		client.onTrack(track)
 	})

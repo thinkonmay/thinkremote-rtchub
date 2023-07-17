@@ -30,7 +30,7 @@ const (
 
 func main() {
 	args := os.Args[1:]
-	authArg, webrtcArg, videoArg, audioArg, grpcArg := "", "", "", "", ""
+	authArg, webrtcArg, videoArg, audioArg, micArg, grpcArg := "", "", "", "", "", ""
 	HIDURL := "localhost:5000"
 	for i, arg := range args {
 		if arg == "--auth" {
@@ -45,6 +45,8 @@ func main() {
 			audioArg = args[i+1]
 		} else if arg == "--video" {
 			videoArg = args[i+1]
+		} else if arg == "--mic" {
+			micArg = args[i+1]
 		}
 	}
 
@@ -99,6 +101,16 @@ func main() {
 
 	audioPipeline.Open()
 	videopipeline.Open()
+
+	micPipelineString := ""
+	if videoArg != "" {
+		bytes2, _ := base64.StdEncoding.DecodeString(micArg)
+		err := json.Unmarshal(bytes2, &micPipelineString)
+		if err != nil {
+			fmt.Printf("error decode audio pipeline %s\n", err.Error())
+			micPipelineString = ""
+		}
+	}
 	handle_track := func(tr *webrtc.TrackRemote) {
 		codec := tr.Codec() 
 		if codec.MimeType != "audio/opus" ||
@@ -107,7 +119,12 @@ func main() {
 			return
 		}
 
-		pipeline,err := microphone.CreatePipeline(codec.PayloadType)
+		if micPipelineString == "" {
+			fmt.Printf("failed to create pipeline, reason: microphone not support on this session\n")
+			return
+		}
+
+		pipeline,err := microphone.CreatePipeline(micPipelineString)
 		if err != nil {
 			fmt.Printf("failed to create pipeline, reason: %s\n",err.Error())
 			return
