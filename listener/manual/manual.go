@@ -3,6 +3,7 @@ package manual
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 )
@@ -57,6 +58,8 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 				ret.triggerVideoReset()
 			} else if _type == "audio-reset" {
 				ret.audioResetCallback()
+			} else if _type == "danger-reset" {
+				os.Exit(0)
 			}
 		}
 	}()
