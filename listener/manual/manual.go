@@ -69,10 +69,15 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 	return ret
 }
 
-func (ads *Manual) Send(msg string) {
+
+// TODO
+func (ads *Manual)Recv() (string,string) {
+	<-ads.Out
+	return "",""
+}
+func (ads *Manual)Send(id string,msg string) {
 	ads.In<-msg
 }
 
-func (ads *Manual) Recv() string {
-	return<-ads.Out
+func (ads *Manual)SetContext(ids []string) {
 }

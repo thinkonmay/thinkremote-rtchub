@@ -30,8 +30,6 @@ type VideoMetricRaw struct {
 	Jitter                   float64 `json:"jitter"`
 
 	Timestamp float64 `json:"timestamp"`
-
-	Source string `json:"__source__"`
 }
 
 
@@ -67,8 +65,6 @@ type AudioMetricRaw struct {
 	PacketsReceived      float64 `json:"packetsReceived"`
 	PacketsLost          float64 `json:"packetsLost"`
 	Timestamp            float64 `json:"timestamp"`
-
-	Source string `json:"__source__"`
 }
 
 type AudioMetric struct {
@@ -93,8 +89,6 @@ type NetworkMetricRaw struct {
 	Timestamp                float64 `json:"timestamp"`
 	LocalIP                  string  `json:"localIP"`
 	RemoteIP                 string  `json:"remoteIP"`
-
-	Source string `json:"__source__"`
 }
 
 

@@ -221,26 +221,6 @@ func main() {
 			signaling_client.WaitForEnd()
 		}
 	}()
-	_ = func() {
-		for {
-			signaling_client, err := grpc.InitGRPCClient(
-				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.Data.GrpcPort), 
-				&auth)
-			if err != nil {
-				fmt.Printf("error initiate signaling client %s\n", err.Error())
-				continue
-			}
-
-			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, chans, 
-										[]listener.Listener{}, 
-										handle_track)
-			if err != nil {
-				fmt.Printf("%s\n", err.Error())
-				return
-			}
-			signaling_client.WaitForEnd()
-		}
-	}
 
 	chann := make(chan os.Signal, 10)
 	signal.Notify(chann, syscall.SIGTERM, os.Interrupt)

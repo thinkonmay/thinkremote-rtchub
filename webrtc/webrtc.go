@@ -1,7 +1,6 @@
 package webrtc
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -208,49 +207,29 @@ func (client *WebRTCClient) RegisterDataChannels(chans datachannel.IDatachannel)
 }
 
 func (client *WebRTCClient) RegisterDataChannel(dc datachannel.IDatachannel,group string) {
-	rand := fmt.Sprintf("%d", time.Now().UnixNano())
-
 	channel, err := client.conn.CreateDataChannel(group, nil)
 	if err != nil {
 		fmt.Printf("unable to add data channel: %s\n", err.Error())
 		return
 	}
 
+	rand := fmt.Sprintf("%d", time.Now().UnixNano())
+	dc.RegisterHandle(group,rand,func(msg string) {
+		if client.Closed { return }
+		channel.SendText(msg)
+	})
 	go func() {
 		for {
-			if client.Closed {
-				dc.DeregisterHandle(group,rand)
-				return
-			}
 			time.Sleep(time.Second)
+			if !client.Closed { continue }
+			dc.DeregisterHandle(group,rand)
 		}
 	}()
 
-
-	dc.RegisterHandle(group,rand,func(pkt string) {
-		channel.SendText(pkt)
-	})
-
-	channel.OnOpen(func() { channel.OnMessage(func(msg webrtc.DataChannelMessage) {
-			if group == "adaptive" {
-				var raw map[string]interface{}
-				err := json.Unmarshal(msg.Data,&raw)
-				if err != nil {
-					return 
-				}
-
-				raw["__source__"] = rand 
-				bytes,_ := json.Marshal(raw)
-				dc.Send(group,string(bytes))
-				return
-			}
-
-			if group == "hid" {
-				dc.Send(group,fmt.Sprintf("%s|%s",string(msg.Data),rand))
-				return
-			}
-
-			dc.Send(group,string(msg.Data))
+	channel.OnOpen(func() { channel.OnMessage(
+		func(msg webrtc.DataChannelMessage) {
+			if client.Closed { return }
+			dc.Send(group,rand,string(msg.Data))
 		})
 	})
 }

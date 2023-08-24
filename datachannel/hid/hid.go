@@ -21,8 +21,10 @@ type HIDAdapter struct {
 	client      *websocket.Conn
 	URL         string
 
-	send chan string
+	send chan datachannel.Msg
 	recv chan string
+
+	ids []string
 }
 
 func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
@@ -32,7 +34,7 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 
 	ret := HIDAdapter{
 		URL:         URL,
-		send: make(chan string,queue_size),
+		send: make(chan datachannel.Msg,queue_size),
 		recv: make(chan string,queue_size),
 	}
 
@@ -97,17 +99,27 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 				continue
 			}
 
-			ret.send <- string(message)
+			for _,v := range ret.ids {
+				ret.send <- datachannel.Msg{
+					Msg: string(message),
+					Id: v,
+				}
+			}
 		}
 	}()
 
 	return &ret
 }
 
-func (hid *HIDAdapter) Recv() string {
-	return <-hid.send
+func (hid *HIDAdapter) Recv() (string,string) {
+	out := <-hid.send
+	return out.Id,out.Msg
 
 }
-func (hid *HIDAdapter) Send(msg string) {
-	hid.recv<-msg
+func (hid *HIDAdapter) Send(id string,msg string) {
+	hid.recv<-fmt.Sprintf("%s|%s",msg,id)
+}
+
+func (hid *HIDAdapter) SetContext(ids []string) {
+	hid.ids = ids
 }

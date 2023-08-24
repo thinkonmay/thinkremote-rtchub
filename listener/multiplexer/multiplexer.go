@@ -46,18 +46,20 @@ func NewMultiplexer(id string,packetizer func() rtppay.Packetizer) *Multiplexer 
 		packetizer: packetizer(),
 	}
 
+
+	sender := func (handler Handler,packets []*rtp.Packet) {
+		for _,packet := range packets {
+			handler.handler(packet); 
+		}
+	}
+
 	packetize := func() {
 		for {
 			sample := <-ret.queue
 			packets := ret.packetizer.Packetize(sample.data,sample.samples)
-
-			go func ()  {
-				for _,handler := range ret.handler {
-					for _,packet := range packets {
-						handler.handler(packet); 
-					}
-				}
-			}()
+			for _,handler := range ret.handler {
+				go sender(handler,packets)
+			}
 		}
 	}
 
