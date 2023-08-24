@@ -11,7 +11,7 @@ import (
 
 const (
 	queue_size = 1000
-	evaluation_period = 30
+	evaluation_period = 10
 )
 
 type AdsCtx struct {
@@ -72,8 +72,8 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 					vid:=<-ac.afterVQueue
 					decodefpses = append(decodefpses, int(vid.DecodedFps))
 					receivefpses = append(receivefpses, int(vid.ReceivedFps))
-					bandwidth   = append(bandwidth, int(vid.VideoBandwidthConsumption))
-					packetloss = append(packetloss, int(vid.VideoPacketsLostpercent))
+					bandwidth   = append(bandwidth, int(vid.VideoBandwidthConsumption * 8 / 1024))
+					packetloss = append(packetloss, int(vid.VideoPacketsLostpercent * 100))
 					buffer = append(buffer, int(vid.BufferedFrame))
 				}
 
@@ -95,7 +95,6 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 
 				data,_ :=json.Marshal(&value);
 				ret.out<-string(data)
-				receivefpses,decodefpses = []int{},[]int{}
 			}
 
 			for _,ac := range ret.ctxs {
@@ -133,7 +132,11 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 				vid:=<-ac.vqueue
 				if vid.DecodedFps == 0 { 
 					ret.triggerVideoReset() 
-					data,_ :=json.Marshal(struct{ Type string `json:"type"` }{ Type: "FRAME_LOSS", });
+					data,_ :=json.Marshal(struct{ 
+						Type string `json:"type"` 
+					}{ 
+						Type: "FRAME_LOSS",
+					});
 					ret.out<-string(data)
 				}
 				ac.afterVQueue<-vid
