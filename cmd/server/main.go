@@ -90,6 +90,7 @@ func main() {
 	ManualContext := manual.NewManualCtx(
 		func(bitrate int) 	{ videopipeline.SetProperty("bitrate", bitrate) }, 
 		func(framerate int) { videopipeline.SetProperty("framerate", framerate) }, 
+		func(pointer int)   { videopipeline.SetProperty("pointer", pointer) }, 
 		func() 			  	{ videopipeline.SetProperty("reset", 0) },
 		func() 			  	{ audioPipeline.SetProperty("audio-reset", 0) },
 	)

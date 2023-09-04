@@ -164,7 +164,6 @@ func (dc *Datachannel) RegisterHandle(group_name string,
 func (dc *Datachannel) DeregisterHandle(group_name string,id string) {
 	group := dc.groups[group_name] 
 	if group == nil {
-		fmt.Printf("no group name %s available\n",group)
 		return
 	} 
 
@@ -177,7 +176,6 @@ func (dc *Datachannel) DeregisterHandle(group_name string,id string) {
 	group.mutext.Lock()
 	defer group.mutext.Unlock()
 
-	fmt.Printf("deregister datachannel %s:%s available\n",group,id)
 	handler.handle_queue<-Msg{Msg: internal_close}
 	delete(group.handlers,id)
 	dc.setContext(group_name)
