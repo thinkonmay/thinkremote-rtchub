@@ -17,10 +17,12 @@ type Manual struct {
 	audioResetCallback func()
 	bitrateCallback func(bitrate int)
 	framerateCallback func(framerate int)
+	pointerCallback func(pointer int)
 }
 
 func NewManualCtx(BitrateCallback func(bitrate int),
 				   FramerateCallback func(framerate int),
+				   PointerCallback  func(pointer int),
 				   IDRcallback func(),
 				   AudioResetcallback func()) datachannel.DatachannelConsumer {
 	ret := &Manual{
@@ -31,6 +33,7 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 		triggerVideoReset: IDRcallback,
 		bitrateCallback: BitrateCallback,
 		framerateCallback: FramerateCallback,
+		pointerCallback: PointerCallback,
 	}
 
 	go func() {
@@ -54,6 +57,9 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 			} else if _type == "framerate" && dat["value"] != nil{
 				_val  := dat["value"].(float64)
 				ret.framerateCallback(int(_val))
+			} else if _type == "pointer" && dat["value"] != nil{
+				_val  := dat["value"].(float64)
+				ret.pointerCallback(int(_val))
 			} else if _type == "reset" {
 				ret.triggerVideoReset()
 			} else if _type == "audio-reset" {

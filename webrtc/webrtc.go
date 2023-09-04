@@ -223,6 +223,7 @@ func (client *WebRTCClient) RegisterDataChannel(dc datachannel.IDatachannel,grou
 			time.Sleep(time.Second)
 			if !client.Closed { continue }
 			dc.DeregisterHandle(group,rand)
+			return
 		}
 	}()
 

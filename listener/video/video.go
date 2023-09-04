@@ -22,6 +22,7 @@ typedef struct _VideoPipeline {
     GstElement* pipeline;
     GstElement* framerate_filter;
     GstElement* encoder;
+    GstElement* capturer;
 
     int frame_count;
 } VideoPipeline;
@@ -105,6 +106,7 @@ create_video_pipeline(char *pipeline_desc,
     pipeline->appsink            = gst_bin_get_by_name(GST_BIN(pipeline->pipeline), "appsink");
     pipeline->framerate_filter   = gst_bin_get_by_name(GST_BIN(pipeline->pipeline), "framerateFilter");
     pipeline->encoder            = gst_bin_get_by_name(GST_BIN(pipeline->pipeline), "encoder");
+    pipeline->capturer           = gst_bin_get_by_name(GST_BIN(pipeline->pipeline), "capturer");
     *err = NULL;
     return pipeline;
 }
@@ -165,6 +167,17 @@ video_pipeline_set_bitrate(void* pipelineIn,
     g_object_set(pipeline->encoder, "bitrate", bitrate, NULL);
 }
 
+void
+video_pipeline_enable_pointer(void* pipelineIn,
+                            int enable) {
+    VideoPipeline* pipeline = (VideoPipeline*)pipelineIn;
+    if (!pipeline)
+        return;
+    else if (!GST_IS_ELEMENT(pipeline->capturer))
+        return;
+
+    g_object_set(pipeline->capturer, "show-cursor", enable, NULL);
+}
 
 void
 video_pipeline_generate_idr(void* pipelineIn) {
@@ -326,6 +339,9 @@ func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 	case "framerate":
 		pipeline.properties["framerate"] = val
 		C.video_pipeline_set_framerate(pipeline.pipeline, C.int(val))
+	case "pointer":
+		pipeline.properties["pointer"] = val
+		C.video_pipeline_enable_pointer(pipeline.pipeline, C.int(val))
 	case "reset":
 		C.video_pipeline_generate_idr(pipeline.pipeline)
 	default:
