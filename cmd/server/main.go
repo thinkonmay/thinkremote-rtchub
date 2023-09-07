@@ -18,7 +18,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
-	grpc "github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC"
+	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
@@ -184,9 +184,7 @@ func main() {
 	chans.RegisterConsumer("hid",hid.NewHIDSingleton(HIDURL))
 	go func() {
 		for {
-			signaling_client, err := grpc.InitGRPCClient(
-				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.Audio.GrpcPort), 
-				&auth)
+			signaling_client, err := websocket.InitWebsocketClient( signaling.Audio.URL, &auth)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
 				continue
@@ -204,9 +202,7 @@ func main() {
 	}()
 	go func() {
 		for {
-			signaling_client, err := grpc.InitGRPCClient(
-				fmt.Sprintf("%s:%d", signaling.ServerAddress,signaling.Video.GrpcPort), 
-				&auth)
+			signaling_client, err := websocket.InitWebsocketClient( signaling.Video.URL, &auth)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
 				continue

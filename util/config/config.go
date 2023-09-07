@@ -19,13 +19,12 @@ type AuthConfig struct {
 type GrpcConfig struct {
 	Audio struct{
 		GrpcPort int `json:"GrpcPort"`
+		URL string `json:"URL"`
 	}`json:"Audio"`
 	Video struct {
 		GrpcPort int `json:"GrpcPort"`
+		URL string `json:"URL"`
 	}`json:"Video"`
-	Data struct {
-		GrpcPort int `json:"GrpcPort"`
-	}`json:"Data"`
 
 	ServerAddress string			`json:"HostName"`
 }
