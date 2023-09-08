@@ -108,7 +108,7 @@ func (proxy *Proxy) handleTimeout() {
 		proxy.signallingClient.WaitForStart()
 		fmt.Println("application start exchanging signaling message")
 		proxy.webrtcClient.RegisterDataChannels(proxy.chan_conf)
-		time.Sleep(10 * time.Second)
+		time.Sleep(13 * time.Second)
 		start <- false
 	}()
 
