@@ -46,8 +46,9 @@ func InitWebsocketClient(AddressStr string,
 
 	go func() {
 		for {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 			if !ret.done {
+				ret.conn.WriteMessage(websocket.TextMessage,[]byte("ping"))
 				continue
 			}
 			ret.iceChan<-nil
