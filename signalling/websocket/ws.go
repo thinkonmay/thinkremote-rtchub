@@ -34,8 +34,8 @@ func InitWebsocketClient(AddressStr string,
 	}
 
 
-	dialer := websocket.Dialer{ HandshakeTimeout: time.Second, }
-	dial_ctx,_ := context.WithTimeout(context.TODO(),time.Second)
+	dialer := websocket.Dialer{ HandshakeTimeout: 3 * time.Second, }
+	dial_ctx,_ := context.WithTimeout(context.TODO(),3* time.Second)
 	ret.conn, _, err = dialer.DialContext(dial_ctx,fmt.Sprintf("%s?token=%s",AddressStr,auth.Token) , nil)
 	if err != nil {
 		fmt.Printf("signaling websocket error: %s", err.Error())
