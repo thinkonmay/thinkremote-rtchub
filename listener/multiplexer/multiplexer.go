@@ -57,9 +57,9 @@ func NewMultiplexer(id string,packetizer func() rtppay.Packetizer) *Multiplexer 
 		for {
 			sample := <-ret.queue
 			packets := ret.packetizer.Packetize(sample.data,sample.samples)
-			for _,handler := range ret.handler {
-				go sender(handler,packets)
-			}
+			ret.mutex.Lock()
+			for _,handler := range ret.handler { go sender(handler,packets) }
+			ret.mutex.Unlock()
 		}
 	}
 
