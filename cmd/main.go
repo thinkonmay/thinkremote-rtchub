@@ -195,9 +195,9 @@ func main() {
 										handle_track)
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
-				return
+				continue
 			}
-			signaling_client.WaitForEnd()
+			signaling_client.WaitForStart()
 		}
 	}()
 	go func() {
@@ -213,9 +213,9 @@ func main() {
 										handle_track)
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
-				return
+				continue
 			}
-			signaling_client.WaitForEnd()
+			signaling_client.WaitForStart()
 		}
 	}()
 
