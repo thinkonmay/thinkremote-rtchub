@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -14,6 +15,7 @@ import (
 
 type WebsocketClient struct {
 	conn *websocket.Conn
+	mut  *sync.Mutex
 
 	sdpChan      chan *webrtc.SessionDescription
 	iceChan      chan *webrtc.ICECandidateInit
@@ -31,6 +33,7 @@ func InitWebsocketClient(AddressStr string,
 
 		connected: false,
 		done:      false,
+		mut: &sync.Mutex{},
 	}
 
 
@@ -48,18 +51,24 @@ func InitWebsocketClient(AddressStr string,
 		for {
 			time.Sleep(1 * time.Second)
 			if !ret.done {
+				ret.mut.Lock()
 				ret.conn.WriteMessage(websocket.TextMessage,[]byte("ping"))
+				ret.mut.Unlock()
 				continue
 			}
 			ret.iceChan<-nil
 			ret.sdpChan<-nil
+			ret.mut.Lock()
 			ret.conn.Close()
+			ret.mut.Unlock()
 		}
 	}()
 	go func() {
 		for {
 			res := &packet.SignalingMessage{}
+			ret.mut.Lock()
 			err := ret.conn.ReadJSON(res)
+			ret.mut.Unlock()
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 				fmt.Printf("websocket connection terminated\n")
