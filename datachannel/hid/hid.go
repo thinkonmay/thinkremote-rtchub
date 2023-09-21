@@ -1,11 +1,11 @@
 package hid
 
 import (
-	"context"
 	"fmt"
-	"time"
+	"strconv"
+	"strings"
+	"encoding/base64"
 
-	"github.com/gorilla/websocket"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 )
 
@@ -13,14 +13,17 @@ const (
 	HIDdefaultEndpoint = "localhost:5000"
 )
 
-const (
+var (
 	queue_size = 100
+	keys = []string{ 
+		"Down" , "Up" , "Left" , "Right" , "Enter" , "Esc" , "Alt" , "Control" ,
+        "Shift" , "PAUSE" , "BREAK" , "Backspace" , "Tab" , "CapsLock" , "Delete" , "Home" , "End" , "PageUp" ,
+        "PageDown" , "NumLock" , "Insert" , "ScrollLock" , "F1" , "F2" , "F3" , "F4" , "F5" ,
+        "F6" , "F7" , "F8" , "F9" , "F10" , "F11" , "F12" , "Meta",
+	}
 )
 
 type HIDAdapter struct {
-	client      *websocket.Conn
-	URL         string
-
 	send chan datachannel.Msg
 	recv chan string
 
@@ -33,80 +36,97 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 	}
 
 	ret := HIDAdapter{
-		URL:         URL,
 		send: make(chan datachannel.Msg,queue_size),
 		recv: make(chan string,queue_size),
+		ids: []string{},
 	}
 
-	setup := func () bool {
-		var err error
-		dialer := websocket.Dialer{ HandshakeTimeout: time.Second, }
-		dial_ctx,_ := context.WithTimeout(context.TODO(),time.Second)
-		ret.client, _, err = dialer.DialContext(dial_ctx,fmt.Sprintf("ws://%s/Socket", URL), nil)
-		if err != nil || ret.client == nil {
-			fmt.Printf("hid websocket error: %s", err.Error())
-			return false
-		}
-
-		err = ret.client.WriteMessage(websocket.TextMessage, []byte("ping"))
-		if err != nil {
-			fmt.Printf("hid websocket error: %s", err.Error())
-			return false
-		}
-
-		return true
-	}
-	go func() {
-		for {
-			if ret.client == nil {
-				if setup(){
-					continue
-				}
-
-				fmt.Println("fail to setup hid adapter")
+	em,err := NewEmulator(func(vibration Vibration) {
+		for _,v := range ret.ids {
+			ret.send <- datachannel.Msg{
+				Msg: fmt.Sprintf("%s|%s",v,vibration.SmallMotor,vibration.LargeMotor),
+				Id: v,
 			}
-
-			time.Sleep(time.Millisecond * 1000)
 		}
-	}()
+	})
+	if err != nil {
+		fmt.Printf("%s\n",err.Error())
+	}
+
+	controller,err := em.CreateXbox360Controller()
+	if err != nil {
+		fmt.Printf("%s\n",err.Error())
+	}
+
+	err = controller.Connect()
+	if err != nil {
+		fmt.Printf("%s\n",err.Error())
+	}
+
 
 	go func() {
 		for {
 			message := <-ret.recv
-			if ret.client == nil {
-				continue
-			}
-
-			if ret.client.WriteMessage(websocket.TextMessage, []byte(message)) != nil {
-				ret.client = nil
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			if ret.client == nil {
-				time.Sleep(time.Millisecond * 100)
-				continue
-			}
-
-			typ, message, err := ret.client.ReadMessage()
-			if err != nil || typ == websocket.CloseMessage {
-				ret.client = nil
-			}
-
-			if typ != websocket.TextMessage {
-				continue
-			}
-
-			for _,v := range ret.ids {
-				ret.send <- datachannel.Msg{
-					Msg: string(message),
-					Id: v,
+			msg := strings.Split(message, "|")
+			switch msg[0] {
+			case "mma":
+				x,_ := strconv.ParseFloat(msg[1],32)
+				y,_ := strconv.ParseFloat(msg[2],32)
+				go SendMouseAbsolute(float32(x),float32(y))
+				continue;
+			case "mmr":
+				x,_ := strconv.ParseFloat(msg[1],32)
+				y,_ := strconv.ParseFloat(msg[2],32)
+				go SendMouseRelative(float32(x),float32(y))
+				continue;
+			case "mw":
+				x,_ := strconv.ParseFloat(msg[1],32)
+				go SendMouseWheel(x)
+				continue;
+			case "mu":
+				x,_ := strconv.ParseInt(msg[1],10,8)
+				go SendMouseButton(int(x),true)
+				continue;
+			case "md":
+				x,_ := strconv.ParseInt(msg[1],10,8)
+				go SendMouseButton(int(x),false)
+				continue;
+			case "ku":
+				go SendKeyboard(msg[1],true)
+				continue;
+			case "kd":
+				go SendKeyboard(msg[1],false)
+				continue;
+			case "kr":
+				go func ()  { for _,v := range keys { SendKeyboard(v,false) } }() 
+				continue;
+			case "gs":
+				x,_ := strconv.ParseInt(msg[2],10,32)
+				y,_ := strconv.ParseFloat(msg[3],32)
+                controller.pressSlider(x,y);
+				continue;
+            case "ga":
+				x,_ := strconv.ParseInt(msg[2],10,32)
+				y,_ := strconv.ParseFloat(msg[3],32)
+                controller.pressAxis(x,y);
+				continue;
+            case "gb":
+				y,_ := strconv.ParseInt(msg[2],10,32)
+                controller.pressButton(y,msg[3] == "1");
+				continue;
+            case "cs":
+				decoded,err := base64.RawStdEncoding.DecodeString(msg[1])
+				if err != nil {
+					fmt.Println(err.Error())
+					continue;
 				}
+
+                SetClipboard(string(decoded));
+                continue;
 			}
 		}
 	}()
+
 
 	return &ret
 }
