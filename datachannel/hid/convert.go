@@ -568,7 +568,7 @@ const (
     PA1 = 0xFD
     OEM_CLEAR = 0xFE
 )
-func ConvertJavaScriptKeyToVirtualKey(key string) int {
+func ConvertJavaScriptKeyToVirtualKey(key string) (int) {
     switch key {
     case "Down":
       return DOWN
@@ -590,7 +590,7 @@ func ConvertJavaScriptKeyToVirtualKey(key string) int {
       return RETURN
     case "Esc":
       return ESCAPE
-	case "Escape":
+	  case "Escape":
       return ESCAPE
     case "Alt":
       return MENU
@@ -658,5 +658,5 @@ func ConvertJavaScriptKeyToVirtualKey(key string) int {
       return int(C.VkKeyScan(*C.CString(key)))
     }
 
-    return 0;
+    return -1
 }

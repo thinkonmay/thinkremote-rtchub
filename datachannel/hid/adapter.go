@@ -1,6 +1,8 @@
 package hid
 
-
+import (
+    "fmt"
+)
 /*
 #include <Windows.h>
 #include "windows.h"
@@ -283,9 +285,14 @@ func SendMouseButton(button int, is_up bool) {
 func SendKeyboard(key string, is_up bool) {
     code := C.KEYUP
     if !is_up { code = C.KEYDOWN }
+    k := ConvertJavaScriptKeyToVirtualKey(key)
+    if k == -1{
+        fmt.Printf("invalid key %s\n",key)
+        return
+    }
     C.handle_keyboard_javascript(
         C.int(code),
-        C.int(ConvertJavaScriptKeyToVirtualKey(key)),
+        C.int(k),
     )
 }
 
