@@ -66,9 +66,7 @@ func InitWebsocketClient(AddressStr string,
 	go func() {
 		for {
 			res := &packet.SignalingMessage{}
-			ret.mut.Lock()
 			err := ret.conn.ReadJSON(res)
-			ret.mut.Unlock()
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 				fmt.Printf("websocket connection terminated\n")
