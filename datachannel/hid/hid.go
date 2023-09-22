@@ -16,11 +16,16 @@ const (
 var (
 	queue_size = 100
 	keys = []string{ 
-		"Down" , "Up" , "Left" , "Right" , "Enter" , "Esc" , "Alt" , "Control" ,
-        "Shift" , "PAUSE" , "BREAK" , "Backspace" , "Tab" , "CapsLock" , "Delete" , "Home" , "End" , "PageUp" ,
-        "PageDown" , "NumLock" , "Insert" , "ScrollLock" , "F1" , "F2" , "F3" , "F4" , "F5" ,
-        "F6" , "F7" , "F8" , "F9" , "F10" , "F11" , "F12" , "Meta",
+		"Down" , "Up" , "Left" , "Right" , "Enter" , 
+		"Esc" , "Alt" , "Control" , "Meta",
+        "Shift" , "PAUSE" , "BREAK" , "Backspace" , "Tab" , 
+		"CapsLock" , "Delete" , "Home" , "End" , "PageUp" ,
+        "PageDown" , "NumLock" , "Insert" , "ScrollLock" , 
+		"F1" , "F2" , "F3" , "F4" , "F5" , "F6" , 
+		"F7" , "F8" , "F9" , "F10" , "F11" , "F12" , 
 	}
+
+	scancode_keys = "qwertyuipasdfgjklzxcvbnm [];',./"
 )
 
 type HIDAdapter struct {
@@ -40,7 +45,7 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 	em,err := NewEmulator(func(vibration Vibration) {
 		for _,v := range ret.ids {
 			ret.send <- datachannel.Msg{
-				Msg: fmt.Sprintf("%s|%s",v,vibration.SmallMotor,vibration.LargeMotor),
+				Msg: fmt.Sprintf("%d|%d",int(vibration.SmallMotor),int(vibration.LargeMotor)),
 				Id: v,
 			}
 		}
@@ -94,7 +99,11 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 				go SendKeyboard(msg[1],false)
 				continue;
 			case "kr":
-				go func ()  { for _,v := range keys { SendKeyboard(v,true) } }() 
+				go func ()  { 
+					for _,v := range append(keys, strings.Split(scancode_keys,"")...) { 
+						SendKeyboard(v,true) 
+					} 
+				}() 
 				continue;
 			case "gs":
 				x,_ := strconv.ParseInt(msg[2],10,32)
@@ -111,7 +120,7 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
                 controller.pressButton(y,msg[3] == "1");
 				continue;
             case "cs":
-				decoded,err := base64.RawStdEncoding.DecodeString(msg[1])
+				decoded,err := base64.StdEncoding.DecodeString(msg[1])
 				if err != nil {
 					fmt.Println(err.Error())
 					continue;
