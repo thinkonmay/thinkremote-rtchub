@@ -31,12 +31,9 @@ const (
 func main() {
 	args := os.Args[1:]
 	authArg, webrtcArg, videoArg, audioArg, micArg, grpcArg := "", "", "", "", "", ""
-	HIDURL := "localhost:5000"
 	for i, arg := range args {
 		if arg == "--auth" {
 			authArg = args[i+1]
-		} else if arg == "--hid" {
-			HIDURL = args[i+1]
 		} else if arg == "--grpc" {
 			grpcArg = args[i+1]
 		} else if arg == "--webrtc" {
@@ -98,6 +95,7 @@ func main() {
 	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
 	chans.RegisterConsumer("adaptive",videopipeline.AdsContext)
 	chans.RegisterConsumer("manual",ManualContext)
+	chans.RegisterConsumer("hid",hid.NewHIDSingleton())
 
 
 	audioPipeline.Open()
@@ -180,8 +178,6 @@ func main() {
 
 
 
-	fmt.Printf("starting websocket connection establishment with hid server at %s\n", HIDURL)
-	chans.RegisterConsumer("hid",hid.NewHIDSingleton(HIDURL))
 	go func() {
 		for {
 			signaling_client, err := websocket.InitWebsocketClient( signaling.Audio.URL, &auth)

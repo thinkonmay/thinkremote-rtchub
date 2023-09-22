@@ -30,11 +30,7 @@ type HIDAdapter struct {
 	ids []string
 }
 
-func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
-	if URL == "" {
-		panic("no URL provided")
-	}
-
+func NewHIDSingleton() datachannel.DatachannelConsumer {
 	ret := HIDAdapter{
 		send: make(chan datachannel.Msg,queue_size),
 		recv: make(chan string,queue_size),
@@ -98,7 +94,7 @@ func NewHIDSingleton(URL string) datachannel.DatachannelConsumer {
 				go SendKeyboard(msg[1],false)
 				continue;
 			case "kr":
-				go func ()  { for _,v := range keys { SendKeyboard(v,false) } }() 
+				go func ()  { for _,v := range keys { SendKeyboard(v,true) } }() 
 				continue;
 			case "gs":
 				x,_ := strconv.ParseInt(msg[2],10,32)
