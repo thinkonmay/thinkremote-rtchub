@@ -6,6 +6,7 @@ import (
 /*
 #include <Windows.h>
 #include "windows.h"
+#include "winuser.h"
 #include "string.h"
 #include <direct.h>
 #include <glib.h>
@@ -205,8 +206,11 @@ handle_keyboard_javascript(int opcode,
     if(opcode == KEYUP || opcode == KEYDOWN)
     {
         window_input.type = INPUT_KEYBOARD;
-        window_input.ki.time = 0;
-        window_input.ki.wVk = key;
+        window_input.ki.time  = 0;
+        window_input.ki.wVk   = key;
+        window_input.ki.wScan = MapVirtualKeyEx(key,MAPVK_VK_TO_VSC,GetKeyboardLayout(0));
+        window_input.ki.dwExtraInfo = GetMessageExtraInfo();
+
     }
 
 
