@@ -15,17 +15,6 @@ const (
 
 var (
 	queue_size = 100
-	keys = []string{ 
-		"Down" , "Up" , "Left" , "Right" , "Enter" , 
-		"Esc" , "Alt" , "Control" , "Meta",
-        "Shift" , "PAUSE" , "BREAK" , "Backspace" , "Tab" , 
-		"CapsLock" , "Delete" , "Home" , "End" , "PageUp" ,
-        "PageDown" , "NumLock" , "Insert" , "ScrollLock" , 
-		"F1" , "F2" , "F3" , "F4" , "F5" , "F6" , 
-		"F7" , "F8" , "F9" , "F10" , "F11" , "F12" , 
-	}
-
-	scancode_keys = "qwertyuipasdfgjklzxcvbnm [];',./"
 )
 
 type HIDAdapter struct {
@@ -93,15 +82,17 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 				go SendMouseButton(int(x),false)
 				continue;
 			case "ku":
-				go SendKeyboard(msg[1],true)
+				x,_ := strconv.ParseInt(msg[1],10,32)
+				go SendKeyboard(int(x),true)
 				continue;
 			case "kd":
-				go SendKeyboard(msg[1],false)
+				x,_ := strconv.ParseInt(msg[1],10,32)
+				go SendKeyboard(int(x),false)
 				continue;
 			case "kr":
 				go func ()  { 
-					for _,v := range append(keys, strings.Split(scancode_keys,"")...) { 
-						SendKeyboard(v,true) 
+					for i := 0; i < 0xFF ; i++ { 
+						SendKeyboard(i,true) 
 					} 
 				}() 
 				continue;

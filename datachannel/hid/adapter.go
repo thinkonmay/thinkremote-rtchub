@@ -1,8 +1,5 @@
 package hid
 
-import (
-    "fmt"
-)
 /*
 #include <Windows.h>
 #include "windows.h"
@@ -198,7 +195,9 @@ handle_mouse_javascript(int opcode,
 
 void
 handle_keyboard_javascript(int opcode,
-                           int key)
+                           int key,
+                           int extended,
+                           int lrkey)
 {
     INPUT window_input;
     memset(&window_input,0, sizeof(window_input));
@@ -207,17 +206,18 @@ handle_keyboard_javascript(int opcode,
     {
         window_input.type = INPUT_KEYBOARD;
         window_input.ki.time  = 0;
-        window_input.ki.wVk   = key;
-        window_input.ki.wScan = MapVirtualKeyEx(key,MAPVK_VK_TO_VSC,GetKeyboardLayout(0));
+        window_input.ki.wVk = key;
         window_input.ki.dwExtraInfo = GetMessageExtraInfo();
-
     }
 
 
     if (opcode == KEYUP)
-        window_input.ki.dwFlags = KEYEVENTF_KEYUP | KEYEVENTF_EXTENDEDKEY;
+        window_input.ki.dwFlags = KEYEVENTF_KEYUP ;
     else if (opcode == KEYDOWN)
-        window_input.ki.dwFlags = KEYEVENTF_EXTENDEDKEY;
+        window_input.ki.dwFlags = 0;
+
+    if (extended)
+        window_input.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
 
     SendInput(1, &window_input, sizeof(window_input));
 }
@@ -286,17 +286,14 @@ func SendMouseButton(button int, is_up bool) {
     )
 }
 
-func SendKeyboard(key string, is_up bool) {
+func SendKeyboard(keycode int, is_up bool) {
     code := C.KEYUP
     if !is_up { code = C.KEYDOWN }
-    k := ConvertJavaScriptKeyToVirtualKey(key)
-    if k == -1{
-        fmt.Printf("invalid key %s\n",key)
-        return
-    }
     C.handle_keyboard_javascript(
         C.int(code),
-        C.int(k),
+        C.int(keycode),
+        C.int(ExtendedFlag(keycode)),
+        C.int(LRKey(keycode)),
     )
 }
 
