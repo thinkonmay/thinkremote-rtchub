@@ -127,33 +127,32 @@ handle_mouse_javascript(int opcode,
 
 
 
+
 void
 handle_keyboard_javascript(int opcode,
                            int key,
                            int extended,
-                           int lrkey)
+                           int lrkey,
+                           int scankey)
 {
-    INPUT window_input;
-    memset(&window_input,0, sizeof(window_input));
+    UINT send;
+    INPUT window_input = {0};
+    window_input.type = INPUT_KEYBOARD;
 
-    if(opcode == KEYUP || opcode == KEYDOWN)
-    {
-        window_input.type = INPUT_KEYBOARD;
-        window_input.ki.time  = 0;
+    if(scankey) {
+        window_input.ki.wScan   = MapVirtualKeyEx(key, MAPVK_VK_TO_VSC, LoadKeyboardLayoutA("00000409", 0));
+        window_input.ki.dwFlags = KEYEVENTF_SCANCODE;
+    } else {
         window_input.ki.wVk = key;
-        window_input.ki.dwExtraInfo = GetMessageExtraInfo();
     }
 
 
-    if (opcode == KEYUP)
-        window_input.ki.dwFlags = KEYEVENTF_KEYUP ;
-    else if (opcode == KEYDOWN)
-        window_input.ki.dwFlags = 0;
-
     if (extended)
         window_input.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
+    if (opcode == KEYUP)
+        window_input.ki.dwFlags = KEYEVENTF_KEYUP ;
 
-    UINT send;
+
     retry:
     send = SendInput(1, &window_input, sizeof(window_input));
     if (send != 1) {
@@ -181,6 +180,7 @@ SetClipboard(char* output) {
 #cgo pkg-config: glib-2.0
 */
 import "C"
+
 
 
 func init() {
@@ -242,6 +242,7 @@ func SendKeyboard(keycode int, is_up bool) {
         C.int(keycode),
         C.int(ExtendedFlag(keycode)),
         C.int(LRKey(keycode)),
+        C.int(ScanKey(keycode)),
     )
 }
 

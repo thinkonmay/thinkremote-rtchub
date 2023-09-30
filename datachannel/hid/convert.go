@@ -181,22 +181,75 @@ const (
 )
 
 
+var (
+	extendkeys = []int{    
+        RMENU,
+        RCONTROL,
+        INSERT,
+        DELETE,
+        HOME,
+        END,
+        PRIOR,
+        NEXT,
+        UP,
+        DOWN,
+        LEFT,
+        RIGHT,
+        DIVIDE,
+	}
+    positionkeys = []int{    
+        LSHIFT,
+        RSHIFT,
+        LCONTROL,
+        RCONTROL,
+        LMENU,
+        RMENU,
+    }
+    scankeys = []int{
+        KEY_0,
+        KEY_1,
+        KEY_2,
+        KEY_3,
+        KEY_4,
+        KEY_5,
+        KEY_6,
+        KEY_7,
+        KEY_8,
+        KEY_9,
+        KEY_A,
+        KEY_B,
+        KEY_C,
+        KEY_D,
+        KEY_E,
+        KEY_F,
+        KEY_G,
+        KEY_H,
+        KEY_I,
+        KEY_J,
+        KEY_K,
+        KEY_L,
+        KEY_M,
+        KEY_N,
+        KEY_O,
+        KEY_P,
+        KEY_Q,
+        KEY_R,
+        KEY_S,
+        KEY_T,
+        KEY_U,
+        KEY_V,
+        KEY_W,
+        KEY_X,
+        KEY_Y,
+        KEY_Z,
+
+        SPACE,
+        ESCAPE,
+    };
+)
 
 func ExtendedFlag(code int) int {
-	keys := []int{    
-		UP,
-		DOWN,
-		LEFT,
-		RIGHT,
-		HOME,
-		END,
-		PRIOR, 
-		NEXT,  
-		INSERT,
-		DELETE,
-	}
-
-	for _, v := range keys {
+	for _,v := range extendkeys {
 		if code == v {
 			return 1
 		}
@@ -206,16 +259,17 @@ func ExtendedFlag(code int) int {
 }
 
 func LRKey(code int) int {
-	keys := []int{    
-		LSHIFT,
-		RSHIFT,
-		LCONTROL,
-		RCONTROL,
-		LMENU,
-		RMENU,
+	for _, v := range positionkeys {
+		if code == v {
+			return 1
+		}
 	}
 
-	for _, v := range keys {
+	return 0
+}
+
+func ScanKey(code int) int {
+	for _, v := range scankeys {
 		if code == v {
 			return 1
 		}

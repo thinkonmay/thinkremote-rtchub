@@ -54,7 +54,7 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 	}
 
 
-	go func() {
+	process := func() {
 		for {
 			message := <-ret.recv
 			msg := strings.Split(message, "|")
@@ -62,54 +62,41 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 			case "mma":
 				x,_ := strconv.ParseFloat(msg[1],32)
 				y,_ := strconv.ParseFloat(msg[2],32)
-				go SendMouseAbsolute(float32(x),float32(y))
-				continue;
+				SendMouseAbsolute(float32(x),float32(y))
 			case "mmr":
 				x,_ := strconv.ParseFloat(msg[1],32)
 				y,_ := strconv.ParseFloat(msg[2],32)
-				go SendMouseRelative(float32(x),float32(y))
-				continue;
+				SendMouseRelative(float32(x),float32(y))
 			case "mw":
 				x,_ := strconv.ParseFloat(msg[1],32)
-				go SendMouseWheel(x)
-				continue;
+				SendMouseWheel(x)
 			case "mu":
 				x,_ := strconv.ParseInt(msg[1],10,8)
-				go SendMouseButton(int(x),true)
-				continue;
+				SendMouseButton(int(x),true)
 			case "md":
 				x,_ := strconv.ParseInt(msg[1],10,8)
-				go SendMouseButton(int(x),false)
-				continue;
+				SendMouseButton(int(x),false)
 			case "ku":
 				x,_ := strconv.ParseInt(msg[1],10,32)
-				go SendKeyboard(int(x),true)
-				continue;
+				SendKeyboard(int(x),true)
 			case "kd":
 				x,_ := strconv.ParseInt(msg[1],10,32)
-				go SendKeyboard(int(x),false)
-				continue;
+				SendKeyboard(int(x),false)
 			case "kr":
-				go func ()  { 
-					for i := 0; i < 0xFF ; i++ { 
-						SendKeyboard(i,true) 
-					} 
-				}() 
-				continue;
+				for i := 0; i < 0xFF ; i++ { 
+					SendKeyboard(i,true) 
+				} 
 			case "gs":
 				x,_ := strconv.ParseInt(msg[2],10,32)
 				y,_ := strconv.ParseFloat(msg[3],32)
                 controller.pressSlider(x,y);
-				continue;
             case "ga":
 				x,_ := strconv.ParseInt(msg[2],10,32)
 				y,_ := strconv.ParseFloat(msg[3],32)
                 controller.pressAxis(x,y);
-				continue;
             case "gb":
 				y,_ := strconv.ParseInt(msg[2],10,32)
                 controller.pressButton(y,msg[3] == "1");
-				continue;
             case "cs":
 				decoded,err := base64.StdEncoding.DecodeString(msg[1])
 				if err != nil {
@@ -118,12 +105,12 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 				}
 
                 SetClipboard(string(decoded));
-                continue;
 			}
 		}
-	}()
+	}
 
 
+	go process()
 	return &ret
 }
 
