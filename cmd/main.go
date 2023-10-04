@@ -22,6 +22,16 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
+/*
+#include <Windows.h>
+*/
+import "C"
+
+
+func init() {
+	C.SetPriorityClass(C.GetCurrentProcess(), C.REALTIME_PRIORITY_CLASS)
+}
+
 const (
 	mockup_audio   = "fakesrc ! appsink name=appsink"
 	mockup_video   = "videotestsrc ! openh264enc gop-size=5 ! appsink name=appsink"
