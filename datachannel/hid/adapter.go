@@ -103,7 +103,7 @@ handle_mouse_javascript(int opcode,
     else if (opcode == MOUSE_MOVE)
     {
         if(relative_mouse)
-            window_input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
+            window_input.mi.dwFlags = MOUSEEVENTF_MOVE ;
         else
             window_input.mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_VIRTUALDESK;
     }
@@ -234,15 +234,20 @@ func SendMouseButton(button int, is_up bool) {
     )
 }
 
-func SendKeyboard(keycode int, is_up bool) {
+func SendKeyboard(keycode int, 
+                  is_up bool,
+                  scan_code bool) {
     code := C.KEYUP
     if !is_up { code = C.KEYDOWN }
+
+    scankey := 0
+    if scan_code { scankey = ScanKey(keycode) }
     C.handle_keyboard_javascript(
         C.int(code),
         C.int(keycode),
         C.int(ExtendedFlag(keycode)),
         C.int(LRKey(keycode)),
-        C.int(ScanKey(keycode)),
+        C.int(scankey),
     )
 }
 

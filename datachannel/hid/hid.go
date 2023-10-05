@@ -78,13 +78,19 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 				SendMouseButton(int(x),false)
 			case "ku":
 				x,_ := strconv.ParseInt(msg[1],10,32)
-				SendKeyboard(int(x),true)
+				SendKeyboard(int(x),true,false)
 			case "kd":
 				x,_ := strconv.ParseInt(msg[1],10,32)
-				SendKeyboard(int(x),false)
+				SendKeyboard(int(x),false,false)
+			case "kus":
+				x,_ := strconv.ParseInt(msg[1],10,32)
+				SendKeyboard(int(x),true,true)
+			case "kds":
+				x,_ := strconv.ParseInt(msg[1],10,32)
+				SendKeyboard(int(x),false,true)
 			case "kr":
 				for i := 0; i < 0xFF ; i++ { 
-					SendKeyboard(i,true) 
+					SendKeyboard(i,true,false) 
 				} 
 			case "gs":
 				x,_ := strconv.ParseInt(msg[2],10,32)
