@@ -245,6 +245,12 @@ var (
 
         SPACE,
         ESCAPE,
+
+        UP,
+        DOWN,
+        LEFT,
+        RIGHT,
+        RETURN,
     };
 )
 
