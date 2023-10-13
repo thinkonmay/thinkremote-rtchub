@@ -43,14 +43,17 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 		fmt.Printf("%s\n",err.Error())
 	}
 
+	disable_gamepad := false
 	controller,err := em.CreateXbox360Controller()
 	if err != nil {
 		fmt.Printf("%s\n",err.Error())
-	}
-
-	err = controller.Connect()
-	if err != nil {
-		fmt.Printf("%s\n",err.Error())
+		disable_gamepad = true
+	} else {
+		err = controller.Connect()
+		if err != nil {
+			fmt.Printf("%s\n",err.Error())
+			disable_gamepad = true
+		}
 	}
 
 
@@ -92,6 +95,22 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 				for i := 0; i < 0xFF ; i++ { 
 					SendKeyboard(i,true,false) 
 				} 
+            case "cs":
+				decoded,err := base64.StdEncoding.DecodeString(msg[1])
+				if err != nil {
+					fmt.Println(err.Error())
+					continue;
+				}
+
+                SetClipboard(string(decoded));
+			}
+
+
+			if disable_gamepad {
+				continue
+			}
+
+			switch msg[0] {
 			case "gs":
 				x,_ := strconv.ParseInt(msg[2],10,32)
 				y,_ := strconv.ParseFloat(msg[3],32)
@@ -103,16 +122,9 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
             case "gb":
 				y,_ := strconv.ParseInt(msg[2],10,32)
                 controller.pressButton(y,msg[3] == "1");
-            case "cs":
-				decoded,err := base64.StdEncoding.DecodeString(msg[1])
-				if err != nil {
-					fmt.Println(err.Error())
-					continue;
-				}
-
-                SetClipboard(string(decoded));
 			}
 		}
+
 	}
 
 
