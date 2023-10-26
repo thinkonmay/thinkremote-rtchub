@@ -3,9 +3,11 @@ package multiplexer
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/pion/rtp"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
+	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
 )
 
 import "C"
@@ -27,11 +29,13 @@ type Multiplexer struct {
 
 	mutex   *sync.Mutex
 	queue   chan *sample
-	handler map[string]Handler
+	handler map[string]*Handler
 }
 
 type Handler struct {
 	handler func(*rtp.Packet)
+	buffer chan *rtp.Packet
+	closed bool
 }
 
 
@@ -42,30 +46,27 @@ func NewMultiplexer(id string,packetizer func() rtppay.Packetizer) *Multiplexer 
 		id:      id,
 		mutex:   &sync.Mutex{},
 		queue:   make(chan *sample, no_limit),
-		handler: map[string]Handler{},
+		handler: map[string]*Handler{},
 		packetizer: packetizer(),
 	}
 
 
-	sender := func (handler Handler,packets []*rtp.Packet) {
-		for _,packet := range packets {
-			handler.handler(packet); 
-		}
-	}
-
 	packetize := func() {
+		win32.HighPriorityThread()
 		for {
 			sample := <-ret.queue
 			packets := ret.packetizer.Packetize(sample.data,sample.samples)
 			ret.mutex.Lock()
-			for _,handler := range ret.handler { go sender(handler,packets) }
+			for _,handler := range ret.handler { 
+				for _, p := range packets {
+					handler.buffer <- p
+				}
+			}
 			ret.mutex.Unlock()
 		}
 	}
 
-	for i := 0; i < thread_count; i++ {
-		go packetize()
-	}
+	go packetize()
 	return ret
 }
 
@@ -97,15 +98,32 @@ func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	p.handler[id] = Handler{
+	handler := Handler{
 		handler: fun,
+		buffer: make(chan *rtp.Packet,1000),
+		closed: false,
 	}
+
+	p.handler[id] = &handler
+	go func() {
+		win32.HighPriorityThread()
+		for {
+			if handler.closed {
+				return
+			} else if len(handler.buffer) == 0{
+				time.Sleep(time.Millisecond)
+				continue
+			}
+
+			handler.handler(<-handler.buffer)
+		}
+	}()
 }
 
 func (p *Multiplexer) DeregisterRTPHandler(id string) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-
+	p.handler[id].closed = true
 	delete(p.handler,id)
 	fmt.Printf("deregister RTP handler %s\n",id)
 }
