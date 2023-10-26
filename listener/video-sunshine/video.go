@@ -3,10 +3,16 @@ package sunshine
 /*
 #include <Windows.h>
 
-typedef void (*INIT) ();
+typedef void (*INIT) (
+	int width,
+	int height,
+	int bitrate,
+	int framerate,
+	int codec
+);
 typedef int  (*STARTQUEUE) ();
 typedef int  (*POPFROMQUEUE) (void* data,int* duration);
-typedef void (*DEINIT) ();
+typedef void (*RAISEEVENT) (int event_id, int value);
 typedef void (*WAIT) ();
 
 
@@ -14,17 +20,26 @@ static HMODULE 			hModule;
 static INIT 			callinit;
 static STARTQUEUE 		callstart;
 static POPFROMQUEUE 	callpop;
+static RAISEEVENT       callraise;
 
 int
-initlibrary(void) {
+initlibrary(
+	int width,
+	int height,
+	int bitrate,
+	int framerate,
+	int codec
+) {
 	hModule = LoadLibrary("libsunshinelib.dll");
 	callinit = (INIT)GetProcAddress( hModule,"Init");
 	callstart = (STARTQUEUE)GetProcAddress( hModule,"StartQueue");
 	callpop = (POPFROMQUEUE)GetProcAddress( hModule,"PopFromQueue");
-	if(callpop ==0 || callstart == 0 || callinit == 0)
+	callraise = (RAISEEVENT)GetProcAddress( hModule,"RaiseEvent");
+
+	if(callpop ==0 || callstart == 0 || callinit == 0 || callraise == 0)
 		return 1;
 
-	callinit();
+	callinit( width, height, bitrate, framerate, codec);
 	return 0;
 }
 
@@ -37,6 +52,11 @@ start(void) {
 int
 pop(void* data,int* duration) {
 	return callpop((void*)data,duration);
+}
+
+void
+generate_idr(){
+	callraise(1,0);
 }
 
 */
@@ -96,12 +116,11 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
     )
 
 
-	if C.initlibrary() == 1 {
+	if C.initlibrary(1920,1080,6000,60,1) == 1 {
 		panic(fmt.Errorf("unable to load library"))
 	}
 
 
-	go C.start()
 	go func() {
 		time.Sleep(10 * time.Second)
 		var duration C.int
@@ -139,7 +158,7 @@ func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 		pipeline.properties["pointer"] = val
 		// C.video_pipeline_enable_pointer(pipeline.pipeline, C.int(val))
 	case "reset":
-		// C.video_pipeline_generate_idr(pipeline.pipeline)
+		C.generate_idr()
 	default:
 		return fmt.Errorf("unknown prop")
 	}
@@ -147,6 +166,7 @@ func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 }
 
 func (p *VideoPipeline) Open() {
+	go C.start()
 	fmt.Println("starting video pipeline")
 }
 func (p *VideoPipeline) Close() {

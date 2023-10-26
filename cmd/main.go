@@ -17,7 +17,8 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
+	video "github.com/thinkonmay/thinkremote-rtchub/listener/video-sunshine"
+	// video "github.com/thinkonmay/thinkremote-rtchub/listener/video"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
