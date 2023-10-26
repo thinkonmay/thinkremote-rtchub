@@ -30,7 +30,7 @@ initlibrary(
 	int framerate,
 	int codec
 ) {
-	hModule = LoadLibrary("libsunshine.dll");
+	hModule = LoadLibrary(".\\libsunshine.dll");
 	callinit = (INIT)GetProcAddress( hModule,"Init");
 	callstart = (STARTQUEUE)GetProcAddress( hModule,"StartQueue");
 	callpop = (POPFROMQUEUE)GetProcAddress( hModule,"PopFromQueue");
