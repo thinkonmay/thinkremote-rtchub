@@ -10,6 +10,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/opus"
+	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
 )
 
 /*
@@ -243,6 +244,8 @@ func CreatePipeline(pipelinestr string) (*AudioPipeline, error) {
 		var size C.int
 		var samples uint32
 		buffer := make([]byte, 100*1000*1000) //100MB
+
+		win32.HighPriorityThread()
 		for {
 			size = C.audio_pipeline_pop_buffer(
                 pipeline.pipeline,

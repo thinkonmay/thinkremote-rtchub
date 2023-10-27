@@ -69,15 +69,20 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
+	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
 )
 
-
-
 // VideoPipeline is a wrapper for a GStreamer VideoPipeline
+
+func init(){
+	if C.initlibrary(1920,1080,6000,120,1) == 1 {
+		panic(fmt.Errorf("unable to load library"))
+	}
+}
 
 type VideoPipelineC unsafe.Pointer
 type VideoPipeline struct {
@@ -116,16 +121,13 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
     )
 
 
-	if C.initlibrary(1920,1080,6000,60,1) == 1 {
-		panic(fmt.Errorf("unable to load library"))
-	}
-
 
 	go func() {
-		time.Sleep(10 * time.Second)
 		var duration C.int
-		var samples uint32
 		buffer := make([]byte, 100*1000*1000) //100MB
+		timestamp := time.Now().UnixNano()
+
+		win32.HighPriorityThread()
 		for {
 			size := C.pop(
                 unsafe.Pointer(&buffer[0]), 
@@ -134,8 +136,9 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 				continue
 			}
 
-			samples = uint32(time.Duration(duration).Seconds() * pipeline.clockRate)
-			pipeline.Multiplexer.Send(buffer[:size], samples)
+			diff := time.Now().UnixNano() - timestamp
+			pipeline.Multiplexer.Send(buffer[:size], uint32(time.Duration(diff).Seconds() * pipeline.clockRate))
+			timestamp = timestamp + diff
 		}
 	}()
 	return pipeline, nil

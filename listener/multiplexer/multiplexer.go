@@ -51,32 +51,18 @@ func NewMultiplexer(id string,packetizer func() rtppay.Packetizer) *Multiplexer 
 	}
 
 
-	packetize := func() {
-		win32.HighPriorityThread()
-		for {
-			sample := <-ret.queue
-			packets := ret.packetizer.Packetize(sample.data,sample.samples)
-			ret.mutex.Lock()
-			for _,handler := range ret.handler { 
-				for _, p := range packets {
-					handler.buffer <- p
-				}
-			}
-			ret.mutex.Unlock()
-		}
-	}
-
-	go packetize()
 	return ret
 }
 
 func (ret *Multiplexer) Send(Buff []byte, Samples uint32) {
-	sample := &sample{
-		data: make([]byte, len(Buff)),
-		samples: Samples,
+	packets := ret.packetizer.Packetize(Buff,Samples)
+	ret.mutex.Lock()
+	defer ret.mutex.Unlock()
+	for _,handler := range ret.handler { 
+		for _, p := range packets {
+			handler.buffer <- p
+		}
 	}
-	copy(sample.data,Buff)
-	ret.queue <- sample
 }
 
 func (p *Multiplexer) Close() {
@@ -100,7 +86,7 @@ func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 	defer p.mutex.Unlock()
 	handler := Handler{
 		handler: fun,
-		buffer: make(chan *rtp.Packet,1000),
+		buffer: make(chan *rtp.Packet,32),
 		closed: false,
 	}
 
@@ -110,7 +96,7 @@ func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 		for {
 			if handler.closed {
 				return
-			} else if len(handler.buffer) == 0{
+			} else if len(handler.buffer) == 0 {
 				time.Sleep(time.Millisecond)
 				continue
 			}
