@@ -3,60 +3,79 @@ package sunshine
 /*
 #include <Windows.h>
 
-typedef void (*INIT) (
-	int width,
-	int height,
-	int bitrate,
-	int framerate,
-	int codec
-);
-typedef int  (*STARTQUEUE) ();
-typedef int  (*POPFROMQUEUE) (void* data,int* duration);
-typedef void (*RAISEEVENT) (int event_id, int value);
-typedef void (*WAIT) ();
+typedef struct _VideoPipeline  VideoPipeline; 
+typedef enum _EventType {
+    POINTER_VISIBLE,
+    CHANGE_BITRATE,
+    IDR_FRAME,
+
+    STOP
+}EventType;
+
+typedef VideoPipeline* (*STARTQUEUE)				  ( int video_width,
+                                                        int video_height,
+                                                        int video_bitrate,
+                                                        int video_framerate,
+                                                        int video_codec);
+
+typedef int  		   (*POPFROMQUEUE)			(VideoPipeline* pipeline, 
+                                                void* data,
+                                                int* duration);
+
+typedef void 			(*RAISEEVENT)		 (VideoPipeline* pipeline,
+                                              EventType event,
+                                              int value);
+
+typedef void  			(*WAITEVENT)			(VideoPipeline* pipeline,
+                                                  EventType event,
+                                                  int* value);
+
 
 
 static HMODULE 			hModule;
-static INIT 			callinit;
 static STARTQUEUE 		callstart;
 static POPFROMQUEUE 	callpop;
+static WAITEVENT		callwait;
 static RAISEEVENT       callraise;
 
 int
-initlibrary(
-	int width,
-	int height,
-	int bitrate,
-	int framerate,
-	int codec
-) {
-	hModule = LoadLibrary(".\\libsunshine.dll");
-	callinit = (INIT)GetProcAddress( hModule,"Init");
-	callstart = (STARTQUEUE)GetProcAddress( hModule,"StartQueue");
-	callpop = (POPFROMQUEUE)GetProcAddress( hModule,"PopFromQueue");
-	callraise = (RAISEEVENT)GetProcAddress( hModule,"RaiseEvent");
+initlibrary() {
+	hModule 	= LoadLibrary(".\\libsunshine.dll");
+	callstart 	= (STARTQUEUE)		GetProcAddress( hModule,"StartQueue");
+	callpop 	= (POPFROMQUEUE)	GetProcAddress( hModule,"PopFromQueue");
+	callraise 	= (RAISEEVENT)		GetProcAddress( hModule,"RaiseEvent");
+	callwait	= (WAITEVENT)		GetProcAddress( hModule,"WaitEvent");
 
-	if(callpop ==0 || callstart == 0 || callinit == 0 || callraise == 0)
+	if(callpop ==0 || callstart == 0 || callraise == 0 || callwait == 0)
 		return 1;
 
-	callinit( width, height, bitrate, framerate, codec);
 	return 0;
 }
 
-
-void
-start(void) {
-	callstart();
+void* StartQueue ( int video_width,
+                            int video_height,
+                            int video_bitrate,
+                            int video_framerate,
+                            int video_codec){
+	return (void*)callstart(video_width,video_height,video_bitrate,video_framerate,video_codec);
 }
 
-int
-pop(void* data,int* duration) {
-	return callpop((void*)data,duration);
+int PopFromQueue			(void* pipeline, 
+                             void* data,
+                             int* duration){
+	return callpop(pipeline,data,duration);
 }
 
-void
-generate_idr(){
-	callraise(1,0);
+void RaiseEvent	(void* pipeline,
+                 EventType event,
+                 int value){
+	return callraise((VideoPipeline*)pipeline,event,value);
+}
+
+void WaitEvent	(void* pipeline,
+                 EventType event,
+                 int* value){
+	return callwait((VideoPipeline*)pipeline,event,value);
 }
 
 */
@@ -76,12 +95,8 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
 )
 
-// VideoPipeline is a wrapper for a GStreamer VideoPipeline
-
 func init(){
-	if C.initlibrary(1920,1080,6000,120,1) == 1 {
-		panic(fmt.Errorf("unable to load library"))
-	}
+	C.initlibrary()
 }
 
 type VideoPipelineC unsafe.Pointer
@@ -122,6 +137,8 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 
 
 
+	p :=  C.StartQueue( 1920, 1080, 6000, 60, 0);
+	pipeline.pipeline = p
 	go func() {
 		var duration C.int
 		buffer := make([]byte, 100*1000*1000) //100MB
@@ -129,7 +146,7 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 
 		win32.HighPriorityThread()
 		for {
-			size := C.pop(
+			size := C.PopFromQueue( p,
                 unsafe.Pointer(&buffer[0]), 
                 &duration)
 			if size == 0 {
@@ -161,7 +178,7 @@ func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 		pipeline.properties["pointer"] = val
 		// C.video_pipeline_enable_pointer(pipeline.pipeline, C.int(val))
 	case "reset":
-		C.generate_idr()
+		C.RaiseEvent(pipeline.pipeline,C.IDR_FRAME,0)
 	default:
 		return fmt.Errorf("unknown prop")
 	}
@@ -169,7 +186,6 @@ func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 }
 
 func (p *VideoPipeline) Open() {
-	go C.start()
 	fmt.Println("starting video pipeline")
 }
 func (p *VideoPipeline) Close() {
