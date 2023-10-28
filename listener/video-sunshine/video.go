@@ -96,7 +96,9 @@ import (
 )
 
 func init(){
-	C.initlibrary()
+	if C.initlibrary() == 1 {
+		panic(fmt.Errorf("failed to load libsunshine.dll"))
+	}
 }
 
 type VideoPipelineC unsafe.Pointer
