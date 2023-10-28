@@ -117,6 +117,8 @@ func (client *WebsocketClient) SendSDP(desc *webrtc.SessionDescription) error {
 		},
 	}
 
+	client.mut.Lock()
+	defer client.mut.Unlock()
 	fmt.Printf("SDP send %s\n", req.Sdp.Type)
 	if err := client.conn.WriteJSON(&req); err != nil {
 		return err
@@ -138,6 +140,8 @@ func (client *WebsocketClient) SendICE(ice *webrtc.ICECandidateInit) error {
 		},
 	}
 
+	client.mut.Lock()
+	defer client.mut.Unlock()
 	fmt.Printf("ICE sent %v\n", req.Ice)
 	if err := client.conn.WriteJSON(req); err != nil {
 		return err
