@@ -17,10 +17,11 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
-	video "github.com/thinkonmay/thinkremote-rtchub/listener/video-sunshine"
-	// video "github.com/thinkonmay/thinkremote-rtchub/listener/video"
+	video "github.com/thinkonmay/thinkremote-rtchub/listener/video-sunshine" // sunshine
+	// video "github.com/thinkonmay/thinkremote-rtchub/listener/video" // gstreamer
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
+	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
 )
 
 /*
@@ -98,12 +99,6 @@ func init() {
 	}
 }
 
-const (
-	mockup_audio   = "fakesrc ! appsink name=appsink"
-	mockup_video   = "videotestsrc ! openh264enc gop-size=5 ! appsink name=appsink"
-	nvidia_default = "d3d11screencapturesrc blocksize=8192 do-timestamp=true ! capsfilter name=framerateFilter ! video/x-raw(memory:D3D11Memory),clock-rate=90000,framerate=55/1 ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! d3d11convert ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! nvd3d11h264enc bitrate=6000 gop-size=-1 preset=5 rate-control=2 strict-gop=true name=encoder repeat-sequence-header=true zero-reorder-delay=true ! video/x-h264,stream-format=(string)byte-stream,profile=(string)main ! queue max-size-time=0 max-size-bytes=0 max-size-buffers=3 ! appsink name=appsink"
-)
-
 func main() {
 	args := os.Args[1:]
 	authArg, webrtcArg, videoArg, audioArg, micArg, grpcArg := "", "", "", "", "", ""
@@ -124,15 +119,13 @@ func main() {
 	}
 
 
-	videoPipelineString := ""
-	if videoArg == "" {
-		videoPipelineString = nvidia_default	
-	} else {
+	videoPipelineString := "appsink name=appsink"
+	if videoArg != "" {
 		bytes1, _ := base64.StdEncoding.DecodeString(videoArg)
 		err := json.Unmarshal(bytes1, &videoPipelineString)
 		if err != nil {
 			fmt.Printf("error decode audio pipeline %s\n", err.Error())
-			videoPipelineString = nvidia_default	
+			panic(err)
 		}
 	}
 
@@ -142,15 +135,13 @@ func main() {
 		return
 	}
 
-	audioPipelineString := ""
+	audioPipelineString := "appsink name=appsink"
 	if videoArg == "" {
-		audioPipelineString = mockup_audio
-	} else {
 		bytes2, _ := base64.StdEncoding.DecodeString(audioArg)
 		err := json.Unmarshal(bytes2, &audioPipelineString)
 		if err != nil {
 			fmt.Printf("error decode audio pipeline %s\n", err.Error())
-			audioPipelineString = mockup_audio
+			panic(err)
 		}
 	}
 	
@@ -192,9 +183,7 @@ func main() {
 		   codec.Channels != 2 {
 			fmt.Printf("failed to create pipeline, reason: %s\n","media not supported")
 			return
-		}
-
-		if micPipelineString == "" {
+		} else if micPipelineString == "" {
 			fmt.Printf("failed to create pipeline, reason: microphone not support on this session\n")
 			return
 		}
@@ -208,7 +197,8 @@ func main() {
 		pipeline.Open()
 		defer pipeline.Close()
 
-		buf := make([]byte, 1400)
+		buf := make([]byte, 1400) // larger than most MTU
+		win32.HighPriorityThread()
 		for {
 			i, _, readErr := tr.Read(buf)
 			if readErr != nil {

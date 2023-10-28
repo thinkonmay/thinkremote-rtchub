@@ -141,7 +141,7 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 	pipeline.pipeline = p
 	go func() {
 		var duration C.int
-		buffer := make([]byte, 100*1000*1000) //100MB
+		buffer := make([]byte, 256*1024) //256kB
 		timestamp := time.Now().UnixNano()
 
 		win32.HighPriorityThread()
