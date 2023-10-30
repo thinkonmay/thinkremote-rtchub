@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/display"
 )
 
 
@@ -14,26 +15,27 @@ type Manual struct {
 	Out        chan string
 
 	triggerVideoReset func()
-	audioResetCallback func()
 	bitrateCallback func(bitrate int)
 	framerateCallback func(framerate int)
 	pointerCallback func(pointer int)
+	displayCallback func(display map[string]string)
 }
 
 func NewManualCtx(BitrateCallback func(bitrate int),
 				   FramerateCallback func(framerate int),
 				   PointerCallback  func(pointer int),
-				   IDRcallback func(),
-				   AudioResetcallback func()) datachannel.DatachannelConsumer {
+				   DisplayCallback  func(display map[string]string),
+				   CodecCallback  func(codec string),
+				   IDRcallback func()) datachannel.DatachannelConsumer {
 	ret := &Manual{
 		In:         make(chan string,100),
 		Out:        make(chan string,100),
 
-		audioResetCallback: AudioResetcallback,
 		triggerVideoReset: IDRcallback,
 		bitrateCallback: BitrateCallback,
 		framerateCallback: FramerateCallback,
 		pointerCallback: PointerCallback,
+		displayCallback: DisplayCallback,
 	}
 
 	go func() {
@@ -60,10 +62,13 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 			} else if _type == "pointer" && dat["value"] != nil{
 				_val  := dat["value"].(float64)
 				ret.pointerCallback(int(_val))
+			} else if _type == "displays" {
+				b,_ := json.Marshal(display.GetDisplays())
+				ret.Out<-string(b)
+			} else if _type == "display" && dat["value"] != nil{
+				ret.displayCallback(dat["value"].(map[string]string))
 			} else if _type == "reset" {
 				ret.triggerVideoReset()
-			} else if _type == "audio-reset" {
-				ret.audioResetCallback()
 			} else if _type == "danger-reset" {
 				os.Exit(0)
 			}

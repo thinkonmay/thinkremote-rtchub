@@ -3,22 +3,25 @@ package sunshine
 /*
 #include <Windows.h>
 
-typedef struct _VideoPipeline  VideoPipeline; 
+typedef struct _VideoPipeline  VideoPipeline;
 typedef enum _EventType {
     POINTER_VISIBLE,
     CHANGE_BITRATE,
     IDR_FRAME,
 
-    STOP
+    STOP,
+
+	DISPLAY
 }EventType;
 
 typedef VideoPipeline* (*STARTQUEUE)				  ( int video_width,
                                                         int video_height,
                                                         int video_bitrate,
                                                         int video_framerate,
-                                                        int video_codec);
+                                                        int video_codec,
+														char* display_name);
 
-typedef int  		   (*POPFROMQUEUE)			(VideoPipeline* pipeline, 
+typedef int  		   (*POPFROMQUEUE)			(VideoPipeline* pipeline,
                                                 void* data,
                                                 int* duration);
 
@@ -56,11 +59,12 @@ void* StartQueue ( int video_width,
                             int video_height,
                             int video_bitrate,
                             int video_framerate,
-                            int video_codec){
-	return (void*)callstart(video_width,video_height,video_bitrate,video_framerate,video_codec);
+                            int video_codec,
+							char* display_name){
+	return (void*)callstart(video_width,video_height,video_bitrate,video_framerate,video_codec,display_name);
 }
 
-int PopFromQueue			(void* pipeline, 
+int PopFromQueue			(void* pipeline,
                              void* data,
                              int* duration){
 	return callpop(pipeline,data,duration);
@@ -82,6 +86,7 @@ void WaitEvent	(void* pipeline,
 import "C"
 import (
 	"fmt"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -89,6 +94,7 @@ import (
 	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/display"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
@@ -105,9 +111,10 @@ type VideoPipelineC unsafe.Pointer
 type VideoPipeline struct {
 	closed     bool
 	pipeline   unsafe.Pointer
+	mut        *sync.Mutex
 	properties map[string]int
+	sproperties map[string]string
 
-	pipelineStr string
 	clockRate   float64
 
 	codec string
@@ -122,12 +129,20 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 	pipeline := &VideoPipeline{
 		closed:      false,
 		pipeline:    nil,
-		pipelineStr: pipelineStr,
 		codec:       webrtc.MimeTypeH264,
 
 		clockRate: 90000,
 
-		properties: make(map[string]int),
+		properties: map[string]int{
+			"width": 1920,
+			"height": 1080,
+			"codec": 1,
+			"bitrate": 6000,
+			"framerate": 60,
+		},
+		sproperties: map[string]string{
+			"display": display.GetDisplays()[0],
+		},
 		Multiplexer: multiplexer.NewMultiplexer("video", func() rtppay.Packetizer {
 			return h264.NewH264Payloader()
 		}),
@@ -139,8 +154,7 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 
 
 
-	p :=  C.StartQueue( 1920, 1080, 6000, 60, 0);
-	pipeline.pipeline = p
+	pipeline.reset()
 	go func() {
 		var duration C.int
 		buffer := make([]byte, 256*1024) //256kB
@@ -148,9 +162,11 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 
 		win32.HighPriorityThread()
 		for {
-			size := C.PopFromQueue( p,
+			pipeline.mut.Lock()
+			size := C.PopFromQueue(pipeline.pipeline,
                 unsafe.Pointer(&buffer[0]), 
                 &duration)
+			pipeline.mut.Unlock()
 			if size == 0 {
 				continue
 			}
@@ -167,18 +183,58 @@ func (p *VideoPipeline) GetCodec() string {
 	return p.codec
 }
 
+func (pipeline *VideoPipeline) reset() {
+	pipeline.mut.Lock()
+	defer pipeline.mut.Unlock()
+	if pipeline.pipeline != nil {
+		C.RaiseEvent(pipeline.pipeline,C.STOP,0)
+	}
+
+	display.SetResolution(
+		pipeline.sproperties["display"],
+		pipeline.properties["width"], 
+		pipeline.properties["height"], 
+	)
+	pipeline.pipeline =  C.StartQueue( 
+		C.int(pipeline.properties["width"]), 
+		C.int(pipeline.properties["height"]), 
+		C.int(pipeline.properties["bitrate"]), 
+		C.int(pipeline.properties["framerate"]), 
+		C.int(pipeline.properties["codec"]), 
+		C.CString(pipeline.sproperties["display"]));
+}
+
+func (pipeline *VideoPipeline) SetPropertyS(name string, val string) error {
+	fmt.Printf("%s change to %d\n", name, val)
+	switch name {
+	case "display":
+		pipeline.sproperties["display"] = val
+		pipeline.reset()
+	}
+	return nil
+}
 func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 	fmt.Printf("%s change to %d\n", name, val)
 	switch name {
 	case "bitrate":
 		pipeline.properties["bitrate"] = val
-		// C.video_pipeline_set_bitrate(pipeline.pipeline, C.int(val))
+		pipeline.reset()
 	case "framerate":
 		pipeline.properties["framerate"] = val
-		// C.video_pipeline_set_framerate(pipeline.pipeline, C.int(val))
+		pipeline.reset()
+	case "display":
+		pipeline.properties["display"] = val
+		pipeline.reset()
+	case "codec":
+		pipeline.properties["codec"] = val
+		pipeline.reset()
+	case "width":
+		pipeline.properties["width"] = val
+	case "height":
+		pipeline.properties["height"] = val
 	case "pointer":
 		pipeline.properties["pointer"] = val
-		// C.video_pipeline_enable_pointer(pipeline.pipeline, C.int(val))
+		C.RaiseEvent(pipeline.pipeline,C.POINTER_VISIBLE,0)
 	case "reset":
 		C.RaiseEvent(pipeline.pipeline,C.IDR_FRAME,0)
 	default:

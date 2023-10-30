@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/pion/webrtc/v3"
@@ -18,6 +19,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
 	video "github.com/thinkonmay/thinkremote-rtchub/listener/video-sunshine" // sunshine
+
 	// video "github.com/thinkonmay/thinkremote-rtchub/listener/video" // gstreamer
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
@@ -61,7 +63,7 @@ typedef NTSTATUS(WINAPI *PD3DKMTCloseAdapter)(D3DKMT_CLOSEADAPTER *);
 int SetGPURealtimePriority() {
     HMODULE gdi32 = GetModuleHandleA("GDI32");
 
-	PD3DKMTSetProcessSchedulingPriorityClass d3dkmt_set_process_priority = 
+	PD3DKMTSetProcessSchedulingPriorityClass d3dkmt_set_process_priority =
 		(PD3DKMTSetProcessSchedulingPriorityClass) GetProcAddress(gdi32, "D3DKMTSetProcessSchedulingPriorityClass");
 
 	if (!d3dkmt_set_process_priority)
@@ -155,8 +157,17 @@ func main() {
 		func(bitrate int) 	{ videopipeline.SetProperty("bitrate", bitrate) }, 
 		func(framerate int) { videopipeline.SetProperty("framerate", framerate) }, 
 		func(pointer int)   { videopipeline.SetProperty("pointer", pointer) }, 
+		func(pointer map[string]string){ 
+			width,err := strconv.ParseInt(pointer["width"],10,32)
+			if err != nil { return }
+			height,_ := strconv.ParseInt(pointer["height"],10,32)
+			if err != nil { return }
+			videopipeline.SetProperty("width",  int(width));
+			videopipeline.SetProperty("height", int(height));
+			videopipeline.SetPropertyS("display", pointer["display"]);
+		}, 
+		func(pointer string)   { videopipeline.SetPropertyS("codec", pointer) }, 
 		func() 			  	{ videopipeline.SetProperty("reset", 0) },
-		func() 			  	{ audioPipeline.SetProperty("audio-reset", 0) },
 	)
 
 	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
