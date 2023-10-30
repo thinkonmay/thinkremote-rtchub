@@ -129,6 +129,7 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 	pipeline := &VideoPipeline{
 		closed:      false,
 		pipeline:    nil,
+		mut: 		 &sync.Mutex{},
 		codec:       webrtc.MimeTypeH264,
 
 		clockRate: 90000,
@@ -205,7 +206,7 @@ func (pipeline *VideoPipeline) reset() {
 }
 
 func (pipeline *VideoPipeline) SetPropertyS(name string, val string) error {
-	fmt.Printf("%s change to %d\n", name, val)
+	fmt.Printf("%s change to %s\n", name, val)
 	switch name {
 	case "display":
 		pipeline.sproperties["display"] = val
@@ -216,25 +217,22 @@ func (pipeline *VideoPipeline) SetPropertyS(name string, val string) error {
 func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 	fmt.Printf("%s change to %d\n", name, val)
 	switch name {
-	case "bitrate":
-		pipeline.properties["bitrate"] = val
-		pipeline.reset()
-	case "framerate":
-		pipeline.properties["framerate"] = val
-		pipeline.reset()
-	case "display":
-		pipeline.properties["display"] = val
-		pipeline.reset()
-	case "codec":
-		pipeline.properties["codec"] = val
-		pipeline.reset()
 	case "width":
 		pipeline.properties["width"] = val
 	case "height":
 		pipeline.properties["height"] = val
+	case "framerate":
+		pipeline.properties["framerate"] = val
+
+	case "bitrate":
+		pipeline.properties["bitrate"] = val
+		pipeline.reset()
+	case "codec":
+		pipeline.properties["codec"] = val
+		pipeline.reset()
 	case "pointer":
 		pipeline.properties["pointer"] = val
-		C.RaiseEvent(pipeline.pipeline,C.POINTER_VISIBLE,0)
+		C.RaiseEvent(pipeline.pipeline,C.POINTER_VISIBLE,C.int(pipeline.properties["pointer"]))
 	case "reset":
 		C.RaiseEvent(pipeline.pipeline,C.IDR_FRAME,0)
 	default:

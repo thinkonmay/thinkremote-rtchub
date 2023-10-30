@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 
 	"github.com/pion/webrtc/v3"
@@ -155,19 +154,22 @@ func main() {
 
 	ManualContext := manual.NewManualCtx(
 		func(bitrate int) 	{ videopipeline.SetProperty("bitrate", bitrate) }, 
-		func(framerate int) { videopipeline.SetProperty("framerate", framerate) }, 
 		func(pointer int)   { videopipeline.SetProperty("pointer", pointer) }, 
-		func(pointer map[string]string){ 
-			width,err := strconv.ParseInt(pointer["width"],10,32)
-			if err != nil { return }
-			height,_ := strconv.ParseInt(pointer["height"],10,32)
-			if err != nil { return }
-			videopipeline.SetProperty("width",  int(width));
-			videopipeline.SetProperty("height", int(height));
-			videopipeline.SetPropertyS("display", pointer["display"]);
+		func(pointer map[string]interface{}){ 
+			if pointer["framerate"] == nil || 
+			   pointer["width"] == nil ||
+			   pointer["height"] == nil || 
+			   pointer["display"] == nil {
+				return
+			}
+
+			videopipeline.SetProperty("framerate", int(pointer["framerate"].(float64)))
+			videopipeline.SetProperty("width",  int(pointer["width"].(float64)));
+			videopipeline.SetProperty("height", int(pointer["height"].(float64)));
+			videopipeline.SetPropertyS("display", pointer["display"].(string));
 		}, 
-		func(pointer string)   { videopipeline.SetPropertyS("codec", pointer) }, 
-		func() 			  	{ videopipeline.SetProperty("reset", 0) },
+		func(pointer string) { videopipeline.SetPropertyS("codec", pointer) }, 
+		func() 			  	 { videopipeline.SetProperty("reset", 0) },
 	)
 
 	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
