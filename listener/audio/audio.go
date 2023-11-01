@@ -227,6 +227,10 @@ func CreatePipeline(pipelinestr string) (*AudioPipeline, error) {
 		}),
 	}
 
+    if pipelinestr == "" {
+	    return pipeline, nil
+    }
+
 	pipelineStrUnsafe := C.CString(pipeline.pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
 

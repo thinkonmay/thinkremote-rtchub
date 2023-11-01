@@ -136,8 +136,8 @@ func main() {
 		return
 	}
 
-	audioPipelineString := "appsink name=appsink"
-	if videoArg == "" {
+	audioPipelineString := ""
+	if audioArg != "" {
 		bytes2, _ := base64.StdEncoding.DecodeString(audioArg)
 		err := json.Unmarshal(bytes2, &audioPipelineString)
 		if err != nil {
@@ -182,7 +182,7 @@ func main() {
 	videopipeline.Open()
 
 	micPipelineString := ""
-	if videoArg != "" {
+	if micArg != "" {
 		bytes2, _ := base64.StdEncoding.DecodeString(micArg)
 		err := json.Unmarshal(bytes2, &micPipelineString)
 		if err != nil {
