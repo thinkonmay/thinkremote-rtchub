@@ -30,8 +30,7 @@ typedef void 			(*RAISEEVENT)		 (VideoPipeline* pipeline,
                                               int value);
 
 typedef void  			(*WAITEVENT)			(VideoPipeline* pipeline,
-                                                  EventType event,
-                                                  int* value);
+                                                  EventType event);
 
 
 
@@ -77,9 +76,8 @@ void RaiseEvent	(void* pipeline,
 }
 
 void WaitEvent	(void* pipeline,
-                 EventType event,
-                 int* value){
-	return callwait((VideoPipeline*)pipeline,event,value);
+                 EventType event){
+	return callwait((VideoPipeline*)pipeline,event);
 }
 
 */
@@ -189,6 +187,7 @@ func (pipeline *VideoPipeline) reset() {
 	defer pipeline.mut.Unlock()
 	if pipeline.pipeline != nil {
 		C.RaiseEvent(pipeline.pipeline,C.STOP,0)
+		C.WaitEvent(pipeline.pipeline,C.STOP)
 	}
 
 	display.SetResolution(
