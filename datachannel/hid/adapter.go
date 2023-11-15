@@ -132,7 +132,6 @@ void
 handle_keyboard_javascript(int opcode,
                            int key,
                            int extended,
-                           int lrkey,
                            int scankey)
 {
     UINT send;
@@ -150,7 +149,7 @@ handle_keyboard_javascript(int opcode,
     if (extended)
         window_input.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
     if (opcode == KEYUP)
-        window_input.ki.dwFlags = KEYEVENTF_KEYUP ;
+        window_input.ki.dwFlags |= KEYEVENTF_KEYUP ;
 
 
     retry:
@@ -241,12 +240,11 @@ func SendKeyboard(keycode int,
     if !is_up { code = C.KEYDOWN }
 
     scankey := 0
-    if scan_code { scankey = ScanKey(keycode) }
+    if scan_code { scankey = 1 }
     C.handle_keyboard_javascript(
         C.int(code),
         C.int(keycode),
         C.int(ExtendedFlag(keycode)),
-        C.int(LRKey(keycode)),
         C.int(scankey),
     )
 }
