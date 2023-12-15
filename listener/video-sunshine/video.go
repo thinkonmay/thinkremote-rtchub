@@ -7,18 +7,19 @@ typedef struct _VideoPipeline  VideoPipeline;
 typedef enum _EventType {
     POINTER_VISIBLE,
     CHANGE_BITRATE,
+    CHANGE_DISPLAY,
     IDR_FRAME,
 
-    STOP,
-
-	DISPLAY
+    STOP
 }EventType;
 
-typedef VideoPipeline* (*STARTQUEUE)				  ( int video_width,
-                                                        int video_height,
-                                                        int video_bitrate,
-                                                        int video_framerate,
-                                                        int video_codec,
+typedef enum _Codec {
+    H264 = 1,
+    H265,
+    AV1,
+}Codec;
+
+typedef VideoPipeline* (*STARTQUEUE)				  ( int video_codec,
 														char* display_name);
 
 typedef int  		   (*POPFROMQUEUE)			(VideoPipeline* pipeline,
@@ -28,6 +29,10 @@ typedef int  		   (*POPFROMQUEUE)			(VideoPipeline* pipeline,
 typedef void 			(*RAISEEVENT)		 (VideoPipeline* pipeline,
                                               EventType event,
                                               int value);
+
+typedef void 			(*RAISEEVENTS)		 (VideoPipeline* pipeline,
+                                              EventType event,
+                                              char* value);
 
 typedef void  			(*WAITEVENT)			(VideoPipeline* pipeline,
                                                   EventType event);
@@ -39,6 +44,7 @@ static STARTQUEUE 		callstart;
 static POPFROMQUEUE 	callpop;
 static WAITEVENT		callwait;
 static RAISEEVENT       callraise;
+static RAISEEVENTS      callraises;
 
 int
 initlibrary() {
@@ -46,6 +52,7 @@ initlibrary() {
 	callstart 	= (STARTQUEUE)		GetProcAddress( hModule,"StartQueue");
 	callpop 	= (POPFROMQUEUE)	GetProcAddress( hModule,"PopFromQueue");
 	callraise 	= (RAISEEVENT)		GetProcAddress( hModule,"RaiseEvent");
+	callraises	= (RAISEEVENTS)		GetProcAddress( hModule,"RaiseEventS");
 	callwait	= (WAITEVENT)		GetProcAddress( hModule,"WaitEvent");
 
 	if(callpop ==0 || callstart == 0 || callraise == 0 || callwait == 0)
@@ -54,13 +61,9 @@ initlibrary() {
 	return 0;
 }
 
-void* StartQueue ( int video_width,
-                            int video_height,
-                            int video_bitrate,
-                            int video_framerate,
-                            int video_codec,
-							char* display_name){
-	return (void*)callstart(video_width,video_height,video_bitrate,video_framerate,video_codec,display_name);
+void* StartQueue ( int video_codec,
+				   char* display_name){
+	return (void*)callstart(video_codec,display_name);
 }
 
 int PopFromQueue			(void* pipeline,
@@ -73,6 +76,12 @@ void RaiseEvent	(void* pipeline,
                  EventType event,
                  int value){
 	return callraise((VideoPipeline*)pipeline,event,value);
+}
+
+void RaiseEventS(void* pipeline,
+                 EventType event,
+                 char* value){
+	return callraises((VideoPipeline*)pipeline,event,value);
 }
 
 void WaitEvent	(void* pipeline,
@@ -133,11 +142,8 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 		clockRate: 90000,
 
 		properties: map[string]int{
-			"width": 1920,
-			"height": 1080,
 			"codec": 1,
 			"bitrate": 6000,
-			"framerate": 60,
 		},
 		sproperties: map[string]string{
 			"display": display.GetDisplays()[0],
@@ -190,16 +196,7 @@ func (pipeline *VideoPipeline) reset() {
 		C.WaitEvent(pipeline.pipeline,C.STOP)
 	}
 
-	display.SetResolution(
-		pipeline.sproperties["display"],
-		pipeline.properties["width"], 
-		pipeline.properties["height"], 
-	)
 	pipeline.pipeline =  C.StartQueue( 
-		C.int(pipeline.properties["width"]), 
-		C.int(pipeline.properties["height"]), 
-		C.int(pipeline.properties["bitrate"]), 
-		C.int(pipeline.properties["framerate"]), 
 		C.int(pipeline.properties["codec"]), 
 		C.CString(pipeline.sproperties["display"]));
 }
@@ -209,23 +206,16 @@ func (pipeline *VideoPipeline) SetPropertyS(name string, val string) error {
 	switch name {
 	case "display":
 		pipeline.sproperties["display"] = val
-		pipeline.reset()
+		C.RaiseEventS(pipeline.pipeline,C.CHANGE_DISPLAY,C.CString(pipeline.sproperties["display"]))
 	}
 	return nil
 }
 func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 	fmt.Printf("%s change to %d\n", name, val)
 	switch name {
-	case "width":
-		pipeline.properties["width"] = val
-	case "height":
-		pipeline.properties["height"] = val
-	case "framerate":
-		pipeline.properties["framerate"] = val
-
 	case "bitrate":
 		pipeline.properties["bitrate"] = val
-		pipeline.reset()
+		C.RaiseEvent(pipeline.pipeline,C.CHANGE_BITRATE,C.int(pipeline.properties["bitrate"]))
 	case "codec":
 		pipeline.properties["codec"] = val
 		pipeline.reset()
