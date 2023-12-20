@@ -12,7 +12,7 @@ type Msg struct {
 
 const (
 	internal_close = "internal close"
-	limit          = 10
+	queue_size     = 32
 )
 
 type IDatachannel interface {
@@ -69,8 +69,8 @@ func NewDatachannel(names ...string) IDatachannel {
 
 	for _, name := range names {
 		dc.groups[name] = &DatachannelGroup{
-			send:     make(chan Msg, limit),
-			recv:     make(chan Msg, limit),
+			send:     make(chan Msg, queue_size),
+			recv:     make(chan Msg, queue_size),
 			handlers: map[string]*Handler{},
 			mutext:   &sync.Mutex{},
 		}
@@ -91,7 +91,7 @@ func (dc *Datachannel) Groups() []string {
 func (dc *Datachannel) Send(group string, id string, pkt string) {
 	if dc.groups[group] == nil {
 		return
-	} else if len(dc.groups[group].send) == limit {
+	} else if len(dc.groups[group].send) == queue_size {
 		return
 	}
 
@@ -109,7 +109,7 @@ func (dc *Datachannel) RegisterHandle(group_name string,
 
 	new_handler := &Handler{
 		handler:      handler,
-		handle_queue: make(chan *Msg, limit),
+		handle_queue: make(chan *Msg, queue_size),
 	}
 
 	group.mutext.Lock()

@@ -278,7 +278,7 @@ func main() {
 		}
 	}()
 
-	chann := make(chan os.Signal, 10)
+	chann := make(chan os.Signal, 16)
 	signal.Notify(chann, syscall.SIGTERM, os.Interrupt)
 	<-chann
 }

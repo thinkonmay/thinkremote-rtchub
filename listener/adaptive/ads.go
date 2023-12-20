@@ -10,7 +10,7 @@ import (
 
 
 const (
-	queue_size = 1000
+	queue_size = 128
 	evaluation_period = 10
 )
 

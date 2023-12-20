@@ -9,6 +9,9 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/display"
 )
 
+const (
+	queue_size = 32
+)
 
 type Manual struct {
 	In         chan string
@@ -31,8 +34,8 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 				   CodecCallback  func(codec string),
 				   IDRcallback func()) datachannel.DatachannelConsumer {
 	ret := &Manual{
-		In:         make(chan string,100),
-		Out:        make(chan struct{id string;val string},100),
+		In:         make(chan string,queue_size),
+		Out:        make(chan struct{id string;val string},queue_size),
 		ctxs: 		[]string{},
 
 		triggerVideoReset: IDRcallback,

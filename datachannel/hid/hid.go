@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
+	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
 )
 
 const (
@@ -14,7 +15,7 @@ const (
 )
 
 var (
-	queue_size = 100
+	queue_size = 128
 )
 
 type HIDAdapter struct {
@@ -54,7 +55,8 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 	}
 
 
-	process := func() { for { message := <-ret.recv
+	process := func() { win32.HighPriorityThread()
+		for { message := <-ret.recv
 			msg := strings.Split(message, "|")
 			switch msg[0] {
 			case "mma":

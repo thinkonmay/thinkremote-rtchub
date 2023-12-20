@@ -12,8 +12,7 @@ import (
 import "C"
 
 const (
-	no_limit     = 200
-	thread_count = 1
+	queue_size     = 1024
 )
 
 type sample struct {
@@ -40,7 +39,7 @@ func NewMultiplexer(id string, packetizer func() rtppay.Packetizer) *Multiplexer
 	ret := &Multiplexer{
 		id:         id,
 		mutex:      &sync.Mutex{},
-		queue:      make(chan *sample, no_limit),
+		queue:      make(chan *sample, queue_size),
 		handler:    map[string]*Handler{},
 		packetizer: packetizer(),
 	}
@@ -80,7 +79,7 @@ func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 	defer p.mutex.Unlock()
 	handler := Handler{
 		handler: fun,
-		buffer:  make(chan *rtp.Packet, 32),
+		buffer:  make(chan *rtp.Packet, queue_size),
 	}
 
 	p.handler[id] = &handler
