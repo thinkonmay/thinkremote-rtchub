@@ -54,9 +54,7 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 	}
 
 
-	process := func() {
-		for {
-			message := <-ret.recv
+	process := func() { for { message := <-ret.recv
 			msg := strings.Split(message, "|")
 			switch msg[0] {
 			case "mma":

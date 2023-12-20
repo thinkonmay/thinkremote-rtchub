@@ -160,12 +160,11 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 
 
 	pipeline.reset()
-	go func() {
+	go func() { win32.HighPriorityThread()
 		var duration C.int
 		buffer := make([]byte, 256*1024) //256kB
 		timestamp := time.Now().UnixNano()
 
-		win32.HighPriorityThread()
 		for {
 			pipeline.mut.Lock()
 			size := C.PopFromQueue(pipeline.pipeline,

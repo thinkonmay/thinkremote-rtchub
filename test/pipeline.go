@@ -67,9 +67,7 @@ func main() {
 
 	pkts := make(chan *rtp.Packet)
 	videopipeline.RegisterRTPHandler("abc",func(pkt *rtp.Packet) { pkts<-pkt })
-	go func() {
-		for {
-			pkt := <- pkts
+	go func() { for { pkt := <- pkts
 			bytes,err := pkt.Marshal()
 			if err != nil {
 				panic(err)

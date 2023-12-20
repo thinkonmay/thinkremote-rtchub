@@ -21,19 +21,19 @@ type GRPCclient struct {
 	stream packet.SignalingClient
 	client packet.Signaling_HandshakeClient
 
-	sdpChan      chan *webrtc.SessionDescription
-	iceChan      chan *webrtc.ICECandidateInit
+	sdpChan chan *webrtc.SessionDescription
+	iceChan chan *webrtc.ICECandidateInit
 
 	done      bool
 	connected bool
 }
 
 func InitGRPCClient(AddressStr string,
-					auth *config.AuthConfig,
+	auth *config.AuthConfig,
 ) (ret *GRPCclient, err error) {
 	ret = &GRPCclient{
-		sdpChan: make(chan *webrtc.SessionDescription),
-		iceChan: make(chan *webrtc.ICECandidateInit),
+		sdpChan: make(chan *webrtc.SessionDescription, 2),
+		iceChan: make(chan *webrtc.ICECandidateInit, 2),
 
 		connected: false,
 		done:      false,
@@ -61,12 +61,12 @@ func InitGRPCClient(AddressStr string,
 
 	go func() {
 		for {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(time.Second)
 			if !ret.done {
 				continue
 			}
-			ret.iceChan<-nil
-			ret.sdpChan<-nil
+			ret.iceChan <- nil
+			ret.sdpChan <- nil
 			ret.conn.Close()
 		}
 	}()
@@ -74,8 +74,7 @@ func InitGRPCClient(AddressStr string,
 		for {
 			res, err := ret.client.Recv()
 			if err != nil {
-				fmt.Printf("%s\n", err.Error())
-				fmt.Printf("grpc connection terminated\n")
+				fmt.Printf("grpc connection terminated %s\n", err.Error())
 				ret.Stop()
 				return
 			}

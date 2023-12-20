@@ -13,55 +13,39 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
-
-
 type OnTrackFunc func(*webrtc.TrackRemote)
 
 type WebRTCClient struct {
-	conn   *webrtc.PeerConnection
-	Closed bool
-	Signaling bool
+	conn      *webrtc.PeerConnection
+	Closed    bool
 
 	onTrack OnTrackFunc
 
-	fromSdpChannel chan (*webrtc.SessionDescription)
-	fromIceChannel chan (*webrtc.ICECandidateInit)
+	fromSdpChannel chan *webrtc.SessionDescription
+	fromIceChannel chan *webrtc.ICECandidateInit
 
-	toSdpChannel chan (*webrtc.SessionDescription)
-	toIceChannel chan (*webrtc.ICECandidateInit)
+	toSdpChannel chan *webrtc.SessionDescription
+	toIceChannel chan *webrtc.ICECandidateInit
 
-	connectionState chan webrtc.ICEConnectionState
-	gatherState     chan webrtc.ICEGathererState
-
-	reportChan chan webrtc.StatsReport
-
-	chans []string
+	connectionState chan *webrtc.ICEConnectionState
+	gatherState     chan *webrtc.ICEGathererState
 }
 
 func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebRTCClient, err error) {
 	client = &WebRTCClient{
-		toSdpChannel:    make(chan *webrtc.SessionDescription),
-		fromSdpChannel:  make(chan *webrtc.SessionDescription),
-		toIceChannel:    make(chan *webrtc.ICECandidateInit),
-		fromIceChannel:  make(chan *webrtc.ICECandidateInit),
-		connectionState: make(chan webrtc.ICEConnectionState),
-		gatherState:     make(chan webrtc.ICEGathererState),
-		reportChan:      make(chan webrtc.StatsReport),
+		toSdpChannel:    make(chan *webrtc.SessionDescription, 2),
+		fromSdpChannel:  make(chan *webrtc.SessionDescription, 2),
+		toIceChannel:    make(chan *webrtc.ICECandidateInit, 2),
+		fromIceChannel:  make(chan *webrtc.ICECandidateInit, 2),
+		connectionState: make(chan *webrtc.ICEConnectionState, 2),
+		gatherState:     make(chan *webrtc.ICEGathererState, 2),
 		onTrack:         track,
 		Closed:          false,
-		Signaling:       true,
 	}
 
 	if client.conn, err = webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: conf.Ices}); err != nil {
 		return
 	}
-
-	go func() {
-		for {
-			time.Sleep(time.Second)
-			client.reportChan <- client.conn.GetStats()
-		}
-	}()
 
 	client.conn.OnICECandidate(func(ice *webrtc.ICECandidate) {
 		if ice == nil {
@@ -85,11 +69,11 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 	})
 	client.conn.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		fmt.Printf("Connection state has changed %s \n", connectionState.String())
-		client.connectionState <- connectionState
+		client.connectionState <- &connectionState
 	})
 	client.conn.OnICEGatheringStateChange(func(gatherState webrtc.ICEGathererState) {
 		fmt.Printf("Gather state has changed %s\n", gatherState.String())
-		client.gatherState <- gatherState
+		client.gatherState <- &gatherState
 	})
 
 	client.conn.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
@@ -97,10 +81,8 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		client.onTrack(track)
 	})
 
-	go func() {
-		var err error
-		for {
-			sdp := <-client.fromSdpChannel
+	go func() { for { sdp := <-client.fromSdpChannel
+			var err error
 			if sdp == nil {
 				return
 			}
@@ -132,9 +114,7 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		}
 	}()
 
-	go func() {
-		for {
-			ice := <-client.fromIceChannel
+	go func() { for { ice := <-client.fromIceChannel
 			if ice == nil {
 				return
 			}
@@ -154,28 +134,6 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 	return
 }
 
-func (client *WebRTCClient) handleRTCP(rtpSender *webrtc.RTPSender) {
-	// Read incoming RTCP packets
-	// Before these packets are returned they are processed by interceptors. For things
-	// like NACK this needs to be called.
-	go func() {
-		for {
-			if client.Closed {
-				fmt.Println("closing handleRTCP thread")
-				return
-			}
-
-			if packets, _, rtcpErr := rtpSender.ReadRTCP(); rtcpErr != nil {
-				for _, pkg := range packets {
-					dat, _ := pkg.Marshal()
-					fmt.Printf("%s\n", string(dat))
-				}
-				return
-			}
-		}
-	}()
-}
-
 func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 	for _, lis := range listeners {
 		codec := lis.GetCodec()
@@ -188,25 +146,24 @@ func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 			fmt.Printf("error add track %s\n", err.Error())
 			continue
 		}
-		rtpSender, err := client.conn.AddTrack(track)
+		_, err = client.conn.AddTrack(track)
 		if err != nil {
 			fmt.Printf("error add track %s\n", err.Error())
 			continue
 		}
 
 		client.readLoopRTP(lis, track)
-		client.handleRTCP(rtpSender)
 	}
 }
 
 func (client *WebRTCClient) RegisterDataChannels(chans datachannel.IDatachannel) {
-	for _,group := range chans.Groups() {
-		fmt.Printf("new datachannel %s\n",group)
-		client.RegisterDataChannel(chans,group)
+	for _, group := range chans.Groups() {
+		fmt.Printf("new datachannel %s\n", group)
+		client.RegisterDataChannel(chans, group)
 	}
 }
 
-func (client *WebRTCClient) RegisterDataChannel(dc datachannel.IDatachannel,group string) {
+func (client *WebRTCClient) RegisterDataChannel(dc datachannel.IDatachannel, group string) {
 	channel, err := client.conn.CreateDataChannel(group, nil)
 	if err != nil {
 		fmt.Printf("unable to add data channel: %s\n", err.Error())
@@ -214,28 +171,32 @@ func (client *WebRTCClient) RegisterDataChannel(dc datachannel.IDatachannel,grou
 	}
 
 	rand := fmt.Sprintf("%d", time.Now().UnixNano())
-	dc.RegisterHandle(group,rand,func(msg string) {
-		if client.Closed { return }
+	dc.RegisterHandle(group, rand, func(msg string) {
+		if client.Closed {
+			return
+		}
 		channel.SendText(msg)
 	})
-	go func() {
-		for {
-			time.Sleep(time.Second)
-			if !client.Closed { continue }
-			dc.DeregisterHandle(group,rand)
-			return
+	go func() { for { time.Sleep(time.Second)
+			if client.Closed {
+				dc.DeregisterHandle(group, rand)
+				return
+			}
 		}
 	}()
 
-	channel.OnOpen(func() { channel.OnMessage(
-		func(msg webrtc.DataChannelMessage) {
-			if client.Closed { return }
-			dc.Send(group,rand,string(msg.Data))
-		})
+	channel.OnOpen(func() {
+		channel.OnMessage(
+			func(msg webrtc.DataChannelMessage) {
+				if client.Closed {
+					return
+				}
+				dc.Send(group, rand, string(msg.Data))
+			})
 	})
 }
 
-func (webrtc *WebRTCClient) readLoopRTP(listener listener.Listener, track *webrtc.TrackLocalStaticRTP) {
+func (client *WebRTCClient) readLoopRTP(listener listener.Listener, track *webrtc.TrackLocalStaticRTP) {
 	id := track.ID()
 
 	listener.RegisterRTPHandler(id, func(pk *rtp.Packet) {
@@ -249,15 +210,11 @@ func (webrtc *WebRTCClient) readLoopRTP(listener listener.Listener, track *webrt
 		}
 	})
 
-	go func() {
-		for {
-			time.Sleep(time.Second)
-			if !webrtc.Closed {
-				continue
+	go func() { for { time.Sleep(time.Second)
+			if client.Closed {
+				listener.DeregisterRTPHandler(id)
+				return
 			}
-
-			listener.DeregisterRTPHandler(id)
-			return
 		}
 	}()
 }
@@ -265,20 +222,21 @@ func (webrtc *WebRTCClient) readLoopRTP(listener listener.Listener, track *webrt
 func (webrtc *WebRTCClient) Close() {
 	webrtc.conn.Close()
 	webrtc.Closed = true
+	webrtc.connectionState <- nil
+	webrtc.gatherState <- nil
 }
 func (webrtc *WebRTCClient) StopSignaling() {
 	fmt.Println("stopping signaling process")
-	webrtc.Signaling = false
-	webrtc.toSdpChannel<-nil
-	webrtc.fromSdpChannel<-nil
-	webrtc.toIceChannel<-nil
-	webrtc.fromIceChannel<-nil
+	webrtc.toSdpChannel <- nil
+	webrtc.fromSdpChannel <- nil
+	webrtc.toIceChannel <- nil
+	webrtc.fromIceChannel <- nil
 }
 
-func (client *WebRTCClient) GatherStateChange() webrtc.ICEGathererState {
+func (client *WebRTCClient) GatherStateChange() *webrtc.ICEGathererState {
 	return <-client.gatherState
 }
-func (client *WebRTCClient) ConnectionStateChange() webrtc.ICEConnectionState {
+func (client *WebRTCClient) ConnectionStateChange() *webrtc.ICEConnectionState {
 	return <-client.connectionState
 }
 
@@ -296,8 +254,4 @@ func (webrtc *WebRTCClient) OnLocalICE() *webrtc.ICECandidateInit {
 
 func (webrtc *WebRTCClient) OnLocalSDP() *webrtc.SessionDescription {
 	return <-webrtc.toSdpChannel
-}
-
-func (webrtc *WebRTCClient) OnStats() webrtc.StatsReport {
-	return <-webrtc.reportChan
 }

@@ -18,8 +18,6 @@ type Proxy struct {
 	chan_conf 		 datachannel.IDatachannel
 	signallingClient signalling.Signalling
 	webrtcClient     *webrtc.WebRTCClient
-
-	Shutdown chan bool
 }
 
 func InitWebRTCProxy(grpc_conf signalling.Signalling,
@@ -30,7 +28,6 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 ) (proxy *Proxy, err error) {
 	fmt.Printf("started proxy\n")
 	proxy = &Proxy{
-		Shutdown:         make(chan bool),
 		chan_conf:        chan_conf,
 		signallingClient: grpc_conf,
 		listeners:        lis,
@@ -41,20 +38,24 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 		return
 	}
 
-	go func() {
-		for {
-			state := proxy.webrtcClient.GatherStateChange()
-			switch state {
+	go func() { for { state := proxy.webrtcClient.GatherStateChange()
+			if state == nil {
+				return
+			}
+
+			switch *state {
 			case webrtclib.ICEGathererStateGathering:
 			case webrtclib.ICEGathererStateComplete:
 			case webrtclib.ICEGathererStateClosed:
 			}
 		}
 	}()
-	go func() {
-		for {
-			state := proxy.webrtcClient.ConnectionStateChange()
-			switch state {
+	go func() { for { state := proxy.webrtcClient.ConnectionStateChange()
+			if state == nil {
+				return
+			}
+
+			switch *state {
 			case webrtclib.ICEConnectionStateConnected:
 				proxy.webrtcClient.Listen(proxy.listeners)
 			case webrtclib.ICEConnectionStateClosed:
@@ -67,22 +68,16 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 		}
 	}()
 
-	go func() {
-		for {
-			ice := proxy.webrtcClient.OnLocalICE()
+	go func() { for { ice := proxy.webrtcClient.OnLocalICE()
 			if ice == nil {
-				fmt.Println("stopping local ice thread")
 				return
 			}
 			proxy.signallingClient.SendICE(ice)
 		}
 	}()
 
-	go func() {
-		for {
-			sdp := proxy.webrtcClient.OnLocalSDP()
+	go func() { for { sdp := proxy.webrtcClient.OnLocalSDP()
 			if sdp == nil {
-				fmt.Println("stopping local sdp thread")
 				return
 			}
 			proxy.signallingClient.SendSDP(sdp)
@@ -99,13 +94,11 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 
 func (proxy *Proxy) handleTimeout() {
 	start := make(chan bool, 2)
-	go func() {
-		proxy.signallingClient.WaitForEnd()
+	go func() { proxy.signallingClient.WaitForEnd()
 		fmt.Println("application ended exchanging signaling message")
 		start <- true
 	}()
-	go func() {
-		proxy.signallingClient.WaitForStart()
+	go func() { proxy.signallingClient.WaitForStart()
 		fmt.Println("application start exchanging signaling message")
 		proxy.webrtcClient.RegisterDataChannels(proxy.chan_conf)
 		time.Sleep(20 * time.Second)

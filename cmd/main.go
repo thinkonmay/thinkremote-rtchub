@@ -22,7 +22,6 @@ import (
 	// video "github.com/thinkonmay/thinkremote-rtchub/listener/video" // gstreamer
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
-	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
 )
 
 /*
@@ -91,7 +90,7 @@ import "C"
 
 
 func init() {
-	resulta := C.SetPriorityClass(C.GetCurrentProcess(), C.HIGH_PRIORITY_CLASS)
+	resulta := C.SetPriorityClass(C.GetCurrentProcess(), C.REALTIME_PRIORITY_CLASS)
 	resultb := C.SetGPURealtimePriority()
 	if resulta == 0 || resultb == 0{
 		fmt.Printf("failed to set realtime priority\n")
@@ -153,21 +152,9 @@ func main() {
 	}
 
 	ManualContext := manual.NewManualCtx(
-		func(bitrate int) 	{ videopipeline.SetProperty("bitrate", bitrate) }, 
-		func(pointer int)   { videopipeline.SetProperty("pointer", pointer) }, 
-		func(pointer map[string]interface{}){ 
-			if pointer["framerate"] == nil || 
-			   pointer["width"] == nil ||
-			   pointer["height"] == nil || 
-			   pointer["display"] == nil {
-				return
-			}
-
-			videopipeline.SetProperty("framerate", int(pointer["framerate"].(float64)))
-			videopipeline.SetProperty("width",  int(pointer["width"].(float64)));
-			videopipeline.SetProperty("height", int(pointer["height"].(float64)));
-			videopipeline.SetPropertyS("display", pointer["display"].(string));
-		}, 
+		func(bitrate int) 	 { videopipeline.SetProperty("bitrate", bitrate) }, 
+		func(pointer int)    { videopipeline.SetProperty("pointer", pointer) }, 
+		func(display string) { videopipeline.SetPropertyS("display", display)}, 
 		func(pointer string) { videopipeline.SetPropertyS("codec", pointer) }, 
 		func() 			  	 { videopipeline.SetProperty("reset", 0) },
 	)
@@ -256,8 +243,7 @@ func main() {
 
 
 
-	go func() {
-		for {
+	go func() { for {
 			signaling_client, err := websocket.InitWebsocketClient( signaling.Audio.URL, &auth)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
@@ -274,8 +260,7 @@ func main() {
 			signaling_client.WaitForStart()
 		}
 	}()
-	go func() {
-		for {
+	go func() { for {
 			signaling_client, err := websocket.InitWebsocketClient( signaling.Video.URL, &auth)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())

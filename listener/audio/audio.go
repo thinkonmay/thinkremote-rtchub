@@ -10,7 +10,6 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/opus"
-	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
 )
 
 /*

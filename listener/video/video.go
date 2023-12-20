@@ -245,10 +245,11 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
+	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
 )
 
 func init() {
@@ -305,7 +306,7 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 		return nil, fmt.Errorf("failed to create pipeline %s", err_str)
 	}
 
-	go func() {
+	go func() { win32.HighPriorityThread()
 		var duration C.int
 		var size C.int
 		var samples uint32

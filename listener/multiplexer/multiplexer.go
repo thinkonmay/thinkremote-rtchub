@@ -3,7 +3,6 @@ package multiplexer
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/pion/rtp"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
@@ -13,14 +12,14 @@ import (
 import "C"
 
 const (
-	no_limit          = 200
-	thread_count      = 1
+	no_limit     = 200
+	thread_count = 1
 )
 
 type sample struct {
-	data []byte 
+	data    []byte
 	samples uint32
-	id int
+	id      int
 }
 type Multiplexer struct {
 	id string
@@ -34,31 +33,26 @@ type Multiplexer struct {
 
 type Handler struct {
 	handler func(*rtp.Packet)
-	buffer chan *rtp.Packet
-	closed bool
+	buffer  chan *rtp.Packet
 }
 
-
-
-
-func NewMultiplexer(id string,packetizer func() rtppay.Packetizer) *Multiplexer {
+func NewMultiplexer(id string, packetizer func() rtppay.Packetizer) *Multiplexer {
 	ret := &Multiplexer{
-		id:      id,
-		mutex:   &sync.Mutex{},
-		queue:   make(chan *sample, no_limit),
-		handler: map[string]*Handler{},
+		id:         id,
+		mutex:      &sync.Mutex{},
+		queue:      make(chan *sample, no_limit),
+		handler:    map[string]*Handler{},
 		packetizer: packetizer(),
 	}
-
 
 	return ret
 }
 
 func (ret *Multiplexer) Send(Buff []byte, Samples uint32) {
-	packets := ret.packetizer.Packetize(Buff,Samples)
+	packets := ret.packetizer.Packetize(Buff, Samples)
 	ret.mutex.Lock()
 	defer ret.mutex.Unlock()
-	for _,handler := range ret.handler { 
+	for _, handler := range ret.handler {
 		for _, p := range packets {
 			handler.buffer <- p
 		}
@@ -70,8 +64,8 @@ func (p *Multiplexer) Close() {
 	for k := range p.handler {
 		keys = append(keys, k)
 	}
-	
-	for _,v := range keys {
+
+	for _, v := range keys {
 		p.DeregisterRTPHandler(v)
 	}
 }
@@ -86,22 +80,18 @@ func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 	defer p.mutex.Unlock()
 	handler := Handler{
 		handler: fun,
-		buffer: make(chan *rtp.Packet,32),
-		closed: false,
+		buffer:  make(chan *rtp.Packet, 32),
 	}
 
 	p.handler[id] = &handler
-	go func() {
-		win32.HighPriorityThread()
+	go func() { win32.HighPriorityThread()
 		for {
-			if handler.closed {
+			buffer := <-handler.buffer
+			if buffer == nil {
 				return
-			} else if len(handler.buffer) == 0 {
-				time.Sleep(time.Millisecond)
-				continue
 			}
 
-			handler.handler(<-handler.buffer)
+			handler.handler(buffer)
 		}
 	}()
 }
@@ -109,7 +99,7 @@ func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 func (p *Multiplexer) DeregisterRTPHandler(id string) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	p.handler[id].closed = true
-	delete(p.handler,id)
-	fmt.Printf("deregister RTP handler %s\n",id)
+	p.handler[id].buffer <- nil
+	delete(p.handler, id)
+	fmt.Printf("deregister RTP handler %s\n", id)
 }

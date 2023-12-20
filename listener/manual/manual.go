@@ -22,12 +22,12 @@ type Manual struct {
 	triggerVideoReset func()
 	bitrateCallback func(bitrate int)
 	pointerCallback func(pointer int)
-	displayCallback func(display map[string]interface{})
+	displayCallback func(display string)
 }
 
 func NewManualCtx(BitrateCallback func(bitrate int),
 				   PointerCallback  func(pointer int),
-				   DisplayCallback  func(display map[string]interface{}),
+				   DisplayCallback  func(display string),
 				   CodecCallback  func(codec string),
 				   IDRcallback func()) datachannel.DatachannelConsumer {
 	ret := &Manual{
@@ -41,9 +41,7 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 		displayCallback: DisplayCallback,
 	}
 
-	go func() {
-		for {
-			data := <-ret.In
+	go func() { for { data := <-ret.In
 
 			var dat map[string]interface{}
 			err := json.Unmarshal([]byte(data), &dat)
@@ -73,7 +71,7 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 					val: string(b),
 				}}
 			} else if _type == "display" && dat["value"] != nil{
-				ret.displayCallback(dat["value"].(map[string]interface{}))
+				ret.displayCallback(dat["value"].(string))
 			} else if _type == "reset" {
 				ret.triggerVideoReset()
 			} else if _type == "danger-reset" {
