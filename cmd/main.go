@@ -211,7 +211,6 @@ func main() {
 		defer pipeline.Close()
 
 		buf := make([]byte, 1400) // larger than most MTU
-		win32.HighPriorityThread()
 		for {
 			i, _, readErr := tr.Read(buf)
 			if readErr != nil {

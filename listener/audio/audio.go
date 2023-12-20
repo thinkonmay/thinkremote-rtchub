@@ -249,7 +249,6 @@ func CreatePipeline(pipelinestr string) (*AudioPipeline, error) {
 		var samples uint32
 		buffer := make([]byte, 256*1024) //256kB
 
-		win32.HighPriorityThread()
 		for {
 			size = C.audio_pipeline_pop_buffer(
                 pipeline.pipeline,
