@@ -65,19 +65,9 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 		ctxs: make(map[string]*AdsCtx),
 	}
 
-	video_reset := func () {
-		ret.triggerVideoReset() 
-		form := struct{ 
-			Type string `json:"type"` 
-		}{ 
-			Type: "FRAME_LOSS", 
-		}
-		data,_ :=json.Marshal(form)
-		ret.SendToAll(string(data))
-	}
 
-	afterprocess := func() { for {
-			time.Sleep(100 * time.Millisecond)
+
+	afterprocess := func() { for { time.Sleep(100 * time.Millisecond)
 			ret.mut.Lock()
 			for id,ac := range ret.ctxs {
 				if len(ac.afterVQueue) > evaluation_period {
@@ -108,12 +98,12 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 				}
 				if len(ac.afterAQueue) > evaluation_period {
 					for i := 0; i < evaluation_period; i++ {
-						_=<-ac.afterAQueue
+						<-ac.afterAQueue
 					}
 				}
 				if len(ac.afterNQueue) > evaluation_period {
 					for i := 0; i < evaluation_period; i++ {
-						_=<-ac.afterNQueue
+						<-ac.afterNQueue
 					}
 				}
 
@@ -122,30 +112,49 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 			ret.mut.Unlock()
 		}
 	}
-	process := func() { for {
-			time.Sleep(100 * time.Millisecond)
+
+
+
+	reset_queue := make(chan bool,64)	
+	go func () { for { <-reset_queue
+			ret.triggerVideoReset() 
+			data,_ := json.Marshal(struct{ Type string `json:"type"` }{ Type: "FRAME_LOSS", })
+			ret.SendToAll(string(data))
+
+
+			time.Sleep(300 * time.Millisecond)
+			for { if len(reset_queue) > 0 { <-reset_queue } else {break} }
+		}
+	}()
+	process := func() { for { time.Sleep(5 * time.Millisecond) // donot reduce this period
 			ret.mut.Lock()
 			for _,ac := range ret.ctxs {
-				if len(ac.vqueue) > 0 {
-					vid:=<-ac.vqueue
-					if vid.DecodedFps == 0 { video_reset() }
-					ac.afterVQueue<-vid
+				for { if len(ac.vqueue) > 0 {
+						vid:=<-ac.vqueue
+						ac.afterVQueue<-vid
+
+						if vid.DecodedFps == 0 { reset_queue<-true }
+					}
+					break
 				}
-				if len(ac.aqueue) > 0 {
-					data:=<-ac.aqueue
-					ac.afterAQueue<-data
+				for { if len(ac.aqueue) > 0 {
+						data:=<-ac.aqueue
+						ac.afterAQueue<-data
+					}
+					break
 				}
-				if len(ac.nqueue) > 0 {
-					data:=<-ac.nqueue
-					ac.afterNQueue<-data
+				for { if len(ac.nqueue) > 0 {
+						data:=<-ac.nqueue
+						ac.afterNQueue<-data
+					}
+					break
 				}
 			}
 
 			ret.mut.Unlock()
 		}
 	}
-	preprocess := func() { for {
-			in := <-ret.in
+	preprocess := func() { for { in := <-ret.in
 			metricRaw := in.Msg
 			var out map[string]interface{}
 			json.Unmarshal([]byte(metricRaw), &out)
@@ -167,6 +176,7 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 		}
 	}
 
+	go preprocess()
 	go preprocess()
 	go process()
 	go afterprocess()
@@ -298,12 +308,14 @@ func (ads *AdsMultiCtxs) SetContext(ids []string) {
 
 
 func (ads *AdsMultiCtxs) SendToAll(msg string) {
+	ads.mut.Lock()
 	for k := range ads.ctxs {
 		ads.out<-datachannel.Msg{
 			Msg: msg,
 			Id: k,
 		}
 	}
+	ads.mut.Unlock()
 }
 
 
