@@ -9,7 +9,7 @@ import (
 )
 
 func TestVideo(t *testing.T) {
-	videopipeline,err := CreatePipeline("videotestsrc ! openh264enc gop-size=5 ! appsink name=appsink")
+	videopipeline,err := CreatePipeline()
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s",err.Error())
 		return

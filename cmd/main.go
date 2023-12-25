@@ -15,11 +15,11 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
-	video "github.com/thinkonmay/thinkremote-rtchub/listener/video-sunshine" // sunshine
-
-	// video "github.com/thinkonmay/thinkremote-rtchub/listener/video" // gstreamer
+	// gstreamer "github.com/thinkonmay/thinkremote-rtchub/listener/video"         // gstreamer
+	sunshine "github.com/thinkonmay/thinkremote-rtchub/listener/video-sunshine" // sunshine
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
@@ -101,7 +101,7 @@ func init() {
 
 func main() {
 	args := os.Args[1:]
-	authArg, webrtcArg, videoArg, audioArg, micArg, grpcArg := "", "", "", "", "", ""
+	authArg, webrtcArg, audioArg, micArg, grpcArg := "", "", "", "", ""
 	for i, arg := range args {
 		if arg == "--auth" {
 			authArg = args[i+1]
@@ -111,25 +111,13 @@ func main() {
 			webrtcArg = args[i+1]
 		} else if arg == "--audio" {
 			audioArg = args[i+1]
-		} else if arg == "--video" {
-			videoArg = args[i+1]
 		} else if arg == "--mic" {
 			micArg = args[i+1]
 		}
 	}
 
 
-	videoPipelineString := "appsink name=appsink"
-	if videoArg != "" {
-		bytes1, _ := base64.StdEncoding.DecodeString(videoArg)
-		err := json.Unmarshal(bytes1, &videoPipelineString)
-		if err != nil {
-			fmt.Printf("error decode audio pipeline %s\n", err.Error())
-			panic(err)
-		}
-	}
-
-	videopipeline,err := video.CreatePipeline(videoPipelineString)
+	videopipeline,err := sunshine.CreatePipeline()
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s\n", err.Error())
 		return
@@ -159,8 +147,12 @@ func main() {
 		func() 			  	 { videopipeline.SetProperty("reset", 0) },
 	)
 
+    ads := adaptive.NewAdsContext(
+        func(bitrate int) { videopipeline.SetProperty("bitrate", bitrate) },
+        func() { videopipeline.SetProperty("reset", 0) },
+    )
 	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
-	chans.RegisterConsumer("adaptive",videopipeline.AdsContext)
+	chans.RegisterConsumer("adaptive",ads)
 	chans.RegisterConsumer("manual",ManualContext)
 	chans.RegisterConsumer("hid",hid.NewHIDSingleton())
 

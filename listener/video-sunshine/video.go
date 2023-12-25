@@ -99,8 +99,7 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
-	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
+	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/display"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
@@ -126,11 +125,10 @@ type VideoPipeline struct {
 
 	codec string
 	Multiplexer *multiplexer.Multiplexer
-	AdsContext datachannel.DatachannelConsumer
 }
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(pipelineStr string) ( *VideoPipeline,
+func CreatePipeline() ( listener.Listener,
 	                                       error) {
 
 	pipeline := &VideoPipeline{
@@ -152,10 +150,6 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 			return h264.NewH264Payloader()
 		}),
 	}
-    pipeline.AdsContext = adaptive.NewAdsContext(
-        func(bitrate int) { pipeline.SetProperty("bitrate", bitrate) },
-        func() { pipeline.SetProperty("reset", 0) },
-    )
 
 
 

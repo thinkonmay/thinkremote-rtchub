@@ -244,8 +244,7 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
-	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
+	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
@@ -269,13 +268,11 @@ type VideoPipeline struct {
 
 	codec string
 	Multiplexer *multiplexer.Multiplexer
-	AdsContext datachannel.DatachannelConsumer
 }
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(pipelineStr string) ( *VideoPipeline,
-	                                       error) {
-
+func CreatePipeline() ( listener.Listener, error) {
+    pipelineStr := ""
 	pipeline := &VideoPipeline{
 		closed:      false,
 		pipeline:    nil,
@@ -289,10 +286,6 @@ func CreatePipeline(pipelineStr string) ( *VideoPipeline,
 			return h264.NewH264Payloader()
 		}),
 	}
-    pipeline.AdsContext = adaptive.NewAdsContext(
-        func(bitrate int) { pipeline.SetProperty("bitrate", bitrate) },
-        func() { pipeline.SetProperty("reset", 0) },
-    )
 
 	pipelineStrUnsafe := C.CString(pipeline.pipelineStr)
 	defer C.free(unsafe.Pointer(pipelineStrUnsafe))
@@ -331,6 +324,9 @@ func (p *VideoPipeline) GetCodec() string {
 	return p.codec
 }
 
+func (pipeline *VideoPipeline) SetPropertyS(name string, val string) error {
+	return nil
+}
 func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 	fmt.Printf("%s change to %d\n", name, val)
 	switch name {

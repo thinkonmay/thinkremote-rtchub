@@ -280,6 +280,9 @@ func (p *AudioPipeline) Close() {
 	C.audio_pipeline_stop(p.pipeline)
 }
 
+func (p *AudioPipeline) SetPropertyS(name string, val string) error {
+	return fmt.Errorf("unknown prop")
+}
 func (p *AudioPipeline) SetProperty(name string, val int) error {
 	switch name {
 	case "audio-reset":
