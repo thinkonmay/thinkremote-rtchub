@@ -7,11 +7,12 @@ typedef struct _VideoPipeline  VideoPipeline;
 typedef enum _EventType {
     POINTER_VISIBLE,
     CHANGE_BITRATE,
+    CHANGE_FRAMERATE,
     CHANGE_DISPLAY,
     IDR_FRAME,
 
     STOP
-}EventType;
+} EventType;
 
 typedef enum _Codec {
     H264 = 1,
@@ -209,12 +210,15 @@ func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 	case "bitrate":
 		pipeline.properties["bitrate"] = val
 		C.RaiseEvent(pipeline.pipeline,C.CHANGE_BITRATE,C.int(pipeline.properties["bitrate"]))
-	case "codec":
-		pipeline.properties["codec"] = val
-		pipeline.reset()
+	case "framerate":
+		pipeline.properties["framerate"] = val
+		C.RaiseEvent(pipeline.pipeline,C.CHANGE_FRAMERATE,C.int(pipeline.properties["framerate"]))
 	case "pointer":
 		pipeline.properties["pointer"] = val
 		C.RaiseEvent(pipeline.pipeline,C.POINTER_VISIBLE,C.int(pipeline.properties["pointer"]))
+	case "codec":
+		pipeline.properties["codec"] = val
+		pipeline.reset()
 	case "reset":
 		C.RaiseEvent(pipeline.pipeline,C.IDR_FRAME,0)
 	default:

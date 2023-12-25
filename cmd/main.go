@@ -141,6 +141,7 @@ func main() {
 
 	ManualContext := manual.NewManualCtx(
 		func(bitrate int) 	 { videopipeline.SetProperty("bitrate", bitrate) }, 
+		func(framerate int)  { videopipeline.SetProperty("framerate", framerate) }, 
 		func(pointer int)    { videopipeline.SetProperty("pointer", pointer) }, 
 		func(display string) { videopipeline.SetPropertyS("display", display)}, 
 		func(pointer string) { videopipeline.SetPropertyS("codec", pointer) }, 

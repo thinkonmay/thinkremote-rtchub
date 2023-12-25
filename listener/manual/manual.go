@@ -24,11 +24,13 @@ type Manual struct {
 
 	triggerVideoReset func()
 	bitrateCallback func(bitrate int)
+	framerateCallback func(framerate int)
 	pointerCallback func(pointer int)
 	displayCallback func(display string)
 }
 
-func NewManualCtx(BitrateCallback func(bitrate int),
+func NewManualCtx( BitrateCallback func(bitrate int),
+				   FramerateCallback func(framerate int),
 				   PointerCallback  func(pointer int),
 				   DisplayCallback  func(display string),
 				   CodecCallback  func(codec string),
@@ -40,6 +42,7 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 
 		triggerVideoReset: IDRcallback,
 		bitrateCallback: BitrateCallback,
+		framerateCallback: FramerateCallback,
 		pointerCallback: PointerCallback,
 		displayCallback: DisplayCallback,
 	}
@@ -60,6 +63,9 @@ func NewManualCtx(BitrateCallback func(bitrate int),
 			if _type == "bitrate" && dat["value"] != nil{
 				_val  := dat["value"].(float64)
 				ret.bitrateCallback(int(_val))
+			} else if _type == "framerate" && dat["value"] != nil{
+				_val  := dat["value"].(float64)
+				ret.framerateCallback(int(_val))
 			} else if _type == "pointer" && dat["value"] != nil{
 				_val  := dat["value"].(float64)
 				ret.pointerCallback(int(_val))
