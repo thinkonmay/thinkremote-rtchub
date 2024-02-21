@@ -1,4 +1,4 @@
-package sunshine 
+package video 
 
 import (
 	"fmt"

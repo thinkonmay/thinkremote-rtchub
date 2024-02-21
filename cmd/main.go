@@ -19,7 +19,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
 	// gstreamer "github.com/thinkonmay/thinkremote-rtchub/listener/video"         // gstreamer
-	sunshine "github.com/thinkonmay/thinkremote-rtchub/listener/video-sunshine" // sunshine
+	"github.com/thinkonmay/thinkremote-rtchub/listener/video-sunshine" // sunshine
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
@@ -117,7 +117,7 @@ func main() {
 	}
 
 
-	videopipeline,err := sunshine.CreatePipeline()
+	videopipeline,err := video.CreatePipeline()
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s\n", err.Error())
 		return
@@ -133,7 +133,7 @@ func main() {
 		}
 	}
 	
-	audioPipeline, err := audio.CreatePipeline(audioPipelineString)
+	audioPipeline, err := audio.CreatePipeline()
 	if err != nil {
 		fmt.Printf("error initiate audio pipeline %s\n", err.Error())
 		return

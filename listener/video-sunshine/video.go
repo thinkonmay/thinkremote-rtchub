@@ -1,96 +1,5 @@
-package sunshine
+package video
 
-/*
-#include <Windows.h>
-
-typedef struct _VideoPipeline  VideoPipeline;
-typedef enum _EventType {
-    POINTER_VISIBLE,
-    CHANGE_BITRATE,
-    CHANGE_FRAMERATE,
-    CHANGE_DISPLAY,
-    IDR_FRAME,
-
-    STOP
-} EventType;
-
-typedef enum _Codec {
-    H264 = 1,
-    H265,
-    AV1,
-}Codec;
-
-typedef VideoPipeline* (*STARTQUEUE)				  ( int video_codec,
-														char* display_name);
-
-typedef int  		   (*POPFROMQUEUE)			(VideoPipeline* pipeline,
-                                                void* data,
-                                                int* duration);
-
-typedef void 			(*RAISEEVENT)		 (VideoPipeline* pipeline,
-                                              EventType event,
-                                              int value);
-
-typedef void 			(*RAISEEVENTS)		 (VideoPipeline* pipeline,
-                                              EventType event,
-                                              char* value);
-
-typedef void  			(*WAITEVENT)			(VideoPipeline* pipeline,
-                                                  EventType event);
-
-
-
-static HMODULE 			hModule;
-static STARTQUEUE 		callstart;
-static POPFROMQUEUE 	callpop;
-static WAITEVENT		callwait;
-static RAISEEVENT       callraise;
-static RAISEEVENTS      callraises;
-
-int
-initlibrary() {
-	hModule 	= LoadLibrary(".\\libsunshine.dll");
-	callstart 	= (STARTQUEUE)		GetProcAddress( hModule,"StartQueue");
-	callpop 	= (POPFROMQUEUE)	GetProcAddress( hModule,"PopFromQueue");
-	callraise 	= (RAISEEVENT)		GetProcAddress( hModule,"RaiseEvent");
-	callraises	= (RAISEEVENTS)		GetProcAddress( hModule,"RaiseEventS");
-	callwait	= (WAITEVENT)		GetProcAddress( hModule,"WaitEvent");
-
-	if(callpop ==0 || callstart == 0 || callraise == 0 || callwait == 0)
-		return 1;
-
-	return 0;
-}
-
-void* StartQueue ( int video_codec,
-				   char* display_name){
-	return (void*)callstart(video_codec,display_name);
-}
-
-int PopFromQueue			(void* pipeline,
-                             void* data,
-                             int* duration){
-	return callpop(pipeline,data,duration);
-}
-
-void RaiseEvent	(void* pipeline,
-                 EventType event,
-                 int value){
-	return callraise((VideoPipeline*)pipeline,event,value);
-}
-
-void RaiseEventS(void* pipeline,
-                 EventType event,
-                 char* value){
-	return callraises((VideoPipeline*)pipeline,event,value);
-}
-
-void WaitEvent	(void* pipeline,
-                 EventType event){
-	return callwait((VideoPipeline*)pipeline,event);
-}
-
-*/
 import "C"
 import (
 	"fmt"
@@ -106,13 +15,9 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
 	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
+	"github.com/thinkonmay/thinkremote-rtchub/util/sunshine"
 )
 
-func init(){
-	if C.initlibrary() == 1 {
-		panic(fmt.Errorf("failed to load libsunshine.dll"))
-	}
-}
 
 type VideoPipelineC unsafe.Pointer
 type VideoPipeline struct {
@@ -141,7 +46,7 @@ func CreatePipeline() ( listener.Listener,
 		clockRate: 90000,
 
 		properties: map[string]int{
-			"codec": 1,
+			"codec": int(sunshine.H264),
 			"bitrate": 6000,
 		},
 		sproperties: map[string]string{
@@ -156,15 +61,13 @@ func CreatePipeline() ( listener.Listener,
 
 	pipeline.reset()
 	go func() { win32.HighPriorityThread()
-		var duration C.int
 		buffer := make([]byte, 256*1024) //256kB
 		timestamp := time.Now().UnixNano()
 
 		for {
 			pipeline.mut.Lock()
-			size := C.PopFromQueue(pipeline.pipeline,
-                unsafe.Pointer(&buffer[0]), 
-                &duration)
+			size := sunshine.PopFromQueue(pipeline.pipeline,
+                unsafe.Pointer(&buffer[0]))
 			pipeline.mut.Unlock()
 			if size == 0 {
 				continue
@@ -186,13 +89,11 @@ func (pipeline *VideoPipeline) reset() {
 	pipeline.mut.Lock()
 	defer pipeline.mut.Unlock()
 	if pipeline.pipeline != nil {
-		C.RaiseEvent(pipeline.pipeline,C.STOP,0)
-		C.WaitEvent(pipeline.pipeline,C.STOP)
+		sunshine.RaiseEvent(pipeline.pipeline,sunshine.STOP,0)
+		sunshine.WaitEvent(pipeline.pipeline,sunshine.STOP)
 	}
 
-	pipeline.pipeline =  C.StartQueue( 
-		C.int(pipeline.properties["codec"]), 
-		C.CString(pipeline.sproperties["display"]));
+	pipeline.pipeline =  sunshine.StartQueue(pipeline.properties["codec"]);
 }
 
 func (pipeline *VideoPipeline) SetPropertyS(name string, val string) error {
@@ -200,7 +101,7 @@ func (pipeline *VideoPipeline) SetPropertyS(name string, val string) error {
 	switch name {
 	case "display":
 		pipeline.sproperties["display"] = val
-		C.RaiseEventS(pipeline.pipeline,C.CHANGE_DISPLAY,C.CString(pipeline.sproperties["display"]))
+		sunshine.RaiseEventS(pipeline.pipeline,sunshine.CHANGE_DISPLAY,pipeline.sproperties["display"])
 	}
 	return nil
 }
@@ -209,18 +110,18 @@ func (pipeline *VideoPipeline) SetProperty(name string, val int) error {
 	switch name {
 	case "bitrate":
 		pipeline.properties["bitrate"] = val
-		C.RaiseEvent(pipeline.pipeline,C.CHANGE_BITRATE,C.int(pipeline.properties["bitrate"]))
+		sunshine.RaiseEvent(pipeline.pipeline,sunshine.CHANGE_BITRATE,pipeline.properties["bitrate"])
 	case "framerate":
 		pipeline.properties["framerate"] = val
-		C.RaiseEvent(pipeline.pipeline,C.CHANGE_FRAMERATE,C.int(pipeline.properties["framerate"]))
+		sunshine.RaiseEvent(pipeline.pipeline,sunshine.CHANGE_FRAMERATE,pipeline.properties["framerate"])
 	case "pointer":
 		pipeline.properties["pointer"] = val
-		C.RaiseEvent(pipeline.pipeline,C.POINTER_VISIBLE,C.int(pipeline.properties["pointer"]))
+		sunshine.RaiseEvent(pipeline.pipeline,sunshine.POINTER_VISIBLE,pipeline.properties["pointer"])
 	case "codec":
 		pipeline.properties["codec"] = val
 		pipeline.reset()
 	case "reset":
-		C.RaiseEvent(pipeline.pipeline,C.IDR_FRAME,0)
+		sunshine.RaiseEvent(pipeline.pipeline,sunshine.IDR_FRAME,0)
 	default:
 		return fmt.Errorf("unknown prop")
 	}
