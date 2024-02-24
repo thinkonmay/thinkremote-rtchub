@@ -35,13 +35,13 @@ type Handler struct {
 	buffer  chan *rtp.Packet
 }
 
-func NewMultiplexer(id string, packetizer func() rtppay.Packetizer) *Multiplexer {
+func NewMultiplexer(id string, packetizer rtppay.Packetizer) *Multiplexer {
 	ret := &Multiplexer{
 		id:         id,
 		mutex:      &sync.Mutex{},
 		queue:      make(chan *sample, queue_size),
 		handler:    map[string]*Handler{},
-		packetizer: packetizer(),
+		packetizer: packetizer,
 	}
 
 	return ret

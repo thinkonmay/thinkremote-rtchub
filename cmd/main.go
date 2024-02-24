@@ -11,15 +11,13 @@ import (
 	"github.com/pion/webrtc/v3"
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
 
-	"github.com/thinkonmay/thinkremote-rtchub/broadcaster/microphone"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
-	// gstreamer "github.com/thinkonmay/thinkremote-rtchub/listener/video"         // gstreamer
-	"github.com/thinkonmay/thinkremote-rtchub/listener/video-sunshine" // sunshine
+	"github.com/thinkonmay/thinkremote-rtchub/listener/video" 
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
@@ -170,37 +168,7 @@ func main() {
 			micPipelineString = ""
 		}
 	}
-	handle_track := func(tr *webrtc.TrackRemote) {
-		codec := tr.Codec() 
-		if codec.MimeType != "audio/opus" ||
-		   codec.Channels != 2 {
-			fmt.Printf("failed to create pipeline, reason: %s\n","media not supported")
-			return
-		} else if micPipelineString == "" {
-			fmt.Printf("failed to create pipeline, reason: microphone not support on this session\n")
-			return
-		}
-
-		pipeline,err := microphone.CreatePipeline(micPipelineString)
-		if err != nil {
-			fmt.Printf("failed to create pipeline, reason: %s\n",err.Error())
-			return
-		}
-
-		pipeline.Open()
-		defer pipeline.Close()
-
-		buf := make([]byte, 1400) // larger than most MTU
-		for {
-			i, _, readErr := tr.Read(buf)
-			if readErr != nil {
-				fmt.Printf("connection stopped, reason: %s\n",readErr.Error())
-				break
-			}
-
-			pipeline.Push(buf[:i])
-		}
-	}
+	handle_track := func(tr *webrtc.TrackRemote) {}
 
 	signaling := config.GrpcConfig{}
 	bytes3, _ := base64.StdEncoding.DecodeString(grpcArg)

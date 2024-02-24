@@ -3,13 +3,11 @@ package audio
 import (
 	"fmt"
 	"sync"
-	"time"
 	"unsafe"
 
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/opus"
 	"github.com/thinkonmay/thinkremote-rtchub/util/sunshine"
 	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
@@ -17,66 +15,58 @@ import (
 
 import "C"
 
-
 type AudioPipelineC unsafe.Pointer
 type AudioPipeline struct {
-	closed      bool
-	pipeline    unsafe.Pointer
-	mut        *sync.Mutex
+	closed   bool
+	pipeline unsafe.Pointer
+	mut      *sync.Mutex
 
 	clockRate float64
 
-	codec string
+	codec       string
 	Multiplexer *multiplexer.Multiplexer
 }
-
 
 // CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline() (*AudioPipeline, error) {
 	pipeline := &AudioPipeline{
-		closed:      false,
-		clockRate:   48000,
-		codec:       webrtc.MimeTypeOpus,
+		closed:    false,
+		clockRate: 48000,
+		codec:     webrtc.MimeTypeOpus,
+		mut:       &sync.Mutex{},
 
-		Multiplexer: multiplexer.NewMultiplexer("audio", func() rtppay.Packetizer {
-			return opus.NewOpusPayloader()
-		}),
+		Multiplexer: multiplexer.NewMultiplexer("audio", opus.NewOpusPayloader()),
 	}
 
-
-
 	pipeline.reset()
-	go func() { win32.HighPriorityThread()
+	go func() {
+		win32.HighPriorityThread()
 		buffer := make([]byte, 256*1024) //256kB
-		timestamp := time.Now().UnixNano()
 
 		for {
 			pipeline.mut.Lock()
 			size := sunshine.PopFromQueue(pipeline.pipeline,
-                unsafe.Pointer(&buffer[0]))
+				unsafe.Pointer(&buffer[0]))
 			pipeline.mut.Unlock()
 			if size == 0 {
 				continue
 			}
 
-			diff := time.Now().UnixNano() - timestamp
-			pipeline.Multiplexer.Send(buffer[:size], uint32(time.Duration(diff).Seconds() * pipeline.clockRate))
-			timestamp = timestamp + diff
+			pipeline.Multiplexer.Send(buffer[:size], uint32(pipeline.clockRate / 100))
 		}
 	}()
 	return pipeline, nil
 }
 
-
 func (pipeline *AudioPipeline) reset() {
 	pipeline.mut.Lock()
 	defer pipeline.mut.Unlock()
 	if pipeline.pipeline != nil {
-		sunshine.RaiseEvent(pipeline.pipeline,sunshine.STOP,0)
-		sunshine.WaitEvent(pipeline.pipeline,sunshine.STOP)
+		sunshine.RaiseEvent(pipeline.pipeline, sunshine.STOP, 0)
+		sunshine.WaitEvent(pipeline.pipeline, sunshine.STOP)
 	}
 
-	pipeline.pipeline =  sunshine.StartQueue(sunshine.OPUS);
+	pipeline.pipeline = sunshine.StartQueue(sunshine.OPUS)
 }
 
 func (p *AudioPipeline) GetCodec() string {
@@ -97,7 +87,6 @@ func (p *AudioPipeline) SetPropertyS(name string, val string) error {
 func (p *AudioPipeline) SetProperty(name string, val int) error {
 	return fmt.Errorf("unknown prop")
 }
-
 
 func (p *AudioPipeline) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 	p.Multiplexer.RegisterRTPHandler(id, fun)

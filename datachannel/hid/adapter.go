@@ -6,8 +6,6 @@ package hid
 #include "winuser.h"
 #include "string.h"
 #include <direct.h>
-#include <glib.h>
-
 
 typedef enum
 {
@@ -176,7 +174,6 @@ SetClipboard(char* output) {
     CloseClipboard();
 }
 
-#cgo pkg-config: glib-2.0
 */
 import "C"
 
