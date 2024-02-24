@@ -15,7 +15,6 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video" 
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
@@ -99,7 +98,7 @@ func init() {
 
 func main() {
 	args := os.Args[1:]
-	authArg, webrtcArg, audioArg, micArg, grpcArg := "", "", "", "", ""
+	authArg, webrtcArg, grpcArg := "", "", ""
 	for i, arg := range args {
 		if arg == "--auth" {
 			authArg = args[i+1]
@@ -107,10 +106,6 @@ func main() {
 			grpcArg = args[i+1]
 		} else if arg == "--webrtc" {
 			webrtcArg = args[i+1]
-		} else if arg == "--audio" {
-			audioArg = args[i+1]
-		} else if arg == "--mic" {
-			micArg = args[i+1]
 		}
 	}
 
@@ -121,21 +116,6 @@ func main() {
 		return
 	}
 
-	audioPipelineString := ""
-	if audioArg != "" {
-		bytes2, _ := base64.StdEncoding.DecodeString(audioArg)
-		err := json.Unmarshal(bytes2, &audioPipelineString)
-		if err != nil {
-			fmt.Printf("error decode audio pipeline %s\n", err.Error())
-			panic(err)
-		}
-	}
-	
-	audioPipeline, err := audio.CreatePipeline()
-	if err != nil {
-		fmt.Printf("error initiate audio pipeline %s\n", err.Error())
-		return
-	}
 
 	ManualContext := manual.NewManualCtx(
 		func(bitrate int) 	 { videopipeline.SetProperty("bitrate", bitrate) }, 
@@ -156,19 +136,8 @@ func main() {
 	chans.RegisterConsumer("hid",hid.NewHIDSingleton())
 
 
-	audioPipeline.Open()
 	videopipeline.Open()
 
-	micPipelineString := ""
-	if micArg != "" {
-		bytes2, _ := base64.StdEncoding.DecodeString(micArg)
-		err := json.Unmarshal(bytes2, &micPipelineString)
-		if err != nil {
-			fmt.Printf("error decode audio pipeline %s\n", err.Error())
-			micPipelineString = ""
-		}
-	}
-	handle_track := func(tr *webrtc.TrackRemote) {}
 
 	signaling := config.GrpcConfig{}
 	bytes3, _ := base64.StdEncoding.DecodeString(grpcArg)
@@ -203,24 +172,8 @@ func main() {
 	}
 
 
+	handle_track := func(tr *webrtc.TrackRemote) {}
 
-	go func() { for {
-			signaling_client, err := websocket.InitWebsocketClient( signaling.Audio.URL, &auth)
-			if err != nil {
-				fmt.Printf("error initiate signaling client %s\n", err.Error())
-				continue
-			}
-
-			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, chans, 
-										[]listener.Listener{audioPipeline}, 
-										handle_track)
-			if err != nil {
-				fmt.Printf("%s\n", err.Error())
-				continue
-			}
-			signaling_client.WaitForStart()
-		}
-	}()
 	go func() { for {
 			signaling_client, err := websocket.InitWebsocketClient( signaling.Video.URL, &auth)
 			if err != nil {

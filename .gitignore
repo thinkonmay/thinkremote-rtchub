@@ -1,4 +1,4 @@
 build/
 log.txt
 .vscode/
-hub.exe
+*.exe
