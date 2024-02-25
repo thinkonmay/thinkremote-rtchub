@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/display"
 )
 
 const (
@@ -69,16 +68,6 @@ func NewManualCtx( BitrateCallback func(bitrate int),
 			} else if _type == "pointer" && dat["value"] != nil{
 				_val  := dat["value"].(float64)
 				ret.pointerCallback(int(_val))
-			} else if _type == "displays" {
-				b,_ := json.Marshal(map[string]interface{}{
-					"type": "displays",
-					"value": display.GetDisplays(),
-				})
-				for _,v := range ret.ctxs {
-				ret.Out<-struct{id string; val string}{
-					id : v,
-					val: string(b),
-				}}
 			} else if _type == "display" && dat["value"] != nil{
 				ret.displayCallback(dat["value"].(string))
 			} else if _type == "reset" {

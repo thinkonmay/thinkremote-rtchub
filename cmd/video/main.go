@@ -98,7 +98,7 @@ func init() {
 
 func main() {
 	args := os.Args[1:]
-	authArg, webrtcArg, grpcArg := "", "", ""
+	authArg, webrtcArg, grpcArg, display := "", "", "",""
 	for i, arg := range args {
 		if arg == "--auth" {
 			authArg = args[i+1]
@@ -106,11 +106,13 @@ func main() {
 			grpcArg = args[i+1]
 		} else if arg == "--webrtc" {
 			webrtcArg = args[i+1]
+		} else if arg == "--display" {
+			webrtcArg = args[i+1]
 		}
 	}
 
 
-	videopipeline,err := video.CreatePipeline()
+	videopipeline,err := video.CreatePipeline(display)
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s\n", err.Error())
 		return

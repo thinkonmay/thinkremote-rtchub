@@ -10,7 +10,6 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/display"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
 	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
@@ -33,8 +32,8 @@ type VideoPipeline struct {
 }
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline() ( listener.Listener,
-	                                       error) {
+func CreatePipeline(display string) ( listener.Listener,
+	                                  error) {
 
 	pipeline := &VideoPipeline{
 		closed:      false,
@@ -49,7 +48,7 @@ func CreatePipeline() ( listener.Listener,
 			"bitrate": 6000,
 		},
 		sproperties: map[string]string{
-			"display": display.GetDisplays()[0],
+			"display": display,
 		},
 		Multiplexer: multiplexer.NewMultiplexer("video", h264.NewH264Payloader() ),
 	}
@@ -91,6 +90,7 @@ func (pipeline *VideoPipeline) reset() {
 	}
 
 	pipeline.pipeline =  sunshine.StartQueue(pipeline.properties["codec"]);
+	sunshine.RaiseEventS(pipeline.pipeline,sunshine.CHANGE_DISPLAY,pipeline.sproperties["display"])
 }
 
 func (pipeline *VideoPipeline) SetPropertyS(name string, val string) error {
