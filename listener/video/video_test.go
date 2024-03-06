@@ -9,7 +9,7 @@ import (
 )
 
 func TestVideo(t *testing.T) {
-	videopipeline,err := CreatePipeline()
+	videopipeline,err := CreatePipeline("")
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s",err.Error())
 		return

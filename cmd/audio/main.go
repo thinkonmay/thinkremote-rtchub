@@ -18,16 +18,15 @@ import (
 )
 
 
+const (
+	url = "http://localhost:60000/handshake/server?token=audio"
+)
 
 func main() {
 	args := os.Args[1:]
-	authArg, webrtcArg, grpcArg := "", "", ""
+	webrtcArg := ""
 	for i, arg := range args {
-		if arg == "--auth" {
-			authArg = args[i+1]
-		} else if arg == "--grpc" {
-			grpcArg = args[i+1]
-		} else if arg == "--webrtc" {
+		if arg == "--webrtc" {
 			webrtcArg = args[i+1]
 		}
 	}
@@ -42,22 +41,7 @@ func main() {
 	audioPipeline.Open()
 
 
-	signaling := config.GrpcConfig{}
-	bytes3, _ := base64.StdEncoding.DecodeString(grpcArg)
-	err = json.Unmarshal(bytes3, &signaling)
-	if err != nil {
-		fmt.Printf("error decode signaling config %s\n", err.Error())
-		return
-	}
 
-
-	auth := config.AuthConfig{}
-	bytes4, _ := base64.StdEncoding.DecodeString(authArg)
-	err = json.Unmarshal(bytes4, &auth)
-	if err != nil {
-		fmt.Printf("error decode auth config %s\n", err.Error())
-		return
-	}
 
 	bytes1, _ := base64.StdEncoding.DecodeString(webrtcArg)
 	var data map[string]interface{}
@@ -76,7 +60,7 @@ func main() {
 
 
 	go func() { for {
-			signaling_client, err := websocket.InitWebsocketClient( signaling.Audio.URL, &auth)
+			signaling_client, err := websocket.InitWebsocketClient(url)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
 				continue

@@ -86,6 +86,11 @@ int SetGPURealtimePriority() {
 import "C"
 
 
+const (
+	url = "http://localhost:60000/handshake/server?token=video"
+)
+
+
 func init() {
 	resulta := C.SetPriorityClass(C.GetCurrentProcess(), C.REALTIME_PRIORITY_CLASS)
 	resultb := C.SetGPURealtimePriority()
@@ -98,65 +103,41 @@ func init() {
 
 func main() {
 	args := os.Args[1:]
-	authArg, webrtcArg, grpcArg, display := "", "", "",""
+	webrtcArg, displayArg := "",""
 	for i, arg := range args {
-		if arg == "--auth" {
-			authArg = args[i+1]
-		} else if arg == "--grpc" {
-			grpcArg = args[i+1]
+		if arg == "--display" {
+			displayArg = args[i+1]
 		} else if arg == "--webrtc" {
-			webrtcArg = args[i+1]
-		} else if arg == "--display" {
 			webrtcArg = args[i+1]
 		}
 	}
 
 
-	videopipeline,err := video.CreatePipeline(display)
+	displayB, _ := base64.StdEncoding.DecodeString(displayArg)
+	videopipeline,err := video.CreatePipeline(string(displayB))
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s\n", err.Error())
 		return
 	}
 
 
-	ManualContext := manual.NewManualCtx(
+	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
+	chans.RegisterConsumer("adaptive", adaptive.NewAdsContext(
+        func(bitrate int) { videopipeline.SetProperty("bitrate", bitrate) },
+        func() { videopipeline.SetProperty("reset", 0) },
+    ))
+	chans.RegisterConsumer("manual", manual.NewManualCtx(
 		func(bitrate int) 	 { videopipeline.SetProperty("bitrate", bitrate) }, 
 		func(framerate int)  { videopipeline.SetProperty("framerate", framerate) }, 
 		func(pointer int)    { videopipeline.SetProperty("pointer", pointer) }, 
 		func(display string) { videopipeline.SetPropertyS("display", display)}, 
 		func(pointer string) { videopipeline.SetPropertyS("codec", pointer) }, 
 		func() 			  	 { videopipeline.SetProperty("reset", 0) },
-	)
-
-    ads := adaptive.NewAdsContext(
-        func(bitrate int) { videopipeline.SetProperty("bitrate", bitrate) },
-        func() { videopipeline.SetProperty("reset", 0) },
-    )
-	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
-	chans.RegisterConsumer("adaptive",ads)
-	chans.RegisterConsumer("manual",ManualContext)
+	))
 	chans.RegisterConsumer("hid",hid.NewHIDSingleton())
 
 
 	videopipeline.Open()
-
-
-	signaling := config.GrpcConfig{}
-	bytes3, _ := base64.StdEncoding.DecodeString(grpcArg)
-	err = json.Unmarshal(bytes3, &signaling)
-	if err != nil {
-		fmt.Printf("error decode signaling config %s\n", err.Error())
-		return
-	}
-
-
-	auth := config.AuthConfig{}
-	bytes4, _ := base64.StdEncoding.DecodeString(authArg)
-	err = json.Unmarshal(bytes4, &auth)
-	if err != nil {
-		fmt.Printf("error decode auth config %s\n", err.Error())
-		return
-	}
 
 	bytes1, _ := base64.StdEncoding.DecodeString(webrtcArg)
 	var data map[string]interface{}
@@ -175,15 +156,16 @@ func main() {
 
 
 	handle_track := func(tr *webrtc.TrackRemote) {}
-
 	go func() { for {
-			signaling_client, err := websocket.InitWebsocketClient( signaling.Video.URL, &auth)
+			signaling_client, err := websocket.InitWebsocketClient(url)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
 				continue
 			}
 
-			_, err = proxy.InitWebRTCProxy(signaling_client, rtc, chans, 
+			_, err = proxy.InitWebRTCProxy(signaling_client, 
+										rtc, 
+										chans, 
 										[]listener.Listener{videopipeline}, 
 										handle_track)
 			if err != nil {

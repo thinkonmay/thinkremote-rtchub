@@ -10,7 +10,6 @@ import (
 	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC/packet"
-	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
 type WebsocketClient struct {
@@ -24,9 +23,7 @@ type WebsocketClient struct {
 	connected bool
 }
 
-func InitWebsocketClient(AddressStr string,
-	auth *config.AuthConfig,
-) (_ signalling.Signalling, err error) {
+func InitWebsocketClient(AddressStr string) (_ signalling.Signalling, err error) {
 	ret := &WebsocketClient{
 		sdpChan: make(chan *webrtc.SessionDescription, 2),
 		iceChan: make(chan *webrtc.ICECandidateInit, 2),
@@ -38,7 +35,7 @@ func InitWebsocketClient(AddressStr string,
 
 	dialer := websocket.Dialer{HandshakeTimeout: 3 * time.Second}
 	dial_ctx, _ := context.WithTimeout(context.TODO(), 3*time.Second)
-	ret.conn, _, err = dialer.DialContext(dial_ctx, fmt.Sprintf("%s?token=%s", AddressStr, auth.Token), nil)
+	ret.conn, _, err = dialer.DialContext(dial_ctx,AddressStr, nil)
 	if err != nil {
 		fmt.Printf("signaling websocket error: %s", err.Error())
 		return nil, err
