@@ -17,9 +17,8 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
-
 const (
-	url = "http://localhost:60000/handshake/server?token=audio"
+	url = "ws://localhost:60000/handshake/server?token=audio"
 )
 
 func main() {
@@ -31,7 +30,6 @@ func main() {
 		}
 	}
 
-
 	audioPipeline, err := audio.CreatePipeline()
 	if err != nil {
 		fmt.Printf("error initiate audio pipeline %s\n", err.Error())
@@ -39,9 +37,6 @@ func main() {
 	}
 
 	audioPipeline.Open()
-
-
-
 
 	bytes1, _ := base64.StdEncoding.DecodeString(webrtcArg)
 	var data map[string]interface{}
@@ -58,19 +53,19 @@ func main() {
 		rtc.Ices = append(rtc.Ices, ice)
 	}
 
-
-	go func() { for {
+	go func() {
+		for {
 			signaling_client, err := websocket.InitWebsocketClient(url)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
 				continue
 			}
 
-			_, err = proxy.InitWebRTCProxy(signaling_client, 
-											rtc, 
-											datachannel.NewDatachannel(), 
-											[]listener.Listener{audioPipeline}, 
-											func(tr *webrtc.TrackRemote) {})
+			_, err = proxy.InitWebRTCProxy(signaling_client,
+				rtc,
+				datachannel.NewDatachannel(),
+				[]listener.Listener{audioPipeline},
+				func(tr *webrtc.TrackRemote) {})
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 				continue

@@ -16,7 +16,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/video" 
+	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
@@ -85,16 +85,14 @@ int SetGPURealtimePriority() {
 */
 import "C"
 
-
 const (
-	url = "http://localhost:60000/handshake/server?token=video"
+	url = "ws://localhost:60000/handshake/server?token=video"
 )
-
 
 func init() {
 	resulta := C.SetPriorityClass(C.GetCurrentProcess(), C.REALTIME_PRIORITY_CLASS)
 	resultb := C.SetGPURealtimePriority()
-	if resulta == 0 || resultb == 0{
+	if resulta == 0 || resultb == 0 {
 		fmt.Printf("failed to set realtime priority\n")
 	} else {
 		fmt.Printf("set realtime priority\n")
@@ -103,7 +101,7 @@ func init() {
 
 func main() {
 	args := os.Args[1:]
-	webrtcArg, displayArg := "",""
+	webrtcArg, displayArg := "", ""
 	for i, arg := range args {
 		if arg == "--display" {
 			displayArg = args[i+1]
@@ -112,30 +110,27 @@ func main() {
 		}
 	}
 
-
 	displayB, _ := base64.StdEncoding.DecodeString(displayArg)
-	videopipeline,err := video.CreatePipeline(string(displayB))
+	videopipeline, err := video.CreatePipeline(string(displayB))
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s\n", err.Error())
 		return
 	}
 
-
 	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
 	chans.RegisterConsumer("adaptive", adaptive.NewAdsContext(
-        func(bitrate int) { videopipeline.SetProperty("bitrate", bitrate) },
-        func() { videopipeline.SetProperty("reset", 0) },
-    ))
-	chans.RegisterConsumer("manual", manual.NewManualCtx(
-		func(bitrate int) 	 { videopipeline.SetProperty("bitrate", bitrate) }, 
-		func(framerate int)  { videopipeline.SetProperty("framerate", framerate) }, 
-		func(pointer int)    { videopipeline.SetProperty("pointer", pointer) }, 
-		func(display string) { videopipeline.SetPropertyS("display", display)}, 
-		func(pointer string) { videopipeline.SetPropertyS("codec", pointer) }, 
-		func() 			  	 { videopipeline.SetProperty("reset", 0) },
+		func(bitrate int) { videopipeline.SetProperty("bitrate", bitrate) },
+		func() { videopipeline.SetProperty("reset", 0) },
 	))
-	chans.RegisterConsumer("hid",hid.NewHIDSingleton())
-
+	chans.RegisterConsumer("manual", manual.NewManualCtx(
+		func(bitrate int) { videopipeline.SetProperty("bitrate", bitrate) },
+		func(framerate int) { videopipeline.SetProperty("framerate", framerate) },
+		func(pointer int) { videopipeline.SetProperty("pointer", pointer) },
+		func(display string) { videopipeline.SetPropertyS("display", display) },
+		func(pointer string) { videopipeline.SetPropertyS("codec", pointer) },
+		func() { videopipeline.SetProperty("reset", 0) },
+	))
+	chans.RegisterConsumer("hid", hid.NewHIDSingleton())
 
 	videopipeline.Open()
 
@@ -154,20 +149,20 @@ func main() {
 		rtc.Ices = append(rtc.Ices, ice)
 	}
 
-
 	handle_track := func(tr *webrtc.TrackRemote) {}
-	go func() { for {
+	go func() {
+		for {
 			signaling_client, err := websocket.InitWebsocketClient(url)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
 				continue
 			}
 
-			_, err = proxy.InitWebRTCProxy(signaling_client, 
-										rtc, 
-										chans, 
-										[]listener.Listener{videopipeline}, 
-										handle_track)
+			_, err = proxy.InitWebRTCProxy(signaling_client,
+				rtc,
+				chans,
+				[]listener.Listener{videopipeline},
+				handle_track)
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 				continue
