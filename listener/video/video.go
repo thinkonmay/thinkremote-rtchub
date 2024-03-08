@@ -90,6 +90,7 @@ func (pipeline *VideoPipeline) reset() {
 	}
 
 	pipeline.pipeline =  sunshine.StartQueue(pipeline.properties["codec"]);
+	time.Sleep(time.Second * 3)
 	sunshine.RaiseEventS(pipeline.pipeline,sunshine.CHANGE_DISPLAY,pipeline.sproperties["display"])
 }
 

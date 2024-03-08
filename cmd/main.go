@@ -15,6 +15,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
+	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
@@ -86,7 +87,8 @@ int SetGPURealtimePriority() {
 import "C"
 
 const (
-	url = "ws://localhost:60000/handshake/server?token=video"
+	video_url = "ws://localhost:60000/handshake/server?token=video"
+	audio_url = "ws://localhost:60000/handshake/server?token=audio"
 )
 
 func init() {
@@ -109,6 +111,16 @@ func main() {
 			webrtcArg = args[i+1]
 		}
 	}
+
+
+	audioPipeline, err := audio.CreatePipeline()
+	if err != nil {
+		fmt.Printf("error initiate audio pipeline %s\n", err.Error())
+		return
+	}
+
+	audioPipeline.Open()
+
 
 	displayB, _ := base64.StdEncoding.DecodeString(displayArg)
 	videopipeline, err := video.CreatePipeline(string(displayB))
@@ -152,7 +164,7 @@ func main() {
 	handle_track := func(tr *webrtc.TrackRemote) {}
 	go func() {
 		for {
-			signaling_client, err := websocket.InitWebsocketClient(url)
+			signaling_client, err := websocket.InitWebsocketClient(video_url)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
 				continue
@@ -163,6 +175,27 @@ func main() {
 				chans,
 				[]listener.Listener{videopipeline},
 				handle_track)
+			if err != nil {
+				fmt.Printf("%s\n", err.Error())
+				continue
+			}
+			signaling_client.WaitForStart()
+		}
+	}()
+
+	go func() {
+		for {
+			signaling_client, err := websocket.InitWebsocketClient(audio_url)
+			if err != nil {
+				fmt.Printf("error initiate signaling client %s\n", err.Error())
+				continue
+			}
+
+			_, err = proxy.InitWebRTCProxy(signaling_client,
+				rtc,
+				chans,
+				[]listener.Listener{audioPipeline},
+				func(tr *webrtc.TrackRemote) {})
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 				continue
