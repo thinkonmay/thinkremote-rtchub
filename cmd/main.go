@@ -142,7 +142,7 @@ func main() {
 		func(pointer string) { videopipeline.SetPropertyS("codec", pointer) },
 		func() { videopipeline.SetProperty("reset", 0) },
 	))
-	chans.RegisterConsumer("hid", hid.NewHIDSingleton())
+	chans.RegisterConsumer("hid", hid.NewHIDSingleton(string(displayB)))
 
 	videopipeline.Open()
 

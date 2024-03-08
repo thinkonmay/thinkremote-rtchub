@@ -20,6 +20,39 @@ typedef enum
 
 HDESK _lastKnownInputDesktop = NULL;
 
+
+void DisplayPosition(char* display_name, int* x, int* y, int* width, int* height) {
+	HRESULT result = 1;
+	int deviceIndex = 0;
+	do
+	{
+		DISPLAY_DEVICEA dpd = {0};
+		PDISPLAY_DEVICEA displayDevice = &dpd;
+		displayDevice->cb = sizeof(DISPLAY_DEVICEA);
+
+		result = EnumDisplayDevicesA(NULL,
+			deviceIndex++, displayDevice, 0);
+        if ((displayDevice->StateFlags & DISPLAY_DEVICE_ACTIVE) &&
+			 !strcmp(display_name,displayDevice->DeviceName)) {
+
+			DISPLAY_DEVICEA monitor = {0};
+			monitor.cb = sizeof(DISPLAY_DEVICEA);
+			EnumDisplayDevicesA(displayDevice->DeviceName,
+				0, &monitor, 0);
+
+			DEVMODEA dm = {};
+			if (!EnumDisplaySettingsA(displayDevice->DeviceName, ENUM_CURRENT_SETTINGS, &dm) )
+				continue;
+
+            *x = dm.dmPosition.x;
+            *y = dm.dmPosition.y;
+            *width  = dm.dmPelsWidth;
+			*height = dm.dmPelsHeight;
+
+		}
+	} while (result);
+}
+
 HDESK
 syncThreadDesktop() {
     HDESK hDesk = OpenInputDesktop(DF_ALLOWOTHERACCOUNTHOOK, FALSE, GENERIC_ALL);
@@ -177,75 +210,89 @@ SetClipboard(char* output) {
 */
 import "C"
 
-
-
 func init() {
-    C.syncThreadDesktop()
+	C.syncThreadDesktop()
 }
 
-
-func SendMouseRelative(x float32,y float32) {
-    C.handle_mouse_javascript(
-        C.MOUSE_MOVE,
-        0,
-        C.float(x),
-        C.float(y),
-        0,
-        1,
-    )
+func SendMouseRelative(x float32, y float32) {
+	C.handle_mouse_javascript(
+		C.MOUSE_MOVE,
+		0,
+		C.float(x),
+		C.float(y),
+		0,
+		1,
+	)
 }
 
-func SendMouseAbsolute(x float32,y float32) {
-    C.handle_mouse_javascript(
-        C.MOUSE_MOVE,
-        0,
-        C.float(x),
-        C.float(y),
-        0,
-        0,
-    )
+func SendMouseAbsolute(x float32, y float32) {
+	C.handle_mouse_javascript(
+		C.MOUSE_MOVE,
+		0,
+		C.float(x),
+		C.float(y),
+		0,
+		0,
+	)
 }
 
 func SendMouseWheel(wheel float64) {
-    C.handle_mouse_javascript(
-        C.MOUSE_WHEEL,
-        0,
-        0,
-        0,
-        C.float(wheel),
-        0,
-    )
+	C.handle_mouse_javascript(
+		C.MOUSE_WHEEL,
+		0,
+		0,
+		0,
+		C.float(wheel),
+		0,
+	)
 }
 
 func SendMouseButton(button int, is_up bool) {
-    code := C.MOUSE_UP
-    if !is_up { code = C.MOUSE_DOWN }
-    C.handle_mouse_javascript(
-        C.int(code),
-        C.int(button),
-        0,
-        0,
-        0,
-        0,
-    )
+	code := C.MOUSE_UP
+	if !is_up {
+		code = C.MOUSE_DOWN
+	}
+	C.handle_mouse_javascript(
+		C.int(code),
+		C.int(button),
+		0,
+		0,
+		0,
+		0,
+	)
 }
 
-func SendKeyboard(keycode int, 
-                  is_up bool,
-                  scan_code bool) {
-    code := C.KEYUP
-    if !is_up { code = C.KEYDOWN }
+func SendKeyboard(keycode int,
+	is_up bool,
+	scan_code bool) {
+	code := C.KEYUP
+	if !is_up {
+		code = C.KEYDOWN
+	}
 
-    scankey := 0
-    if scan_code { scankey = 1 }
-    C.handle_keyboard_javascript(
-        C.int(code),
-        C.int(keycode),
-        C.int(ExtendedFlag(keycode)),
-        C.int(scankey),
-    )
+	scankey := 0
+	if scan_code {
+		scankey = 1
+	}
+	C.handle_keyboard_javascript(
+		C.int(code),
+		C.int(keycode),
+		C.int(ExtendedFlag(keycode)),
+		C.int(scankey),
+	)
 }
 
 func SetClipboard(text string) {
-    C.SetClipboard(C.CString(text))
+	C.SetClipboard(C.CString(text))
+}
+
+func DisplayPosition(name string) (x, y, width, height int) {
+	a, b, c, d := C.int(0), C.int(0), C.int(0), C.int(0)
+	C.DisplayPosition(C.CString(name), &a, &b, &c, &d)
+	x, y, width, height = int(a), int(b), int(c), int(d)
+	return
+}
+
+func GetVirtualDisplay() (x, y int) {
+	return int(C.GetSystemMetrics(C.SM_CXVIRTUALSCREEN)),int(C.GetSystemMetrics(C.SM_CYVIRTUALSCREEN))
 }

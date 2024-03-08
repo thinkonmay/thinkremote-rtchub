@@ -2,6 +2,7 @@ package hid
 
 import (
 	"fmt"
+	"time"
 	"strconv"
 	"strings"
 	"encoding/base64"
@@ -25,7 +26,7 @@ type HIDAdapter struct {
 	ids []string
 }
 
-func NewHIDSingleton() datachannel.DatachannelConsumer {
+func NewHIDSingleton(display string) datachannel.DatachannelConsumer {
 	ret := HIDAdapter{
 		send: make(chan datachannel.Msg,queue_size),
 		recv: make(chan string,queue_size),
@@ -54,6 +55,18 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 		fmt.Printf("%s\n",err.Error())
 	}
 
+	x,y,width,height,vx,vy := 0,0,0,0,0,0
+	go func ()  {
+		for {
+			time.Sleep(time.Millisecond * 100)
+			x,y,width,height = DisplayPosition(display)
+			vx,vy = GetVirtualDisplay()
+		}
+	}()
+	convert_pos := func (a,b float64) (X,Y float32) {
+		return (float32(x) + (float32(width)*float32(a))) / float32(vx),
+			(float32(y) + (float32(height)*float32(b))) / float32(vy)
+	}
 
 	process := func() { win32.HighPriorityThread()
 		for { message := <-ret.recv
@@ -62,7 +75,8 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 			case "mma":
 				x,_ := strconv.ParseFloat(msg[1],32)
 				y,_ := strconv.ParseFloat(msg[2],32)
-				SendMouseAbsolute(float32(x),float32(y))
+				nx,ny := convert_pos(x,y)
+				SendMouseAbsolute(nx,ny)
 			case "mmr":
 				x,_ := strconv.ParseFloat(msg[1],32)
 				y,_ := strconv.ParseFloat(msg[2],32)
