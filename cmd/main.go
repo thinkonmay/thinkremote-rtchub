@@ -11,6 +11,7 @@ import (
 	"github.com/pion/webrtc/v3"
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
 
+	"github.com/thinkonmay/thinkremote-rtchub/boardcaster/microphone"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
@@ -112,7 +113,6 @@ func main() {
 		}
 	}
 
-
 	audioPipeline, err := audio.CreatePipeline()
 	if err != nil {
 		fmt.Printf("error initiate audio pipeline %s\n", err.Error())
@@ -120,7 +120,6 @@ func main() {
 	}
 
 	audioPipeline.Open()
-
 
 	displayB, _ := base64.StdEncoding.DecodeString(displayArg)
 	videopipeline, err := video.CreatePipeline(string(displayB))
@@ -161,7 +160,18 @@ func main() {
 		rtc.Ices = append(rtc.Ices, ice)
 	}
 
-	handle_track := func(tr *webrtc.TrackRemote) {}
+	buff := make(chan *[]byte, 256)
+	microphone.StartMicrophone(buff)
+	defer microphone.CloseMicrophone()
+	handle_track := func(tr *webrtc.TrackRemote) {
+		for {
+			pkt, _, err := tr.ReadRTP()
+			if err != nil {
+				break
+			}
+			buff <- &pkt.Payload
+		}
+	}
 	go func() {
 		for {
 			signaling_client, err := websocket.InitWebsocketClient(video_url)
@@ -195,7 +205,7 @@ func main() {
 				rtc,
 				chans,
 				[]listener.Listener{audioPipeline},
-				func(tr *webrtc.TrackRemote) {})
+				handle_track)
 			if err != nil {
 				fmt.Printf("%s\n", err.Error())
 				continue
