@@ -11,7 +11,7 @@ import (
 	"github.com/pion/webrtc/v3"
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
 
-	"github.com/thinkonmay/thinkremote-rtchub/boardcaster/microphone"
+	"github.com/thinkonmay/thinkremote-rtchub/broadcaster/microphone"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
@@ -19,7 +19,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
-	"github.com/thinkonmay/thinkremote-rtchub/signalling/websocket"
+	"github.com/thinkonmay/thinkremote-rtchub/signalling/http"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
@@ -88,8 +88,8 @@ int SetGPURealtimePriority() {
 import "C"
 
 const (
-	video_url = "ws://localhost:60000/handshake/server?token=video"
-	audio_url = "ws://localhost:60000/handshake/server?token=audio"
+	video_url = "http://localhost:60000/handshake/server?token=video"
+	audio_url = "http://localhost:60000/handshake/server?token=audio"
 )
 
 func init() {
@@ -174,7 +174,7 @@ func main() {
 	}
 	go func() {
 		for {
-			signaling_client, err := websocket.InitWebsocketClient(video_url)
+			signaling_client, err := http.InitHttpClient(video_url)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
 				continue
@@ -195,7 +195,7 @@ func main() {
 
 	go func() {
 		for {
-			signaling_client, err := websocket.InitWebsocketClient(audio_url)
+			signaling_client, err := http.InitHttpClient(audio_url)
 			if err != nil {
 				fmt.Printf("error initiate signaling client %s\n", err.Error())
 				continue

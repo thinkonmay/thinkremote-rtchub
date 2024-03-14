@@ -1,4 +1,4 @@
-package websocket
+package http
 
 import (
 	"encoding/json"
@@ -26,10 +26,10 @@ type WebsocketClient struct {
 	connected bool
 }
 
-func InitWebsocketClient(AddressStr string) (_ signalling.Signalling, err error) {
+func InitHttpClient(AddressStr string) (_ signalling.Signalling, err error) {
 	ret := &WebsocketClient{
-		sdpChan: make(chan *webrtc.SessionDescription, 2),
-		iceChan: make(chan *webrtc.ICECandidateInit, 2),
+		sdpChan: make(chan *webrtc.SessionDescription, 8),
+		iceChan: make(chan *webrtc.ICECandidateInit, 8),
 
 		incoming:  make(chan *packet.SignalingMessage, 8),
 		outcoming: make(chan *packet.SignalingMessage, 8),
