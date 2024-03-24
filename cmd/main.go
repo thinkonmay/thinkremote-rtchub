@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -104,12 +102,20 @@ func init() {
 
 func main() {
 	args := os.Args[1:]
-	webrtcArg, displayArg := "", ""
+	displayArg := ""
+	rtc := &config.WebRTCConfig{Ices: []webrtc.ICEServer{{}, {}}}
+
 	for i, arg := range args {
 		if arg == "--display" {
 			displayArg = args[i+1]
-		} else if arg == "--webrtc" {
-			webrtcArg = args[i+1]
+		} else if arg == "--stun" {
+			rtc.Ices[0].URLs = []string{args[i+1]}
+		} else if arg == "--turn" {
+			rtc.Ices[1].URLs = []string{args[i+1]}
+		} else if arg == "--turn_username" {
+			rtc.Ices[1].Username = args[i+1]
+		} else if arg == "--turn_password" {
+			rtc.Ices[1].Credential = args[i+1]
 		}
 	}
 
@@ -121,8 +127,7 @@ func main() {
 
 	audioPipeline.Open()
 
-	displayB, _ := base64.StdEncoding.DecodeString(displayArg)
-	videopipeline, err := video.CreatePipeline(string(displayB))
+	videopipeline, err := video.CreatePipeline(displayArg)
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s\n", err.Error())
 		return
@@ -141,24 +146,9 @@ func main() {
 		func(pointer string) { videopipeline.SetPropertyS("codec", pointer) },
 		func() { videopipeline.SetProperty("reset", 0) },
 	))
-	chans.RegisterConsumer("hid", hid.NewHIDSingleton(string(displayB)))
+	chans.RegisterConsumer("hid", hid.NewHIDSingleton(displayArg))
 
 	videopipeline.Open()
-
-	bytes1, _ := base64.StdEncoding.DecodeString(webrtcArg)
-	var data map[string]interface{}
-	json.Unmarshal(bytes1, &data)
-	rtc := &config.WebRTCConfig{Ices: make([]webrtc.ICEServer, 0)}
-	for _, v := range data["iceServers"].([]interface{}) {
-		ice := webrtc.ICEServer{
-			URLs: []string{v.(map[string]interface{})["urls"].(string)},
-		}
-		if v.(map[string]interface{})["credential"] != nil {
-			ice.Credential = v.(map[string]interface{})["credential"].(string)
-			ice.Username = v.(map[string]interface{})["username"].(string)
-		}
-		rtc.Ices = append(rtc.Ices, ice)
-	}
 
 	buff := make(chan *[]byte, 256)
 	microphone.StartMicrophone(buff)
