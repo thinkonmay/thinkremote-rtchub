@@ -197,8 +197,7 @@ func (client *WebsocketClient) OnSDP(fun signalling.OnSDPFunc) {
 }
 
 func (client *WebsocketClient) WaitForStart() {
-	for {
-		time.Sleep(time.Second)
+	for { time.Sleep(time.Millisecond * 100)
 		if client.connected {
 			return
 		}
@@ -206,8 +205,7 @@ func (client *WebsocketClient) WaitForStart() {
 }
 
 func (client *WebsocketClient) WaitForEnd() {
-	for {
-		time.Sleep(time.Second)
+	for { time.Sleep(time.Millisecond * 100)
 		if client.done {
 			return
 		}

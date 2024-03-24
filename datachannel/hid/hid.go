@@ -58,8 +58,13 @@ func NewHIDSingleton(display string) datachannel.DatachannelConsumer {
 	x,y,width,height,vx,vy := 0,0,0,0,0,0
 	go func ()  {
 		for {
-			time.Sleep(time.Millisecond * 100)
-			x,y,width,height = DisplayPosition(display)
+			time.Sleep(time.Second * 5)
+			a,b,c,d,err := DisplayPosition(display)
+			if err != nil {
+				continue
+			}
+
+			x,y,width,height = a,b,c,d
 			vx,vy = GetVirtualDisplay()
 		}
 	}()

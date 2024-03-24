@@ -210,7 +210,7 @@ func (client *WebRTCClient) readLoopRTP(listener listener.Listener, track *webrt
 		}
 	})
 
-	go func() { for { time.Sleep(time.Second)
+	go func() { for { time.Sleep(time.Millisecond * 100)
 			if client.Closed {
 				listener.DeregisterRTPHandler(id)
 				return

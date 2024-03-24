@@ -85,10 +85,6 @@ int SetGPURealtimePriority() {
 */
 import "C"
 
-const (
-	video_url = "http://localhost:60000/handshake/server?token=video"
-	audio_url = "http://localhost:60000/handshake/server?token=audio"
-)
 
 func init() {
 	resulta := C.SetPriorityClass(C.GetCurrentProcess(), C.REALTIME_PRIORITY_CLASS)
@@ -105,9 +101,15 @@ func main() {
 	displayArg := ""
 	rtc := &config.WebRTCConfig{Ices: []webrtc.ICEServer{{}, {}}}
 
+	video_url := "http://localhost:60000/handshake/server?token=video"
+	audio_url := "http://localhost:60000/handshake/server?token=audio"
 	for i, arg := range args {
 		if arg == "--display" {
 			displayArg = args[i+1]
+		} else if arg == "--video" {
+			video_url = args[i+1]
+		} else if arg == "--audio" {
+			audio_url = args[i+1]
 		} else if arg == "--stun" {
 			rtc.Ices[0].URLs = []string{args[i+1]}
 		} else if arg == "--turn" {
@@ -170,16 +172,17 @@ func main() {
 				continue
 			}
 
-			_, err = proxy.InitWebRTCProxy(signaling_client,
-				rtc,
-				chans,
-				[]listener.Listener{videopipeline},
-				handle_track)
-			if err != nil {
-				fmt.Printf("%s\n", err.Error())
-				continue
-			}
 			signaling_client.WaitForStart()
+			go func() {
+				err := proxy.InitWebRTCProxy(signaling_client,
+					rtc,
+					chans,
+					[]listener.Listener{videopipeline},
+					handle_track)
+				if err != nil {
+					fmt.Printf("webrtc error :%s\n", err.Error())
+				}
+			}()
 		}
 	}()
 
@@ -191,16 +194,17 @@ func main() {
 				continue
 			}
 
-			_, err = proxy.InitWebRTCProxy(signaling_client,
-				rtc,
-				chans,
-				[]listener.Listener{audioPipeline},
-				handle_track)
-			if err != nil {
-				fmt.Printf("%s\n", err.Error())
-				continue
-			}
 			signaling_client.WaitForStart()
+			go func() {
+				err := proxy.InitWebRTCProxy(signaling_client,
+					rtc,
+					chans,
+					[]listener.Listener{audioPipeline},
+					handle_track)
+				if err != nil {
+					fmt.Printf("webrtc error :%s\n", err.Error())
+				}
+			}()
 		}
 	}()
 

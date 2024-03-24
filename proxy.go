@@ -25,15 +25,14 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 	chan_conf datachannel.IDatachannel,
 	lis []listener.Listener,
 	onTrack webrtc.OnTrackFunc,
-) (proxy *Proxy, err error) {
+) (err error) {
 	fmt.Printf("started proxy\n")
-	proxy = &Proxy{
+	proxy := &Proxy{
 		chan_conf:        chan_conf,
 		signallingClient: grpc_conf,
 		listeners:        lis,
 	}
 
-	go proxy.handleTimeout()
 	if proxy.webrtcClient, err = webrtc.InitWebRtcClient(onTrack, *webrtc_conf); err != nil {
 		return
 	}
@@ -57,7 +56,6 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 
 			switch *state {
 			case webrtclib.ICEConnectionStateConnected:
-				proxy.webrtcClient.Listen(proxy.listeners)
 			case webrtclib.ICEConnectionStateClosed:
 				proxy.Stop()
 			case webrtclib.ICEConnectionStateFailed:
@@ -89,27 +87,29 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 	proxy.signallingClient.OnSDP(func(i *webrtclib.SessionDescription) {
 		proxy.webrtcClient.OnIncominSDP(i)
 	})
-	return
+
+	return proxy.start()
 }
 
-func (proxy *Proxy) handleTimeout() {
-	start := make(chan bool, 2)
+func (proxy *Proxy) start() error {
+	success := make(chan bool,2)
+	proxy.webrtcClient.RegisterDataChannels(proxy.chan_conf)
+	proxy.webrtcClient.Listen(proxy.listeners)
+	defer proxy.webrtcClient.StopSignaling()
+
 	go func() { proxy.signallingClient.WaitForEnd()
-		fmt.Println("application ended exchanging signaling message")
-		start <- true
+		success<-true
 	}()
-	go func() { proxy.signallingClient.WaitForStart()
-		fmt.Println("application start exchanging signaling message")
-		proxy.webrtcClient.RegisterDataChannels(proxy.chan_conf)
-		time.Sleep(20 * time.Second)
-		start <- false
+	go func() { time.Sleep(time.Second * 60)
+		success<-false
 	}()
 
-	success := <-start
-	proxy.webrtcClient.StopSignaling()
-	if !success {
-		fmt.Println("application exchange signaling timeout, closing")
+	if !<-success {
 		proxy.Stop()
+		return fmt.Errorf("application exchange signaling timeout, closing")
+	} else {
+		fmt.Println("ended signaling process")
+		return nil
 	}
 }
 
