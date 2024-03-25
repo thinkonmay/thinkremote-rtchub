@@ -56,6 +56,7 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 
 			switch *state {
 			case webrtclib.ICEConnectionStateConnected:
+			case webrtclib.ICEConnectionStateCompleted:
 			case webrtclib.ICEConnectionStateClosed:
 				proxy.Stop()
 			case webrtclib.ICEConnectionStateFailed:
@@ -92,11 +93,11 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 }
 
 func (proxy *Proxy) start() error {
-	success := make(chan bool,2)
 	proxy.webrtcClient.RegisterDataChannels(proxy.chan_conf)
 	proxy.webrtcClient.Listen(proxy.listeners)
 	defer proxy.webrtcClient.StopSignaling()
 
+	success := make(chan bool,2)
 	go func() { proxy.signallingClient.WaitForEnd()
 		success<-true
 	}()
@@ -105,15 +106,15 @@ func (proxy *Proxy) start() error {
 	}()
 
 	if !<-success {
-		proxy.Stop()
 		return fmt.Errorf("application exchange signaling timeout, closing")
 	} else {
-		fmt.Println("ended signaling process")
+		fmt.Println("webrtc connection established successfully")
 		return nil
 	}
 }
 
 func (prox *Proxy) Stop() {
+	fmt.Println("proxy stopped")
 	prox.webrtcClient.Close()
 	prox.signallingClient.Stop()
 }
