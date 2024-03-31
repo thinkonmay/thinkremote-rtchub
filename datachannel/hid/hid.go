@@ -2,11 +2,13 @@ package hid
 
 import (
 	"fmt"
+	"time"
 	"strconv"
 	"strings"
 	"encoding/base64"
 
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
+	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
 )
 
 const (
@@ -14,7 +16,7 @@ const (
 )
 
 var (
-	queue_size = 100
+	queue_size = 128
 )
 
 type HIDAdapter struct {
@@ -24,7 +26,7 @@ type HIDAdapter struct {
 	ids []string
 }
 
-func NewHIDSingleton() datachannel.DatachannelConsumer {
+func NewHIDSingleton(display string) datachannel.DatachannelConsumer {
 	ret := HIDAdapter{
 		send: make(chan datachannel.Msg,queue_size),
 		recv: make(chan string,queue_size),
@@ -53,16 +55,33 @@ func NewHIDSingleton() datachannel.DatachannelConsumer {
 		fmt.Printf("%s\n",err.Error())
 	}
 
-
-	process := func() {
+	x,y,width,height,vx,vy := 0,0,0,0,0,0
+	go func ()  {
 		for {
-			message := <-ret.recv
+			time.Sleep(time.Second * 5)
+			a,b,c,d,err := DisplayPosition(display)
+			if err != nil {
+				continue
+			}
+
+			x,y,width,height = a,b,c,d
+			vx,vy = GetVirtualDisplay()
+		}
+	}()
+	convert_pos := func (a,b float64) (X,Y float32) {
+		return (float32(x) + (float32(width)*float32(a))) / float32(vx),
+			(float32(y) + (float32(height)*float32(b))) / float32(vy)
+	}
+
+	process := func() { win32.HighPriorityThread()
+		for { message := <-ret.recv
 			msg := strings.Split(message, "|")
 			switch msg[0] {
 			case "mma":
 				x,_ := strconv.ParseFloat(msg[1],32)
 				y,_ := strconv.ParseFloat(msg[2],32)
-				SendMouseAbsolute(float32(x),float32(y))
+				nx,ny := convert_pos(x,y)
+				SendMouseAbsolute(nx,ny)
 			case "mmr":
 				x,_ := strconv.ParseFloat(msg[1],32)
 				y,_ := strconv.ParseFloat(msg[2],32)

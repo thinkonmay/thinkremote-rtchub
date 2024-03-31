@@ -67,18 +67,14 @@ func TestAdaptiveStream(t *testing.T) {
 
 		})
 
-	go func() {
-		for {
-			audioBytes, _ := json.Marshal(sampleAudio)
+	go func() { for { audioBytes, _ := json.Marshal(sampleAudio)
 			strChan <- string(audioBytes)
 			time.Sleep(time.Second)
 
 			sampleAudio.Timestamp += float64(time.Second.Nanoseconds())
 		}
 	}()
-	go func() {
-		for {
-			videoBytes, _ := json.Marshal(sampleVideo)
+	go func() { for { videoBytes, _ := json.Marshal(sampleVideo)
 			strChan <- string(videoBytes)
 			time.Sleep(time.Second)
 
@@ -87,9 +83,7 @@ func TestAdaptiveStream(t *testing.T) {
 			sampleVideo.Timestamp += float64(time.Second.Nanoseconds())
 		}
 	}()
-	go func() {
-		for {
-			networkBytes, _ := json.Marshal(sampleNetwork)
+	go func() { for { networkBytes, _ := json.Marshal(sampleNetwork)
 			strChan <- string(networkBytes)
 			time.Sleep(time.Second)
 

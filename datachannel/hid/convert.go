@@ -183,6 +183,8 @@ const (
 
 var (
 	extendkeys = []int{    
+        LWIN,
+        RWIN,
         RMENU,
         RCONTROL,
         INSERT,
@@ -256,26 +258,6 @@ var (
 
 func ExtendedFlag(code int) int {
 	for _,v := range extendkeys {
-		if code == v {
-			return 1
-		}
-	}
-
-	return 0
-}
-
-func LRKey(code int) int {
-	for _, v := range positionkeys {
-		if code == v {
-			return 1
-		}
-	}
-
-	return 0
-}
-
-func ScanKey(code int) int {
-	for _, v := range scankeys {
 		if code == v {
 			return 1
 		}

@@ -1,70 +1,101 @@
-package websocket
+package http
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
-	"sync"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/google/uuid"
 	"github.com/pion/webrtc/v3"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC/packet"
 )
 
 type WebsocketClient struct {
-	conn *websocket.Conn
-	mut  *sync.Mutex
-
 	sdpChan chan *webrtc.SessionDescription
 	iceChan chan *webrtc.ICECandidateInit
+
+	incoming  chan *packet.SignalingMessage
+	outcoming chan *packet.SignalingMessage
 
 	done      bool
 	connected bool
 }
 
-func InitWebsocketClient(AddressStr string) (_ signalling.Signalling, err error) {
+func InitHttpClient(AddressStr string) (_ signalling.Signalling, err error) {
 	ret := &WebsocketClient{
-		sdpChan: make(chan *webrtc.SessionDescription, 2),
-		iceChan: make(chan *webrtc.ICECandidateInit, 2),
+		sdpChan: make(chan *webrtc.SessionDescription, 8),
+		iceChan: make(chan *webrtc.ICECandidateInit, 8),
+
+		incoming:  make(chan *packet.SignalingMessage, 8),
+		outcoming: make(chan *packet.SignalingMessage, 8),
 
 		connected: false,
 		done:      false,
-		mut:       &sync.Mutex{},
 	}
 
-	dialer := websocket.Dialer{HandshakeTimeout: 3 * time.Second}
-	dial_ctx, _ := context.WithTimeout(context.TODO(), 3*time.Second)
-	ret.conn, _, err = dialer.DialContext(dial_ctx,AddressStr, nil)
+	u, err := url.Parse(AddressStr)
 	if err != nil {
-		fmt.Printf("signaling websocket error: %s", err.Error())
-		return nil, err
+		return
 	}
+	q := u.Query()
+	q.Add("uniqueid", uuid.New().String())
+	u.RawQuery = q.Encode()
 
-	go func() { for { time.Sleep(time.Second)
-			if !ret.done {
-				ret.mut.Lock()
-				ret.conn.WriteMessage(websocket.TextMessage, []byte("ping"))
-				ret.mut.Unlock()
-			} else {
+	go func() {
+		for {
+			time.Sleep(300 * time.Millisecond)
+			if ret.done {
 				ret.iceChan <- nil
 				ret.sdpChan <- nil
-				ret.mut.Lock()
-				ret.conn.Close()
-				ret.mut.Unlock()
+				ret.incoming <- nil
 				return
+			}
+
+			pkt := []packet.SignalingMessage{}
+			for {
+				if len(ret.outcoming) == 0 {
+					break
+				}
+				out := <-ret.outcoming
+				pkt = append(pkt, *out)
+			}
+
+			b, _ := json.Marshal(pkt)
+			resp, err := http.DefaultClient.Post(
+				u.String(),
+				"application/json",
+				strings.NewReader(string(b)),
+			)
+			if err != nil {
+				fmt.Printf("failed to send http %s", err.Error())
+				continue
+			}
+
+			b, err = io.ReadAll(resp.Body)
+			if err != nil {
+				fmt.Printf("failed to read http body %s", err.Error())
+			}
+
+			err = json.Unmarshal(b, &pkt)
+			if err != nil {
+				fmt.Printf("failed to read http body %s", err.Error())
+			}
+
+			for _, sm := range pkt {
+				ret.incoming <- &sm
 			}
 		}
 	}()
 
-	res := &packet.SignalingMessage{}
-	go func() { for { err := ret.conn.ReadJSON(res)
-			if ret.done {
-				return
-			} else if err != nil {
-				fmt.Printf("%s\n", err.Error())
-				fmt.Printf("websocket connection terminated\n")
-				ret.Stop()
+	go func() {
+		for {
+			res := <-ret.incoming
+			if res == nil {
 				return
 			}
 
@@ -111,12 +142,8 @@ func (client *WebsocketClient) SendSDP(desc *webrtc.SessionDescription) error {
 		},
 	}
 
-	client.mut.Lock()
-	defer client.mut.Unlock()
 	fmt.Printf("SDP send %s\n", req.Sdp.Type)
-	if err := client.conn.WriteJSON(&req); err != nil {
-		return err
-	}
+	client.outcoming <- &req
 	return nil
 }
 
@@ -125,7 +152,7 @@ func (client *WebsocketClient) SendICE(ice *webrtc.ICECandidateInit) error {
 		return fmt.Errorf("signaling client is closed")
 	}
 
-	req := &packet.SignalingMessage{
+	req := packet.SignalingMessage{
 		Type: packet.SignalingType_tICE,
 		Ice: &packet.ICE{
 			SDPMid:        *ice.SDPMid,
@@ -134,17 +161,15 @@ func (client *WebsocketClient) SendICE(ice *webrtc.ICECandidateInit) error {
 		},
 	}
 
-	client.mut.Lock()
-	defer client.mut.Unlock()
 	fmt.Printf("ICE sent %v\n", req.Ice)
-	if err := client.conn.WriteJSON(req); err != nil {
-		return err
-	}
+	client.outcoming <- &req
 	return nil
 }
 
 func (client *WebsocketClient) OnICE(fun signalling.OnIceFunc) {
-	go func() { for { ice := <-client.iceChan
+	go func() {
+		for {
+			ice := <-client.iceChan
 			if ice == nil {
 				return
 			}
@@ -157,7 +182,9 @@ func (client *WebsocketClient) OnICE(fun signalling.OnIceFunc) {
 }
 
 func (client *WebsocketClient) OnSDP(fun signalling.OnSDPFunc) {
-	go func() { for { sdp := <-client.sdpChan
+	go func() {
+		for {
+			sdp := <-client.sdpChan
 			if sdp == nil {
 				return
 			}
@@ -170,15 +197,15 @@ func (client *WebsocketClient) OnSDP(fun signalling.OnSDPFunc) {
 }
 
 func (client *WebsocketClient) WaitForStart() {
-	for { time.Sleep(time.Second)
-		if client.connected { 
-			return 
+	for { time.Sleep(time.Millisecond * 100)
+		if client.connected {
+			return
 		}
 	}
 }
 
 func (client *WebsocketClient) WaitForEnd() {
-	for { time.Sleep(time.Second)
+	for { time.Sleep(time.Millisecond * 100)
 		if client.done {
 			return
 		}

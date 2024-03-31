@@ -10,7 +10,7 @@ import (
 
 
 const (
-	queue_size = 1000
+	queue_size = 128
 	evaluation_period = 10
 )
 
@@ -65,117 +65,96 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 		ctxs: make(map[string]*AdsCtx),
 	}
 
-	video_reset := func () {
-		ret.triggerVideoReset() 
-		form := struct{ 
-			Type string `json:"type"` 
-		}{ 
-			Type: "FRAME_LOSS", 
-		}
-		data,_ :=json.Marshal(form)
-		ret.SendToAll(string(data))
-	}
 
-	afterprocess := func() {
-		for {
+
+	afterprocess := func() { for { time.Sleep(100 * time.Millisecond)
 			ret.mut.Lock()
 			for id,ac := range ret.ctxs {
-				if len(ac.afterVQueue) < evaluation_period {
-					continue
-				}
+				if len(ac.afterVQueue) > evaluation_period {
+					value := VideoData{
+						Type: "VIDEO",
+						DecodeFps: []int{},
+						ReceiveFps: []int{},
+						Bandwidth : []int{},
+						PacketsLoss : []int{},
+						Buffer : []int{},
+					}
 
-				value := VideoData{
-					Type: "VIDEO",
-					DecodeFps: []int{},
-					ReceiveFps: []int{},
-					Bandwidth : []int{},
-					PacketsLoss : []int{},
-					Buffer : []int{},
-				}
-
-				for i := 0; i < evaluation_period; i++ {
-					vid:=<-ac.afterVQueue
-					value.DecodeFps  = append(value.DecodeFps  , int(vid.DecodedFps))
-					value.ReceiveFps = append(value.ReceiveFps , int(vid.ReceivedFps))
-					value.Bandwidth  = append(value.Bandwidth  , int(vid.VideoBandwidthConsumption * 8 / 1024))
-					value.PacketsLoss= append(value.PacketsLoss, int(vid.VideoPacketsLostpercent * 100))
-					value.Buffer     = append(value.Buffer     , int(vid.BufferedFrame))
-				}
+					for i := 0; i < evaluation_period; i++ {
+						vid:=<-ac.afterVQueue
+						value.DecodeFps  = append(value.DecodeFps  , int(vid.DecodedFps))
+						value.ReceiveFps = append(value.ReceiveFps , int(vid.ReceivedFps))
+						value.Bandwidth  = append(value.Bandwidth  , int(vid.VideoBandwidthConsumption * 8 / 1024))
+						value.PacketsLoss= append(value.PacketsLoss, int(vid.VideoPacketsLostpercent * 100))
+						value.Buffer     = append(value.Buffer     , int(vid.BufferedFrame))
+					}
 
 
-				data,_ :=json.Marshal(&value);
-				ret.out<-datachannel.Msg{
-					Id : id,
-					Msg : string(data),
+					data,_ :=json.Marshal(&value);
+					ret.out<-datachannel.Msg{
+						Id : id,
+						Msg : string(data),
+					}
 				}
-			}
-
-			for _,ac := range ret.ctxs {
-				if len(ac.afterAQueue) < evaluation_period {
-					continue
+				if len(ac.afterAQueue) > evaluation_period {
+					for i := 0; i < evaluation_period; i++ {
+						<-ac.afterAQueue
+					}
 				}
-
-				// TODO
-				for i := 0; i < evaluation_period; i++ {
-					_=<-ac.afterAQueue
-				}
-			}
-
-			for _,ac := range ret.ctxs {
-				if len(ac.afterNQueue) < evaluation_period {
-					continue
+				if len(ac.afterNQueue) > evaluation_period {
+					for i := 0; i < evaluation_period; i++ {
+						<-ac.afterNQueue
+					}
 				}
 
-				// TODO
-				for i := 0; i < evaluation_period; i++ {
-					_=<-ac.afterNQueue
-				}
 			}
 
 			ret.mut.Unlock()
-			time.Sleep(10 * time.Millisecond)
 		}
 	}
-	process := func() {
-		for {
+
+
+
+	reset_queue := make(chan bool,64)	
+	go func () { for { <-reset_queue
+			ret.triggerVideoReset() 
+			data,_ := json.Marshal(struct{ Type string `json:"type"` }{ Type: "FRAME_LOSS", })
+			ret.SendToAll(string(data))
+
+
+			time.Sleep(300 * time.Millisecond)
+			for { if len(reset_queue) > 0 { <-reset_queue } else {break} }
+		}
+	}()
+	process := func() { for { time.Sleep(5 * time.Millisecond) // donot reduce this period
 			ret.mut.Lock()
 			for _,ac := range ret.ctxs {
-				if len(ac.vqueue) == 0 {
-					continue
+				for { if len(ac.vqueue) > 0 {
+						vid:=<-ac.vqueue
+						ac.afterVQueue<-vid
+
+						if vid.DecodedFps == 0 { reset_queue<-true }
+					}
+					break
 				}
-
-				vid:=<-ac.vqueue
-				if vid.DecodedFps == 0 { video_reset() }
-				ac.afterVQueue<-vid
-			}
-
-			for _,ac := range ret.ctxs {
-				if len(ac.aqueue) == 0 {
-					continue
+				for { if len(ac.aqueue) > 0 {
+						data:=<-ac.aqueue
+						ac.afterAQueue<-data
+					}
+					break
 				}
-
-				data:=<-ac.aqueue
-				ac.afterAQueue<-data
-			}
-
-			for _,ac := range ret.ctxs {
-				if len(ac.nqueue) == 0 {
-					continue
+				for { if len(ac.nqueue) > 0 {
+						data:=<-ac.nqueue
+						ac.afterNQueue<-data
+					}
+					break
 				}
-
-				data:=<-ac.nqueue
-				ac.afterNQueue<-data
 			}
-
 
 			ret.mut.Unlock()
-			time.Sleep(10 * time.Millisecond)
 		}
 	}
-
-	preprocess := func() {
-		for {
-			in := <-ret.in
+	preprocess := func() { for { in := <-ret.in
 			metricRaw := in.Msg
 			var out map[string]interface{}
 			json.Unmarshal([]byte(metricRaw), &out)
@@ -197,6 +176,7 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 		}
 	}
 
+	go preprocess()
 	go preprocess()
 	go process()
 	go afterprocess()
@@ -328,12 +308,14 @@ func (ads *AdsMultiCtxs) SetContext(ids []string) {
 
 
 func (ads *AdsMultiCtxs) SendToAll(msg string) {
+	ads.mut.Lock()
 	for k := range ads.ctxs {
 		ads.out<-datachannel.Msg{
 			Msg: msg,
 			Id: k,
 		}
 	}
+	ads.mut.Unlock()
 }
 
 

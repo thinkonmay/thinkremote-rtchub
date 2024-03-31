@@ -6,19 +6,19 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
+	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
 )
 
 import "C"
 
 const (
-	no_limit          = 200
-	thread_count      = 1
+	queue_size     = 1024
 )
 
 type sample struct {
-	data []byte 
+	data    []byte
 	samples uint32
-	id int
+	id      int
 }
 type Multiplexer struct {
 	id string
@@ -27,55 +27,35 @@ type Multiplexer struct {
 
 	mutex   *sync.Mutex
 	queue   chan *sample
-	handler map[string]Handler
+	handler map[string]*Handler
 }
 
 type Handler struct {
 	handler func(*rtp.Packet)
+	buffer  chan *rtp.Packet
 }
 
-
-
-
-func NewMultiplexer(id string,packetizer func() rtppay.Packetizer) *Multiplexer {
+func NewMultiplexer(id string, packetizer rtppay.Packetizer) *Multiplexer {
 	ret := &Multiplexer{
-		id:      id,
-		mutex:   &sync.Mutex{},
-		queue:   make(chan *sample, no_limit),
-		handler: map[string]Handler{},
-		packetizer: packetizer(),
+		id:         id,
+		mutex:      &sync.Mutex{},
+		queue:      make(chan *sample, queue_size),
+		handler:    map[string]*Handler{},
+		packetizer: packetizer,
 	}
 
-
-	sender := func (handler Handler,packets []*rtp.Packet) {
-		for _,packet := range packets {
-			handler.handler(packet); 
-		}
-	}
-
-	packetize := func() {
-		for {
-			sample := <-ret.queue
-			packets := ret.packetizer.Packetize(sample.data,sample.samples)
-			ret.mutex.Lock()
-			for _,handler := range ret.handler { go sender(handler,packets) }
-			ret.mutex.Unlock()
-		}
-	}
-
-	for i := 0; i < thread_count; i++ {
-		go packetize()
-	}
 	return ret
 }
 
 func (ret *Multiplexer) Send(Buff []byte, Samples uint32) {
-	sample := &sample{
-		data: make([]byte, len(Buff)),
-		samples: Samples,
+	packets := ret.packetizer.Packetize(Buff, Samples)
+	ret.mutex.Lock()
+	defer ret.mutex.Unlock()
+	for _, handler := range ret.handler {
+		for _, p := range packets {
+			handler.buffer <- p
+		}
 	}
-	copy(sample.data,Buff)
-	ret.queue <- sample
 }
 
 func (p *Multiplexer) Close() {
@@ -83,8 +63,8 @@ func (p *Multiplexer) Close() {
 	for k := range p.handler {
 		keys = append(keys, k)
 	}
-	
-	for _,v := range keys {
+
+	for _, v := range keys {
 		p.DeregisterRTPHandler(v)
 	}
 }
@@ -97,15 +77,28 @@ func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	p.handler[id] = Handler{
+	handler := Handler{
 		handler: fun,
+		buffer:  make(chan *rtp.Packet, queue_size),
 	}
+
+	p.handler[id] = &handler
+	go func() { win32.HighPriorityThread()
+		for {
+			buffer := <-handler.buffer
+			if buffer == nil {
+				return
+			}
+
+			handler.handler(buffer)
+		}
+	}()
 }
 
 func (p *Multiplexer) DeregisterRTPHandler(id string) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-
-	delete(p.handler,id)
-	fmt.Printf("deregister RTP handler %s\n",id)
+	p.handler[id].buffer <- nil
+	delete(p.handler, id)
+	fmt.Printf("deregister RTP handler %s\n", id)
 }

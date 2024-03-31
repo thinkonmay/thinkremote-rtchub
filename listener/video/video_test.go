@@ -1,4 +1,4 @@
-package video
+package video 
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 )
 
 func TestVideo(t *testing.T) {
-	videopipeline,err := CreatePipeline("videotestsrc ! openh264enc gop-size=5 ! appsink name=appsink")
+	videopipeline,err := CreatePipeline("")
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s",err.Error())
 		return
@@ -26,8 +26,6 @@ func TestVideo(t *testing.T) {
 	})
 
 	videopipeline.Open()
-	videopipeline.DeregisterRTPHandler("test")
-	time.Sleep(10 * time.Second)
+	time.Sleep(1000 * time.Second)
 	videopipeline.Close()
-	time.Sleep(1 * time.Second)
 }
