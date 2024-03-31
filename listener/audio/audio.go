@@ -10,7 +10,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/opus"
 	"github.com/thinkonmay/thinkremote-rtchub/util/sunshine"
-	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
+	"github.com/thinkonmay/thinkremote-rtchub/util/thread"
 )
 
 import "C"
@@ -40,7 +40,7 @@ func CreatePipeline() (*AudioPipeline, error) {
 
 	pipeline.reset()
 	go func() {
-		win32.HighPriorityThread()
+		thread.HighPriorityThread()
 		buffer := make([]byte, 256*1024) //256kB
 
 		for {

@@ -1,10 +1,5 @@
 package hid
 
-/*
-#include <Windows.h>
-*/
-import "C"
-
 const (
     LBUTTON = 0x01
     RBUTTON = 0x02

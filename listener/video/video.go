@@ -12,7 +12,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/h264"
-	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
+	"github.com/thinkonmay/thinkremote-rtchub/util/thread"
 	"github.com/thinkonmay/thinkremote-rtchub/util/sunshine"
 )
 
@@ -56,7 +56,7 @@ func CreatePipeline(display string) ( listener.Listener,
 
 
 	pipeline.reset()
-	go func() { win32.HighPriorityThread()
+	go func() { thread.HighPriorityThread()
 		buffer := make([]byte, 256*1024) //256kB
 		timestamp := time.Now().UnixNano()
 

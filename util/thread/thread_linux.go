@@ -1,0 +1,4 @@
+package thread
+
+func HighPriorityThread() {
+}

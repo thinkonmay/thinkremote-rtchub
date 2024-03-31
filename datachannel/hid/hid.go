@@ -8,7 +8,7 @@ import (
 	"encoding/base64"
 
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
-	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
+	"github.com/thinkonmay/thinkremote-rtchub/util/thread"
 )
 
 const (
@@ -73,7 +73,7 @@ func NewHIDSingleton(display string) datachannel.DatachannelConsumer {
 			(float32(y) + (float32(height)*float32(b))) / float32(vy)
 	}
 
-	process := func() { win32.HighPriorityThread()
+	process := func() { thread.HighPriorityThread()
 		for { message := <-ret.recv
 			msg := strings.Split(message, "|")
 			switch msg[0] {

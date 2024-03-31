@@ -3,7 +3,9 @@ module github.com/thinkonmay/thinkremote-rtchub
 go 1.22
 
 require (
+	github.com/faiface/beep v1.1.0
 	github.com/gorilla/websocket v1.5.0
+	github.com/pion/opus v0.0.0-20240105012622-483adc6e6efc
 	github.com/pion/rtp v1.8.3
 	github.com/pion/webrtc/v3 v3.2.29
 	google.golang.org/protobuf v1.28.1
@@ -11,10 +13,8 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/faiface/beep v1.1.0 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/hajimehoshi/oto v0.7.1 // indirect
-	github.com/pion/opus v0.0.0-20240105012622-483adc6e6efc // indirect
 	github.com/pion/rtcp v1.2.12 // indirect
 	github.com/pion/transport/v2 v2.2.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -27,7 +27,7 @@ require (
 )
 
 require (
-	github.com/google/uuid v1.3.1 // indirect
+	github.com/google/uuid v1.3.1
 	github.com/pion/datachannel v1.5.5 // indirect
 	github.com/pion/dtls/v2 v2.2.7 // indirect
 	github.com/pion/ice/v2 v2.3.13 // indirect

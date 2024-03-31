@@ -6,7 +6,7 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay"
-	"github.com/thinkonmay/thinkremote-rtchub/util/win32"
+	"github.com/thinkonmay/thinkremote-rtchub/util/thread"
 )
 
 import "C"
@@ -83,7 +83,7 @@ func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 	}
 
 	p.handler[id] = &handler
-	go func() { win32.HighPriorityThread()
+	go func() { thread.HighPriorityThread()
 		for {
 			buffer := <-handler.buffer
 			if buffer == nil {
