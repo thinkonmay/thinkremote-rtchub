@@ -22,14 +22,14 @@ import (
 
 func main() {
 	args := os.Args[1:]
-	displayArg := ""
 	rtc := &config.WebRTCConfig{Ices: []webrtc.ICEServer{{}, {}}}
 
+	token := ""
 	video_url := "http://localhost:60000/handshake/server?token=video"
 	audio_url := "http://localhost:60000/handshake/server?token=audio"
 	for i, arg := range args {
-		if arg == "--display" {
-			displayArg = args[i+1]
+		if arg == "--token" {
+			token = args[i+1]
 		} else if arg == "--video" {
 			video_url = args[i+1]
 		} else if arg == "--audio" {
@@ -45,36 +45,29 @@ func main() {
 		}
 	}
 
-	audioPipeline, err := audio.CreatePipeline()
+
+	memory,err := proxy.ObtainSharedMemory(token)
+	if err != nil {
+		fmt.Printf("error obtain shared memory %s\n", err.Error())
+		return
+	}
+
+	audioPipeline, err := audio.CreatePipeline(memory)
 	if err != nil {
 		fmt.Printf("error initiate audio pipeline %s\n", err.Error())
 		return
 	}
 
-	audioPipeline.Open()
-
-	videopipeline, err := video.CreatePipeline(displayArg)
+	videopipeline, err := video.CreatePipeline(memory)
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s\n", err.Error())
 		return
 	}
 
 	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
-	chans.RegisterConsumer("adaptive", adaptive.NewAdsContext(
-		func(bitrate int) { videopipeline.SetProperty("bitrate", bitrate) },
-		func() { videopipeline.SetProperty("reset", 0) },
-	))
-	chans.RegisterConsumer("manual", manual.NewManualCtx(
-		func(bitrate int) { videopipeline.SetProperty("bitrate", bitrate) },
-		func(framerate int) { videopipeline.SetProperty("framerate", framerate) },
-		func(pointer int) { videopipeline.SetProperty("pointer", pointer) },
-		func(display string) { videopipeline.SetPropertyS("display", display) },
-		func(pointer string) { videopipeline.SetPropertyS("codec", pointer) },
-		func() { videopipeline.SetProperty("reset", 0) },
-	))
-	chans.RegisterConsumer("hid", hid.NewHIDSingleton(displayArg))
-
-	videopipeline.Open()
+	chans.RegisterConsumer("adaptive", adaptive.NewAdsContext(memory))
+	chans.RegisterConsumer("manual", manual.NewManualCtx(memory))
+	chans.RegisterConsumer("hid", hid.NewHIDSingleton(memory))
 
 	handle_track := func(tr *webrtc.TrackRemote) { }
 	go func() {

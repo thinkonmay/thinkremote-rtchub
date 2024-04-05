@@ -63,6 +63,7 @@ int SetGPURealtimePriority() {
 
 */
 import "C"
+import "fmt"
 
 
 func init() {

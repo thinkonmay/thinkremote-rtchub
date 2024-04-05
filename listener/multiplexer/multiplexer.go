@@ -9,8 +9,6 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/util/thread"
 )
 
-import "C"
-
 const (
 	queue_size     = 1024
 )

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
+	"github.com/thinkonmay/thinkremote-rtchub"
 )
 
 
@@ -34,10 +35,6 @@ type AdsMultiCtxs struct {
 	in  chan datachannel.Msg
 	out chan datachannel.Msg
 
-	triggerVideoReset func()
-	bitrateChangeFunc func(bitrate int)
-
-
 
 	mut *sync.Mutex
 	ctxs map[string]*AdsCtx
@@ -53,14 +50,11 @@ type VideoData struct{
 }
 
 
-func NewAdsContext(BitrateCallback func(bitrate int),
-	IDRcallback func()) datachannel.DatachannelConsumer {
+func NewAdsContext(memory *proxy.SharedMemory) datachannel.DatachannelConsumer {
 	ret := &AdsMultiCtxs{
 		in:  make(chan datachannel.Msg,queue_size),
 		out: make(chan datachannel.Msg,queue_size),
 
-		triggerVideoReset: IDRcallback,
-		bitrateChangeFunc: BitrateCallback,
 		mut: &sync.Mutex{},
 		ctxs: make(map[string]*AdsCtx),
 	}
@@ -117,7 +111,7 @@ func NewAdsContext(BitrateCallback func(bitrate int),
 
 	reset_queue := make(chan bool,64)	
 	go func () { for { <-reset_queue
-			ret.triggerVideoReset() 
+			memory.Raise(proxy.IDR_FRAME,0) 
 			data,_ := json.Marshal(struct{ Type string `json:"type"` }{ Type: "FRAME_LOSS", })
 			ret.SendToAll(string(data))
 
