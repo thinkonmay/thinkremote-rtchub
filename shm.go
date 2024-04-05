@@ -1,6 +1,7 @@
 package proxy
 
 /*
+#include <string.h>
 #define QUEUE_SIZE 16
 #define PACKET_SIZE 32 * 1024
 
@@ -62,20 +63,14 @@ typedef struct {
 */
 import "C"
 import (
-	"errors"
-	"fmt"
-	"syscall"
-	"time"
 	"unsafe"
-
-	"golang.org/x/sys/windows"
 )
 
 type SharedMemory C.SharedMemory
 
-func (memory *SharedMemory) Raise(event_id ,value int) {
-	memory.events[event_id].value_number = C.int(value);
-	memory.events[event_id].read = 0;
+func (memory *SharedMemory) Raise(event_id, value int) {
+	memory.events[event_id].value_number = C.int(value)
+	memory.events[event_id].read = 0
 }
 
 const (
@@ -94,89 +89,20 @@ const (
 	EVENT_TYPE_MAX   = C.EVENT_TYPE_MAX
 )
 
-const (
-	audio = 1
-	video = 2
-)
-
-type DataType int
-
-func peek(memory *C.SharedMemory, media DataType) bool {
-	if media == video {
-		return memory.queues[C.Video0].order[0] != -1
-	} else if media == audio {
-		return memory.queues[C.Audio].order[0] != -1
-	}
-
-	panic(fmt.Errorf("unknown data type"))
+func (memory *SharedMemory) Peek(media int) bool {
+	return memory.queues[media].order[0] != -1
 }
+func (memory *SharedMemory) Copy(in []byte, media int) int {
+	memory.Lock()
+	defer memory.Unlock()
 
-func ObtainSharedMemory(token string) (*SharedMemory,error) {
-	mod, err := syscall.LoadDLL("libparent.dll")
-	if err != nil {
-		return nil, err
-	}
-	obtain, err := mod.FindProc("obtain_shared_memory")
-	if err != nil {
-		return nil, err
-	}
-	lock, err := mod.FindProc("lock_shared_memory")
-	if err != nil {
-		return nil, err
-	}
-	unlock, err := mod.FindProc("unlock_shared_memory")
-	if err != nil {
-		return nil, err
+	block := memory.queues[media].array[memory.queues[media].order[0]]
+	C.memcpy(unsafe.Pointer(&in[0]), unsafe.Pointer(&block.data[0]), C.ulonglong(block.size))
+
+	memory.queues[media].order[C.QUEUE_SIZE-1] = -1
+	for i := 0; i < C.QUEUE_SIZE-1; i++ {
+		memory.queues[media].order[i] = memory.queues[media].order[i+1]
 	}
 
-	buffer := []byte(token)
-	pointer, _, err := obtain.Call(
-		uintptr(unsafe.Pointer(&buffer[0])),
-	)
-	if !errors.Is(err, windows.ERROR_SUCCESS) {
-		panic(err)
-	}
-
-	memory := (*C.SharedMemory)(unsafe.Pointer(pointer))
-	handle_video := func() {
-		lock.Call(pointer)
-		defer unlock.Call(pointer)
-
-		block := memory.queues[C.Video0].array[memory.queues[C.Video0].order[0]]
-		fmt.Printf("video buffer %d\n", block.size)
-
-		for i := 0; i < C.QUEUE_SIZE-1; i++ {
-			memory.queues[C.Video0].order[i] = memory.queues[C.Video0].order[i+1]
-		}
-
-		memory.queues[C.Video0].order[C.QUEUE_SIZE-1] = -1
-	}
-
-	handle_audio := func() {
-		lock.Call(pointer)
-		defer unlock.Call(pointer)
-
-		block := memory.queues[C.Audio].array[memory.queues[C.Audio].order[0]]
-		fmt.Printf("audio buffer %d\n", block.size)
-
-		for i := 0; i < C.QUEUE_SIZE-1; i++ {
-			memory.queues[C.Audio].order[i] = memory.queues[C.Audio].order[i+1]
-		}
-
-		memory.queues[C.Audio].order[C.QUEUE_SIZE-1] = -1
-	}
-
-	go func() {
-		for {
-			for peek(memory, video) {
-				handle_video()
-			}
-			for peek(memory, audio) {
-				handle_audio()
-			}
-
-			time.Sleep(time.Millisecond)
-		}
-	}()
-	return (*SharedMemory)(unsafe.Pointer(pointer)),nil
+	return int(block.size)
 }

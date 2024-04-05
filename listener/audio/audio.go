@@ -3,6 +3,7 @@ package audio
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
@@ -38,7 +39,11 @@ func CreatePipeline(memory *proxy.SharedMemory) (*AudioPipeline, error) {
 		buffer := make([]byte, 256*1024) //256kB
 
 		for {
+			for !memory.Peek(proxy.Audio) {
+				time.Sleep(time.Millisecond)
+			}
 
+			memory.Copy(buffer,proxy.Audio)
 			pipeline.Multiplexer.Send(buffer, uint32(pipeline.clockRate/100))
 		}
 	}()

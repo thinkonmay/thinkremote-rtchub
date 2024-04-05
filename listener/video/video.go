@@ -20,8 +20,6 @@ type VideoPipeline struct {
 	closed      bool
 	pipeline    unsafe.Pointer
 	mut         *sync.Mutex
-	properties  map[string]int
-	sproperties map[string]string
 
 	clockRate float64
 
@@ -49,7 +47,11 @@ func CreatePipeline(memory *proxy.SharedMemory) (listener.Listener,
 		timestamp := time.Now().UnixNano()
 
 		for {
+			for !memory.Peek(proxy.Video0) {
+				time.Sleep(time.Millisecond)
+			}
 
+			memory.Copy(buffer,proxy.Video0)
 			diff := time.Now().UnixNano() - timestamp
 			pipeline.Multiplexer.Send(buffer, uint32(time.Duration(diff).Seconds()*pipeline.clockRate))
 			timestamp = timestamp + diff
