@@ -25,6 +25,11 @@ func ObtainSharedMemory(token string) (*SharedMemory, error) {
 	if err != nil {
 		return nil, err
 	}
+	deinit, err := mod.FindProc("deinit_shared_memory")
+	if err != nil {
+		return nil, err
+	}
+	deinit.Call() // actually we don't allocate new memory, 
 	obtain, err := mod.FindProc("obtain_shared_memory")
 	if err != nil {
 		return nil, err
@@ -43,7 +48,7 @@ func ObtainSharedMemory(token string) (*SharedMemory, error) {
 		uintptr(unsafe.Pointer(&buffer[0])),
 	)
 	if !errors.Is(err, windows.ERROR_SUCCESS) {
-		panic(err)
+		return nil,err
 	}
 
 	return (*SharedMemory)(unsafe.Pointer(pointer)), nil
