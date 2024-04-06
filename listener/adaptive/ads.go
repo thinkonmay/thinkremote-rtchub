@@ -50,7 +50,7 @@ type VideoData struct{
 }
 
 
-func NewAdsContext(memory *proxy.SharedMemory) datachannel.DatachannelConsumer {
+func NewAdsContext(memory *proxy.SharedMemory, video_channel int) datachannel.DatachannelConsumer {
 	ret := &AdsMultiCtxs{
 		in:  make(chan datachannel.Msg,queue_size),
 		out: make(chan datachannel.Msg,queue_size),
@@ -111,7 +111,7 @@ func NewAdsContext(memory *proxy.SharedMemory) datachannel.DatachannelConsumer {
 
 	reset_queue := make(chan bool,64)	
 	go func () { for { <-reset_queue
-			memory.Raise(proxy.IDR_FRAME,0) 
+			memory.GetQueue(video_channel).Raise(proxy.Idr,0) 
 			data,_ := json.Marshal(struct{ Type string `json:"type"` }{ Type: "FRAME_LOSS", })
 			ret.SendToAll(string(data))
 

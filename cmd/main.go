@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/pion/webrtc/v3"
@@ -25,11 +26,14 @@ func main() {
 	rtc := &config.WebRTCConfig{Ices: []webrtc.ICEServer{{}, {}}}
 
 	token := ""
+	videochannel := int64(0)
 	video_url := "http://localhost:60000/handshake/server?token=video"
 	audio_url := "http://localhost:60000/handshake/server?token=audio"
 	for i, arg := range args {
 		if arg == "--token" {
 			token = args[i+1]
+		} else if arg == "--video_channel" {
+			videochannel,_ = strconv.ParseInt(args[i+1],10,16)
 		} else if arg == "--video" {
 			video_url = args[i+1]
 		} else if arg == "--audio" {
@@ -58,14 +62,14 @@ func main() {
 		return
 	}
 
-	videopipeline, err := video.CreatePipeline(memory)
+	videopipeline, err := video.CreatePipeline(memory,int(videochannel))
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s\n", err.Error())
 		return
 	}
 
 	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
-	chans.RegisterConsumer("adaptive", adaptive.NewAdsContext(memory))
+	chans.RegisterConsumer("adaptive", adaptive.NewAdsContext(memory,int(videochannel)))
 	chans.RegisterConsumer("manual", manual.NewManualCtx(memory))
 	chans.RegisterConsumer("hid", hid.NewHIDSingleton(memory))
 

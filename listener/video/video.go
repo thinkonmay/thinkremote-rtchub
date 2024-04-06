@@ -28,7 +28,7 @@ type VideoPipeline struct {
 }
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(memory *proxy.SharedMemory) (listener.Listener,
+func CreatePipeline(memory *proxy.SharedMemory, channel int) (listener.Listener,
 	error) {
 
 	pipeline := &VideoPipeline{
@@ -41,22 +41,24 @@ func CreatePipeline(memory *proxy.SharedMemory) (listener.Listener,
 		Multiplexer: multiplexer.NewMultiplexer("video", h264.NewH264Payloader()),
 	}
 
-	go func() {
+	go func(queue *proxy.Queue) {
 		thread.HighPriorityThread()
 		buffer := make([]byte, 256*1024) //256kB
 		timestamp := time.Now().UnixNano()
+		local_index := queue.CurrentIndex()
 
 		for {
-			for !memory.Peek(proxy.Video0) {
+			for local_index == queue.CurrentIndex() {
 				time.Sleep(time.Millisecond)
 			}
 
-			memory.Copy(buffer,proxy.Video0)
+			local_index++
+			queue.Copy(buffer,local_index)
 			diff := time.Now().UnixNano() - timestamp
 			pipeline.Multiplexer.Send(buffer, uint32(time.Duration(diff).Seconds()*pipeline.clockRate))
 			timestamp = timestamp + diff
 		}
-	}()
+	}(memory.GetQueue(channel))
 	return pipeline, nil
 }
 

@@ -34,19 +34,21 @@ func CreatePipeline(memory *proxy.SharedMemory) (*AudioPipeline, error) {
 		Multiplexer: multiplexer.NewMultiplexer("audio", opus.NewOpusPayloader()),
 	}
 
-	go func() {
+	go func(queue *proxy.Queue) {
 		thread.HighPriorityThread()
 		buffer := make([]byte, 256*1024) //256kB
+		local_index := queue.CurrentIndex()
 
 		for {
-			for !memory.Peek(proxy.Audio) {
+			for local_index == queue.CurrentIndex() {
 				time.Sleep(time.Millisecond)
 			}
 
-			memory.Copy(buffer,proxy.Audio)
+			local_index++
+			queue.Copy(buffer,local_index)
 			pipeline.Multiplexer.Send(buffer, uint32(pipeline.clockRate/100))
 		}
-	}()
+	}(memory.GetQueue(proxy.Audio))
 	return pipeline, nil
 }
 
