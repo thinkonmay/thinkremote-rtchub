@@ -15,8 +15,8 @@ type Queue C.Queue
 const (
 	Audio      = C.Audio
 	Microphone = C.Microphone
+	Input      = C.Input
 	Max        = C.QueueMax
-
 	Idr        = C.Idr
 )
 
