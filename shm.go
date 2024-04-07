@@ -33,7 +33,7 @@ func (queue *Queue) CurrentIndex() int {
 }
 func (queue *Queue) Copy(in []byte, index int) int {
 	real_index := index % int(C.QUEUE_SIZE)
-	block := queue.array[real_index]
+	block := &queue.array[real_index]
 	C.memcpy(unsafe.Pointer(&in[0]), unsafe.Pointer(&block.data[0]), C.ulonglong(block.size))
 	return int(block.size)
 }
