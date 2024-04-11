@@ -50,7 +50,7 @@ type VideoData struct{
 }
 
 
-func NewAdsContext(memory *proxy.SharedMemory, video_channel int) datachannel.DatachannelConsumer {
+func NewAdsContext(queue *proxy.Queue) datachannel.DatachannelConsumer {
 	ret := &AdsMultiCtxs{
 		in:  make(chan datachannel.Msg,queue_size),
 		out: make(chan datachannel.Msg,queue_size),
@@ -61,7 +61,7 @@ func NewAdsContext(memory *proxy.SharedMemory, video_channel int) datachannel.Da
 
 
 
-	afterprocess := func() { for { time.Sleep(100 * time.Millisecond)
+	go func() { for { time.Sleep(100 * time.Millisecond)
 			ret.mut.Lock()
 			for id,ac := range ret.ctxs {
 				if len(ac.afterVQueue) > evaluation_period {
@@ -105,13 +105,13 @@ func NewAdsContext(memory *proxy.SharedMemory, video_channel int) datachannel.Da
 
 			ret.mut.Unlock()
 		}
-	}
+	}()
 
 
 
 	reset_queue := make(chan bool,64)	
 	go func () { for { <-reset_queue
-			memory.GetQueue(video_channel).Raise(proxy.Idr,0) 
+			queue.Raise(proxy.Idr,0) 
 			data,_ := json.Marshal(struct{ Type string `json:"type"` }{ Type: "FRAME_LOSS", })
 			ret.SendToAll(string(data))
 
@@ -120,7 +120,7 @@ func NewAdsContext(memory *proxy.SharedMemory, video_channel int) datachannel.Da
 			for { if len(reset_queue) > 0 { <-reset_queue } else {break} }
 		}
 	}()
-	process := func() { for { time.Sleep(5 * time.Millisecond) // donot reduce this period
+	go func() { for { time.Sleep(5 * time.Millisecond) // donot reduce this period
 			ret.mut.Lock()
 			for _,ac := range ret.ctxs {
 				for { if len(ac.vqueue) > 0 {
@@ -147,8 +147,8 @@ func NewAdsContext(memory *proxy.SharedMemory, video_channel int) datachannel.Da
 
 			ret.mut.Unlock()
 		}
-	}
-	preprocess := func() { for { in := <-ret.in
+	}()
+	go func() { for { in := <-ret.in
 			metricRaw := in.Msg
 			var out map[string]interface{}
 			json.Unmarshal([]byte(metricRaw), &out)
@@ -168,12 +168,7 @@ func NewAdsContext(memory *proxy.SharedMemory, video_channel int) datachannel.Da
 				ret.handleNetworkMetric(in.Id,&network)
 			}
 		}
-	}
-
-	go preprocess()
-	go preprocess()
-	go process()
-	go afterprocess()
+	}()
 
 	return ret
 }

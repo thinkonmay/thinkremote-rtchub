@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unsafe"
 
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
@@ -27,14 +28,13 @@ type HIDAdapter struct {
 	ids []string
 }
 
-func NewHIDSingleton(memory *proxy.SharedMemory) datachannel.DatachannelConsumer {
+func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 	ret := HIDAdapter{
 		send: make(chan datachannel.Msg, queue_size),
 		recv: make(chan string, queue_size),
 		ids:  []string{},
 	}
 
-	_ = memory.GetQueue(proxy.Input)
 	process := func() {
 		thread.HighPriorityThread()
 		for {
@@ -44,80 +44,100 @@ func NewHIDSingleton(memory *proxy.SharedMemory) datachannel.DatachannelConsumer
 			case "mma":
 				x, _ := strconv.ParseFloat(msg[1], 32)
 				y, _ := strconv.ParseFloat(msg[2], 32)
-				_ = C.NV_ABS_MOUSE_MOVE_PACKET{
-					header: C.NV_INPUT_HEADER{},
+				packet := C.NV_ABS_MOUSE_MOVE_PACKET{
+					header: C.NV_INPUT_HEADER{
+						magic: C.MOUSE_MOVE_ABS_MAGIC,
+					},
 					x:      C.short(x),
 					y:      C.short(y),
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "mmr":
 				x, _ := strconv.ParseFloat(msg[1], 32)
 				y, _ := strconv.ParseFloat(msg[2], 32)
-				_ = C.NV_REL_MOUSE_MOVE_PACKET{
-					header: C.NV_INPUT_HEADER{},
+				packet := C.NV_REL_MOUSE_MOVE_PACKET{
+					header: C.NV_INPUT_HEADER{
+						magic: C.MOUSE_MOVE_REL_MAGIC,
+					},
 					deltaX: C.short(x),
 					deltaY: C.short(y),
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "mw":
 				x, _ := strconv.ParseFloat(msg[1], 32)
-				_ = C.NV_SCROLL_PACKET{
-					header:     C.NV_INPUT_HEADER{},
-					scrollAmt1: C.short(x),
+				packet := C.SS_HSCROLL_PACKET{
+					header:     C.NV_INPUT_HEADER{
+						magic: C.SCROLL_MAGIC_GEN5,
+					},
+					scrollAmount: C.short(x),
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "mu":
 				x, _ := strconv.ParseInt(msg[1], 10, 8)
-				_ = C.NV_MOUSE_BUTTON_PACKET{
+				packet := C.NV_MOUSE_BUTTON_PACKET{
 					header: C.NV_INPUT_HEADER{
 						magic: C.MOUSE_BUTTON_UP_EVENT_MAGIC_GEN5,
 					},
 					button: C.uchar(x),
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "md":
 				x, _ := strconv.ParseInt(msg[1], 10, 8)
-				_ = C.NV_MOUSE_BUTTON_PACKET{
+				packet := C.NV_MOUSE_BUTTON_PACKET{
 					header: C.NV_INPUT_HEADER{
 						magic: C.MOUSE_BUTTON_DOWN_EVENT_MAGIC_GEN5,
 					},
 					button: C.uchar(x),
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "ku":
-				_ = C.NV_KEYBOARD_PACKET{
+				packet := C.NV_KEYBOARD_PACKET{
 					header: C.NV_INPUT_HEADER{
 						magic: C.KEY_UP_EVENT_MAGIC,
 					},
+					flags: C.char(SS_KBE_FLAG_NON_NORMALIZED),
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "kd":
-				_ = C.NV_KEYBOARD_PACKET{
+				packet := C.NV_KEYBOARD_PACKET{
 					header: C.NV_INPUT_HEADER{
 						magic: C.KEY_DOWN_EVENT_MAGIC,
 					},
+					flags: C.char(SS_KBE_FLAG_NON_NORMALIZED),
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "kus":
-				_ = C.NV_KEYBOARD_PACKET{
+				packet := C.NV_KEYBOARD_PACKET{
 					header: C.NV_INPUT_HEADER{
 						magic: C.KEY_UP_EVENT_MAGIC,
 					},
-					flags: C.char(SS_KBE_FLAG_NON_NORMALIZED),
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "kds":
-				_ = C.NV_KEYBOARD_PACKET{
+				packet := C.NV_KEYBOARD_PACKET{
 					header: C.NV_INPUT_HEADER{
 						magic: C.KEY_DOWN_EVENT_MAGIC,
 					},
-					flags: C.char(SS_KBE_FLAG_NON_NORMALIZED),
+
+
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "kr":
 			case "gs":
-				_ = C.NV_MULTI_CONTROLLER_PACKET{
+				packet := C.NV_MULTI_CONTROLLER_PACKET{
 					header: C.NV_INPUT_HEADER{},
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "ga":
-				_ = C.NV_MULTI_CONTROLLER_PACKET{
+				packet := C.NV_MULTI_CONTROLLER_PACKET{
 					header: C.NV_INPUT_HEADER{},
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "gb":
-				_ = C.NV_MULTI_CONTROLLER_PACKET{
+				packet := C.NV_MULTI_CONTROLLER_PACKET{
 					header: C.NV_INPUT_HEADER{},
 				}
+				queue.Write(packet, int(unsafe.Sizeof(packet)))
 			case "cs":
 				decoded, err := base64.StdEncoding.DecodeString(msg[1])
 				if err != nil {
@@ -135,7 +155,6 @@ func NewHIDSingleton(memory *proxy.SharedMemory) datachannel.DatachannelConsumer
 }
 
 func SetClipboard(s string) {
-	panic("unimplemented")
 }
 
 func (hid *HIDAdapter) Recv() (string, string) {

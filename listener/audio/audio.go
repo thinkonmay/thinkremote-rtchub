@@ -24,7 +24,7 @@ type AudioPipeline struct {
 }
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(memory *proxy.SharedMemory) (*AudioPipeline, error) {
+func CreatePipeline(memory *proxy.Queue) (*AudioPipeline, error) {
 	pipeline := &AudioPipeline{
 		closed:    false,
 		clockRate: 48000,
@@ -48,7 +48,7 @@ func CreatePipeline(memory *proxy.SharedMemory) (*AudioPipeline, error) {
 			queue.Copy(buffer,local_index)
 			pipeline.Multiplexer.Send(buffer, uint32(pipeline.clockRate/100))
 		}
-	}(memory.GetQueue(proxy.Audio))
+	}(memory)
 	return pipeline, nil
 }
 

@@ -37,3 +37,10 @@ func (queue *Queue) Copy(in []byte, index int) int {
 	C.memcpy(unsafe.Pointer(&in[0]), unsafe.Pointer(&block.data[0]), C.ulonglong(block.size))
 	return int(block.size)
 }
+
+func (queue *Queue) Write(in any,size int) {
+	new_idx := queue.index + 1
+	block := &queue.array[new_idx % C.QUEUE_SIZE]
+	C.memcpy(unsafe.Pointer(&block.data[0]), unsafe.Pointer(&in), C.ulonglong(block.size))
+	queue.index = new_idx
+}

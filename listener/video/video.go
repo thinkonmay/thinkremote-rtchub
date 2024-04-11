@@ -28,7 +28,7 @@ type VideoPipeline struct {
 }
 
 // CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(memory *proxy.SharedMemory, channel int) (listener.Listener,
+func CreatePipeline(queue *proxy.Queue) (listener.Listener,
 	error) {
 
 	pipeline := &VideoPipeline{
@@ -58,7 +58,7 @@ func CreatePipeline(memory *proxy.SharedMemory, channel int) (listener.Listener,
 			pipeline.Multiplexer.Send(buffer, uint32(time.Duration(diff).Seconds()*pipeline.clockRate))
 			timestamp = timestamp + diff
 		}
-	}(memory.GetQueue(channel))
+	}(queue)
 	return pipeline, nil
 }
 

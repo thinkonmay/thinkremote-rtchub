@@ -56,22 +56,22 @@ func main() {
 		return
 	}
 
-	audioPipeline, err := audio.CreatePipeline(memory)
+	audioPipeline, err := audio.CreatePipeline(memory.GetQueue(proxy.Audio))
 	if err != nil {
 		fmt.Printf("error initiate audio pipeline %s\n", err.Error())
 		return
 	}
 
-	videopipeline, err := video.CreatePipeline(memory,int(videochannel))
+	videopipeline, err := video.CreatePipeline(memory.GetQueue(int(videochannel)))
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s\n", err.Error())
 		return
 	}
 
 	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
-	chans.RegisterConsumer("adaptive", adaptive.NewAdsContext(memory,int(videochannel)))
-	chans.RegisterConsumer("manual", manual.NewManualCtx(memory))
-	chans.RegisterConsumer("hid", hid.NewHIDSingleton(memory))
+	chans.RegisterConsumer("adaptive", adaptive.NewAdsContext(memory.GetQueue(int(videochannel))))
+	chans.RegisterConsumer("manual", manual.NewManualCtx(memory.GetQueue(int(videochannel))))
+	chans.RegisterConsumer("hid", hid.NewHIDSingleton(memory.GetQueue(proxy.Input)))
 
 	handle_track := func(tr *webrtc.TrackRemote) { }
 	go func() {

@@ -26,7 +26,7 @@ type ManualPacket struct {
 	Value int `json:"value"`
 }
 
-func NewManualCtx(memory *proxy.SharedMemory) datachannel.DatachannelConsumer {
+func NewManualCtx(queue *proxy.Queue) datachannel.DatachannelConsumer {
 	ret := &Manual{
 		In: make(chan string, queue_size),
 		Out: make(chan struct {
