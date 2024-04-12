@@ -22,8 +22,8 @@ type Manual struct {
 }
 
 type ManualPacket struct {
-	Type  int `json:"type"`
-	Value int `json:"value"`
+	Type  string `json:"type"`
+	Value int    `json:"value"`
 }
 
 func NewManualCtx(queue *proxy.Queue) datachannel.DatachannelConsumer {
@@ -42,10 +42,21 @@ func NewManualCtx(queue *proxy.Queue) datachannel.DatachannelConsumer {
 			dat := ManualPacket{}
 			err := json.Unmarshal([]byte(data), &dat)
 			if err != nil {
-				fmt.Printf("%s", err.Error())
+				fmt.Printf("error unmarshal packet %s\n", err.Error())
 				continue
 			}
 
+			switch dat.Type {
+			case "bitrate":
+				queue.Raise(proxy.Bitrate,dat.Value)
+			case "framerate":
+				queue.Raise(proxy.Framerate,dat.Value)
+			case "pointer":
+				queue.Raise(proxy.Pointer,dat.Value)
+			case "reset":
+				queue.Raise(proxy.Idr,dat.Value)
+			case "danger-reset":
+			}
 		}
 	}()
 
