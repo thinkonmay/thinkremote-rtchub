@@ -1,5 +1,5 @@
-#define QUEUE_SIZE 256
-#define PACKET_SIZE 32 * 1024
+#define QUEUE_SIZE 512
+#define PACKET_SIZE 1024 * 1024
 
 enum QueueType {
     Video0,
