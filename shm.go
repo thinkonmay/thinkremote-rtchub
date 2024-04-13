@@ -31,6 +31,9 @@ func (memory *Queue) Raise(event_id, value int) {
 	memory.events[event_id].value_number = C.int(value)
 	memory.events[event_id].read = 0
 }
+func (queue *Queue) GetDisplay() string {
+	return C.GoString(&queue.metadata.display[0])
+}
 func (queue *Queue) CurrentIndex() int {
 	return int(queue.index)
 }
