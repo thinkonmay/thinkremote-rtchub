@@ -17,9 +17,9 @@ import (
 
 type VideoPipelineC unsafe.Pointer
 type VideoPipeline struct {
-	closed      bool
-	pipeline    unsafe.Pointer
-	mut         *sync.Mutex
+	closed   bool
+	pipeline unsafe.Pointer
+	mut      *sync.Mutex
 
 	clockRate float64
 
@@ -48,14 +48,14 @@ func CreatePipeline(queue *proxy.Queue) (listener.Listener,
 		local_index := queue.CurrentIndex()
 
 		for {
-			for local_index == queue.CurrentIndex() {
+			for local_index >= queue.CurrentIndex() {
 				time.Sleep(time.Millisecond)
 			}
 
 			local_index++
-			queue.Copy(buffer,local_index)
+			size := queue.Copy(buffer, local_index)
 			diff := time.Now().UnixNano() - timestamp
-			pipeline.Multiplexer.Send(buffer, uint32(time.Duration(diff).Seconds()*pipeline.clockRate))
+			pipeline.Multiplexer.Send(buffer[:size], uint32(time.Duration(diff).Seconds()*pipeline.clockRate))
 			timestamp = timestamp + diff
 		}
 	}(queue)
