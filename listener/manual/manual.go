@@ -64,14 +64,14 @@ func NewManualCtx(queue *proxy.Queue) datachannel.DatachannelConsumer {
 }
 
 // TODO
-func (ads *Manual) Recv() (string, string) {
-	out := <-ads.Out
+func (manual *Manual) Recv() (string, string) {
+	out := <-manual.Out
 	return out.id, out.val
 }
-func (ads *Manual) Send(id string, msg string) {
-	ads.In <- msg
+func (manual *Manual) Send(id string, msg string) {
+	manual.In <- msg
 }
 
-func (ads *Manual) SetContext(ids []string) {
-	ads.ctxs = ids
+func (manual *Manual) SetContext(ids []string) {
+	manual.ctxs = ids
 }

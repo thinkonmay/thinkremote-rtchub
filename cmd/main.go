@@ -13,7 +13,6 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel/hid"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
-	"github.com/thinkonmay/thinkremote-rtchub/listener/adaptive"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/audio"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/manual"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
@@ -68,8 +67,7 @@ func main() {
 		return
 	}
 
-	chans := datachannel.NewDatachannel("hid", "adaptive", "manual")
-	chans.RegisterConsumer("adaptive", adaptive.NewAdsContext(memory.GetQueue(int(videochannel))))
+	chans := datachannel.NewDatachannel("hid", "manual")
 	chans.RegisterConsumer("manual", manual.NewManualCtx(memory.GetQueue(int(videochannel))))
 	chans.RegisterConsumer("hid", hid.NewHIDSingleton(memory.GetQueue(proxy.Input)))
 
