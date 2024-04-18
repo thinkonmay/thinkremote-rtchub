@@ -2,7 +2,6 @@ package proxy
 
 /*
 #include "smemory.h"
-#include <string.h>
 */
 import "C"
 import (
@@ -40,13 +39,13 @@ func (queue *Queue) CurrentIndex() int {
 func (queue *Queue) Copy(in []byte, index int) int {
 	real_index := index % int(C.QUEUE_SIZE)
 	block := &queue.array[real_index]
-	C.memcpy(unsafe.Pointer(&in[0]), unsafe.Pointer(&block.data[0]), C.ulonglong(block.size))
+	memcpy(unsafe.Pointer(&in[0]), unsafe.Pointer(&block.data[0]), int(block.size))
 	return int(block.size)
 }
 
 func (queue *Queue) Write(in []byte, size int) {
 	new_idx := queue.index + 1
 	block := &queue.array[new_idx%C.QUEUE_SIZE]
-	C.memcpy(unsafe.Pointer(&block.data[0]), unsafe.Pointer(&in[0]), C.ulonglong(block.size))
+	memcpy(unsafe.Pointer(&block.data[0]), unsafe.Pointer(&in[0]), int(block.size))
 	queue.index = new_idx
 }

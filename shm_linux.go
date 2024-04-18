@@ -1,10 +1,19 @@
 package proxy
 
+/*
+#include <string.h>
+*/
+import "C"
 import (
 	"unsafe"
 
 	"github.com/ebitengine/purego"
 )
+
+
+func memcpy(to,from unsafe.Pointer, size int) {
+	C.memcpy(to, from, C.ulong(size))
+}
 
 func ObtainSharedMemory(token string) (*SharedMemory, error) {
 	libc, err := purego.Dlopen("./libparent.so", purego.RTLD_NOW|purego.RTLD_GLOBAL)
@@ -14,9 +23,6 @@ func ObtainSharedMemory(token string) (*SharedMemory, error) {
 
 	var deinit func()
 	purego.RegisterLibFunc(&deinit, libc, "deinit_shared_memory")
-	if err != nil {
-		return nil, err
-	}
 	deinit() // actually we don't allocate new memory,
 
 	var allocate func(unsafe.Pointer) unsafe.Pointer

@@ -1,5 +1,9 @@
 package proxy
 
+/*
+#include <string.h>
+*/
+import "C"
 import (
 	"errors"
 	"syscall"
@@ -7,6 +11,10 @@ import (
 
 	"golang.org/x/sys/windows"
 )
+
+func memcpy(to,from unsafe.Pointer, size int) {
+	C.memcpy(to, from, C.ulonglong(size))
+}
 
 func ObtainSharedMemory(token string) (*SharedMemory, error) {
 	mod, err := syscall.LoadDLL("libparent.dll")
