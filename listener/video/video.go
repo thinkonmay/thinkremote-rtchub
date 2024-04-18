@@ -43,7 +43,7 @@ func CreatePipeline(queue *proxy.Queue) (listener.Listener,
 
 	go func(queue *proxy.Queue) {
 		thread.HighPriorityThread()
-		buffer := make([]byte, 512*1024) //512kB
+		buffer := make([]byte, 1024*1024) //1MB
 		timestamp := time.Now().UnixNano()
 		local_index := queue.CurrentIndex()
 
@@ -54,6 +54,10 @@ func CreatePipeline(queue *proxy.Queue) (listener.Listener,
 
 			local_index++
 			size := queue.Copy(buffer, local_index)
+			if size > len(buffer) {
+				continue
+			}
+			
 			diff := time.Now().UnixNano() - timestamp
 			pipeline.Multiplexer.Send(buffer[:size], uint32(time.Duration(diff).Seconds()*pipeline.clockRate))
 			timestamp = timestamp + diff
