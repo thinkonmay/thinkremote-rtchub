@@ -370,7 +370,7 @@ func _init() error {
 
 
 func init(){
-	panic(_init())
+	_init()
 }
 
 func SendMouseRelative(x float32, y float32) {
@@ -386,6 +386,24 @@ func SendMouseButton(button int, is_up bool) {
 }
 
 func SendKeyboard(keycode int, is_up bool, scan_code bool) {
+
+	code := 1
+	if !is_up {
+		code = 0
+	}
+
+	keyboard_dev := keyboard()
+
+	// dev := C.libevdev_uinput_create_from_device(keyboard, C.EV_KEY, 0, )
+	C.libevdev_uinput_create_from_device(keyboard_dev, C.LIBEVDEV_UINPUT_OPEN_MANAGED, &keyboard_input);
+
+
+    if scan_code {
+      C.libevdev_uinput_write_event(keyboard_input, C.EV_MSC, C.MSC_SCAN, 0);
+    }
+
+    // C.libevdev_uinput_write_event(keyboard_input, C.EV_KEY, KEY_2, 0);
+    C.libevdev_uinput_write_event(keyboard_input, C.EV_KEY, KEY_1, C.int(code));
 }
 
 func SetClipboard(text string) {
