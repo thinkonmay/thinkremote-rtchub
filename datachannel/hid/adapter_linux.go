@@ -12,6 +12,7 @@ typedef struct input_absinfo absinfo;
 import "C"
 import (
 	"errors"
+	"fmt"
 	"unsafe"
 )
 
@@ -21,7 +22,8 @@ type KeyCode struct {
 	scancode C.uint
 }
 const UNKNOWN = 0;
-
+var linuxCodeMap = make(map[C.uint]C.uint)
+var linuxScanCodeMap = make(map[C.uint]C.uint)
 var (
 	keycodes = []KeyCode{
 		{0x08 /* VKEY_BACK */, LINUX_BACK, 0x7002A},
@@ -178,6 +180,11 @@ func keyboard() evdev_t {
 	}
 	C.libevdev_enable_event_type(dev, C.EV_MSC)
 	C.libevdev_enable_event_code(dev, C.EV_MSC, C.MSC_SCAN, unsafe.Pointer(nil))
+
+	for _, kc := range keycodes {
+		linuxCodeMap[kc.wincode] = kc.linuxcode
+		linuxScanCodeMap[kc.wincode] = kc.scancode
+	}
 
 	return dev
 }
@@ -398,13 +405,24 @@ func SendKeyboard(keycode int, is_up bool, scan_code bool) {
 	C.libevdev_uinput_create_from_device(keyboard_dev, C.LIBEVDEV_UINPUT_OPEN_MANAGED, &keyboard_input);
 
 
-	// // TODO: map $keycode with keycodes to select linuxcode
-
     if scan_code {
-      C.libevdev_uinput_write_event(keyboard_input, C.MSC_SCAN, C.uint(keycode), C.int(code));
+		linuxScanCode, ok := linuxScanCodeMap[C.uint(keycode)]
+		if(ok){
+			fmt.Println(linuxScanCode)
+			// TODO: scancode is not work
+			// libevdev_uinput_write_event(keyboard, EV_MSC, MSC_SCAN, C.uint(linuxScanCode));
+			// C.libevdev_uinput_write_event(keyboard_input, C.EV_KEY, C.uint(linuxScanCode), C.int(code));
+			return
+		} else {
+			fmt.Println("Not found scan keycode in linux", keycode)
+		}
     }
-
-    C.libevdev_uinput_write_event(keyboard_input, C.EV_KEY, C.uint(keycode), C.int(code));
+	linuxCode, ok := linuxCodeMap[C.uint(keycode)]
+	if ok {
+		C.libevdev_uinput_write_event(keyboard_input, C.EV_KEY, C.uint(linuxCode), C.int(code));
+	} else {
+		fmt.Println("Not found keycode in linux", keycode)
+	}
 }
 
 func SetClipboard(text string) {
