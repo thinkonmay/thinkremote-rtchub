@@ -401,10 +401,10 @@ func SendKeyboard(keycode int, is_up bool, scan_code bool) {
 	// // TODO: map $keycode with keycodes to select linuxcode
 
     if scan_code {
-      C.libevdev_uinput_write_event(keyboard_input, C.EV_MSC, C.MSC_SCAN, 0);
+      C.libevdev_uinput_write_event(keyboard_input, C.MSC_SCAN, C.uint(keycode), C.int(code));
     }
 
-    C.libevdev_uinput_write_event(keyboard_input, C.EV_KEY, 23, C.int(code));
+    C.libevdev_uinput_write_event(keyboard_input, C.EV_KEY, C.uint(keycode), C.int(code));
 }
 
 func SetClipboard(text string) {
