@@ -69,7 +69,7 @@ func main() {
 
 	chans := datachannel.NewDatachannel("hid", "manual")
 	chans.RegisterConsumer("manual", manual.NewManualCtx(memory.GetQueue(int(videochannel))))
-	chans.RegisterConsumer("hid", hid.NewHIDSingleton(memory.GetQueue(proxy.Input)))
+	chans.RegisterConsumer("hid", hid.NewHIDSingleton(memory.GetQueue(int(videochannel))))
 
 	handle_track := func(tr *webrtc.TrackRemote) { }
 	go func() {
