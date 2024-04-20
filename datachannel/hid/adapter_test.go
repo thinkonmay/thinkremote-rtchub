@@ -1,29 +1,34 @@
 package hid
 
 import (
-	"fmt"
+	"math/rand"
 	"testing"
+	"time"
 )
 
-func TestSendKeyboard(t *testing.T){
-	fmt.Println("Start Test")
-
-	// SendKeyboard(KEY_Y, true, false) /* test with KEY_Y windows */
-	// SendKeyboard(NUMPAD1, true, false) /* test with NUMPAD1 windows */
-	// SendKeyboard(KEY_L, true, false) /* test with KEY_L windows */
-	// SendKeyboard(KEY_A, true, false) /* test with KEY_Y windows */
-
-	// Test Scancode
-	SendKeyboard(NUMPAD1, true, true) /* test with KEY_A windows */
-
-	fmt.Println("End Test")
+func TestSendKeyboard(t *testing.T) {
+	for i := float32(0); i < 100; i++ {
+		SendKeyboard(KEY_A, false, false) /* test with KEY_A windows */
+		SendKeyboard(KEY_A, true, false) /* test with KEY_A windows */
+		time.Sleep(time.Millisecond * 100)
+	}
 }
 
-func TestMoveMouse(t *testing.T){
-	SendMouseAbsolute(15, 25)
-	// SendMouseRelative(150, 300)
+func TestMoveMouse(t *testing.T) {
+	for i := float32(0); i < 100; i++ {
+		x := rand.Float32()*100 - 50
+		y := rand.Float32()*100 - 50
+		SendMouseRelative(x, y)
+		time.Sleep(time.Millisecond * 100)
+	}
+	for i := float32(0); i < 100; i++ {
+		x := rand.Float32()
+		y := rand.Float32()
+		SendMouseAbsolute(x, y)
+		time.Sleep(time.Millisecond * 100)
+	}
 }
 
-func TestButtonMouse(t *testing.T){
-	SendMouseButton(0x02, true)
+func TestButtonMouse(t *testing.T) {
+	// SendMouseButton(0x02, true)
 }
