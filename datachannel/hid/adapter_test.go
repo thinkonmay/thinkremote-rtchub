@@ -23,3 +23,7 @@ func TestMoveMouse(t *testing.T){
 	SendMouseAbsolute(15, 25)
 	// SendMouseRelative(150, 300)
 }
+
+func TestButtonMouse(t *testing.T){
+	SendMouseButton(0x02, true)
+}
