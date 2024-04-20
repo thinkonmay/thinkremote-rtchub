@@ -18,3 +18,8 @@ func TestSendKeyboard(t *testing.T){
 
 	fmt.Println("End Test")
 }
+
+func TestMoveMouse(t *testing.T){
+	SendMouseAbsolute(15, 25)
+	// SendMouseRelative(150, 300)
+}

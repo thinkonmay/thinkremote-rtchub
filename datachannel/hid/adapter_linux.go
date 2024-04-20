@@ -3,7 +3,6 @@ package hid
 /*
 #include <libevdev/libevdev.h>
 #include <libevdev/libevdev-uinput.h>
-
 typedef struct libevdev _evdev;
 typedef struct input_absinfo absinfo;
 
@@ -13,6 +12,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"math"
 	"unsafe"
 )
 
@@ -24,6 +24,32 @@ type KeyCode struct {
 const UNKNOWN = 0;
 var linuxCodeMap = make(map[C.uint]C.uint)
 var linuxScanCodeMap = make(map[C.uint]C.uint)
+
+type touch_port_t struct  {
+	offset_x 	float64
+	offset_y 	float64
+	height 		float64
+	width 		float64
+};
+
+var target_touch_port = touch_port_t {
+	offset_x: 120,
+	offset_y: 400,
+	height: 19200,
+	width: 12000,
+  };
+
+var touch_port = touch_port_t {
+	offset_x: 0,
+	offset_y: 0,
+	height: 19200,
+	width: 12000,
+}
+
+var last_mouse_device_used any;
+var last_mouse_device_buttons_down *uint8 = nil;
+var mouse_abs_buttons_down uint8 = 0;
+var mouse_rel_buttons_down uint8 = 0;
 var (
 	keycodes = []KeyCode{
 		{0x08 /* VKEY_BACK */, LINUX_BACK, 0x7002A},
@@ -382,15 +408,71 @@ func init(){
 }
 
 func SendMouseRelative(x float32, y float32) {
+	// var mouse_rel = mouse_rel()
+
+	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_REL, C.REL_X, C.int(x));
+	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_REL, C.REL_Y, C.int(y));
+    C.libevdev_uinput_write_event(mouse_rel_input, C.EV_SYN, C.SYN_REPORT, 0);
+
+    // Remember this was the last device we sent input on
+    // last_mouse_device_used = mouse_rel;
+    // last_mouse_device_buttons_down = &mouse_rel_buttons_down;
+}
+
+func lround(x float64) int {
+	if x < 0 {
+		return int(math.Ceil(x - 0.5))
+	}
+	return int(math.Floor(x + 0.5))
 }
 
 func SendMouseAbsolute(x float32, y float32) {
+	// var mouse_abs = mouse_abs()
+
+    scaled_x := lround((float64(x) + touch_port.offset_x) * (target_touch_port.width / touch_port.width));
+    scaled_y := lround((float64(y) + touch_port.offset_y) * (target_touch_port.height / touch_port.height));
+
+    C.libevdev_uinput_write_event(mouse_abs_input, C.EV_ABS, C.ABS_X, C.int(scaled_x));
+    C.libevdev_uinput_write_event(mouse_abs_input, C.EV_ABS, C.ABS_Y, C.int(scaled_y));
+    C.libevdev_uinput_write_event(mouse_abs_input, C.EV_SYN, C.SYN_REPORT, 0);
+
+    // Remember this was the last device we sent input on
+    // last_mouse_device_used = mouse_abs;
+    // last_mouse_device_buttons_down = &mouse_abs_buttons_down;
 }
 
 func SendMouseWheel(wheel float64) {
 }
 
 func SendMouseButton(button int, is_up bool) {
+	// x_button := 0; /* C.uint */
+    // switch (button) {
+    //   case LINUX_LBUTTON:
+    //     x_button = 1;
+    //     break;
+    //   case LINUX_MBUTTON:
+    //     x_button = 2;
+    //     break;
+    //   case LINUX_RBUTTON:
+    //     x_button = 3;
+    //     break;
+    //   default:
+    //     x_button = (button - 4) + 8;  // Button 4 (Moonlight) starts at index 8 (X11)
+    //     break;
+    // }
+
+    // if (x_button < 1 || x_button > 31) {
+    //   return;
+    // }
+
+    // Display *xdisplay = ((input_raw_t *) input.get())->display;
+    // if (!xdisplay) {
+    //   return;
+    // }
+
+    // x11::tst::FakeButtonEvent(xdisplay, x_button, !release, CurrentTime);
+    // x11::Flush(xdisplay);
+
 }
 
 func SendKeyboard(keycode int, is_up bool, scan_code bool) {
@@ -435,3 +517,4 @@ func DisplayPosition(name string) (x, y, width, height int, err error) {
 func GetVirtualDisplay() (x, y int) {
 	return 0, 0
 }
+
