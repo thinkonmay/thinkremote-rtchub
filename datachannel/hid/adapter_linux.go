@@ -413,6 +413,8 @@ func SendMouseAbsolute(wx, wy, lx, ly float32) {
 }
 
 func SendMouseWheel(wheel float64) {
+	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_REL, C.REL_WHEEL_HI_RES, C.int(wheel))
+	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_SYN, C.SYN_REPORT, 0)
 }
 
 func SendMouseButton(button int, is_up bool) {
