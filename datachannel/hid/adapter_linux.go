@@ -3,71 +3,62 @@ package hid
 /*
 #include <libevdev/libevdev.h>
 #include <libevdev/libevdev-uinput.h>
-typedef struct libevdev _evdev;
 typedef struct input_absinfo absinfo;
-
 #cgo pkg-config: libevdev
-#include <X11/Xutil.h>
-#include <X11/keysym.h>
-#include <X11/keysymdef.h>
 */
 import "C"
 import (
 	"errors"
 	"fmt"
 	"math"
+	"os/exec"
+	"strconv"
+	"strings"
 	"unsafe"
 )
 
 type KeyCode struct {
-	wincode C.uint
-	linuxcode  C.uint
-	scancode C.uint
+	wincode   C.uint
+	linuxcode C.uint
+	scancode  C.uint
 }
-const UNKNOWN = 0;
+
+const UNKNOWN = 0
+
 var linuxCodeMap = make(map[C.uint]C.uint)
 var linuxScanCodeMap = make(map[C.uint]C.uint)
 
-type touch_port_t struct  {
-	offset_x 	float64
-	offset_y 	float64
-	height 		float64
-	width 		float64
-};
-
-type mouse_position struct {
-	mode 		string  // Either "abs" or "rel"
-	offset_x    float64
-	offset_y    float64
+type touch_port_t struct {
+	offset_x float64
+	offset_y float64
+	height   float64
+	width    float64
 }
 
-var mouse_pos = mouse_position {
-	mode: "abs",
+type mouse_position struct {
+	abs      bool
+	offset_x float64
+	offset_y float64
+}
+
+var mouse_pos = mouse_position{
+	abs:      true,
 	offset_x: 100,
 	offset_y: 100,
 }
 
-var target_touch_port = touch_port_t {
-	offset_x: 120,
-	offset_y: 400,
-	height: 19200,
-	width: 12000,
-  };
-
-var touch_port = touch_port_t {
-	offset_x: 0,
-	offset_y: 0,
-	height: 19200,
-	width: 12000,
+var target_touch_port = touch_port_t{
+	height: 1920,
+	width:  1200,
 }
 
-var last_mouse_device_used any;
-var last_mouse_device_buttons_down *uint8 = nil;
-var mouse_abs_buttons_down uint8 = 0;
-var mouse_rel_buttons_down uint8 = 0;
-
+var last_mouse_device_used any
+var last_mouse_device_buttons_down *uint8 = nil
+var mouse_abs_buttons_down uint8 = 0
+var mouse_rel_buttons_down uint8 = 0
 
 var (
+	display  = touch_port_t{}
 	keycodes = []KeyCode{
 		{0x01 /*LBUTTON */, LINUX_LBUTTON, 90001},
 		{0x02 /*RBUTTON */, LINUX_RBUTTON, 90002},
@@ -192,7 +183,6 @@ var (
 		{0xA4 /* VKEY_LMENU */, LINUX_LMENU, 0x7002E},
 		{0xA5 /* VKEY_RMENU */, LINUX_RMENU, 0x700E6},
 		{0xBA /* VKEY_OEM_1 */, LINUX_OEM_1, 0x70033},
-
 		{0xBB /* VKEY_OEM_PLUS */, LINUX_OEM_PLUS, 0x7002E},
 		{0xBC /* VKEY_OEM_COMMA */, LINUX_OEM_COMMA, 0x70036},
 		{0xBD /* VKEY_OEM_MINUS */, LINUX_OEM_MINUS, 0x7002D},
@@ -207,9 +197,9 @@ var (
 	}
 	mouse_abs_input *C.struct_libevdev_uinput
 	mouse_rel_input *C.struct_libevdev_uinput
-	keyboard_input *C.struct_libevdev_uinput
-	input *C.struct_libevdev_uinput
-);
+	keyboard_input  *C.struct_libevdev_uinput
+	gamepad_input   *C.struct_libevdev_uinput
+)
 
 type evdev_t *C.struct_libevdev
 
@@ -417,27 +407,38 @@ func _init() error {
 	if rv > 0 || keyboard_input == nil {
 		return errors.New("failed to create new keyboard device")
 	}
-	rv = C.libevdev_uinput_create_from_device(gamepad_dev, C.LIBEVDEV_UINPUT_OPEN_MANAGED, &input);
-	if rv > 0 || input == nil {
+	rv = C.libevdev_uinput_create_from_device(gamepad_dev, C.LIBEVDEV_UINPUT_OPEN_MANAGED, &gamepad_input)
+	if rv > 0 || gamepad_input == nil {
 		return errors.New("failed to create new gamepad device")
 	}
+
+	go func() {
+		for {
+			_, _, x, y, err := DisplayPosition("")
+			if err != nil {
+				panic(err)
+			}
+
+			display.height = float64(y)
+			display.width = float64(x)
+		}
+	}()
 
 	return nil
 }
 
-
-func init(){
+func init() {
 	_init()
 }
 
 func SendMouseRelative(x float32, y float32) {
 
-	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_REL, C.REL_X, C.int(x));
-	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_REL, C.REL_Y, C.int(y));
-    C.libevdev_uinput_write_event(mouse_rel_input, C.EV_SYN, C.SYN_REPORT, 0);
+	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_REL, C.REL_X, C.int(x))
+	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_REL, C.REL_Y, C.int(y))
+	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_SYN, C.SYN_REPORT, 0)
 
-	mouse_pos = mouse_position {
-		mode: "rel",
+	mouse_pos = mouse_position{
+		abs:      false,
 		offset_x: float64(x),
 		offset_y: float64(y),
 	}
@@ -450,19 +451,16 @@ func lround(x float64) int {
 	return int(math.Floor(x + 0.5))
 }
 
-func SendMouseAbsolute(x float32, y float32) {
-    scaled_x := lround((float64(x) + touch_port.offset_x) * (target_touch_port.width / touch_port.width));
-    scaled_y := lround((float64(y) + touch_port.offset_y) * (target_touch_port.height / touch_port.height));
+func SendMouseAbsolute(x, y float32) {
+	C.libevdev_uinput_write_event(mouse_abs_input, C.EV_ABS, C.ABS_X, C.int(x*float32(display.width)))
+	C.libevdev_uinput_write_event(mouse_abs_input, C.EV_ABS, C.ABS_Y, C.int(y*float32(display.height)))
+	C.libevdev_uinput_write_event(mouse_abs_input, C.EV_SYN, C.SYN_REPORT, 0)
 
-    C.libevdev_uinput_write_event(mouse_abs_input, C.EV_ABS, C.ABS_X, C.int(scaled_x));
-    C.libevdev_uinput_write_event(mouse_abs_input, C.EV_ABS, C.ABS_Y, C.int(scaled_y));
-    C.libevdev_uinput_write_event(mouse_abs_input, C.EV_SYN, C.SYN_REPORT, 0);
-
-    // Remember this was the last device we sent input on
-	mouse_pos = mouse_position {
-		mode: "abs",
-		offset_x: float64(scaled_x),
-		offset_y: float64(scaled_y),
+	// Remember this was the last device we sent input on
+	mouse_pos = mouse_position{
+		abs:      true,
+		offset_x: float64(x),
+		offset_y: float64(y),
 	}
 }
 
@@ -470,9 +468,9 @@ func SendMouseWheel(wheel float64) {
 }
 
 func SendMouseButton(button int, is_up bool) {
-    // var btn_type int;
-    // var scan int;
-	var chosen_mouse_dev *C.struct_libevdev_uinput;
+	// var btn_type int;
+	// var scan int;
+	var chosen_mouse_dev *C.struct_libevdev_uinput
 
 	code := 1
 	if !is_up {
@@ -481,84 +479,99 @@ func SendMouseButton(button int, is_up bool) {
 
 	// TODO: double check in demo
 
-    // if button == 1 {
-    //   btn_type = LINUX_LBUTTON
-    //   scan = 90001
-    // } else if button == 2 {
-    //   btn_type = LINUX_MBUTTON
-    //   scan = 90003
-    // } else if(button == 3) {
-    //   btn_type = LINUX_RBUTTON
-    //   scan = 90002
-    // } else if (button == 4) {
-    //   btn_type = LINUX_BTN_SIDE
-    //   scan = 90004
-    // } else {
-    //   btn_type = LINUX_BTN_EXTRA
-    //   scan = 90005
-    // }
+	// if button == 1 {
+	//   btn_type = LINUX_LBUTTON
+	//   scan = 90001
+	// } else if button == 2 {
+	//   btn_type = LINUX_MBUTTON
+	//   scan = 90003
+	// } else if(button == 3) {
+	//   btn_type = LINUX_RBUTTON
+	//   scan = 90002
+	// } else if (button == 4) {
+	//   btn_type = LINUX_BTN_SIDE
+	//   scan = 90004
+	// } else {
+	//   btn_type = LINUX_BTN_EXTRA
+	//   scan = 90005
+	// }
 
 	linuxCode := linuxCodeMap[C.uint(button)]
 	linuxScanCode := linuxScanCodeMap[C.uint(button)]
 
-	if mouse_pos.mode == "abs"{
+	if mouse_pos.abs  {
 		chosen_mouse_dev = mouse_abs_input
-	} else{
+	} else {
 		chosen_mouse_dev = mouse_rel_input
-	} 
+	}
 
-    C.libevdev_uinput_write_event(chosen_mouse_dev, C.EV_MSC, C.MSC_SCAN, C.int(linuxScanCode));
-    C.libevdev_uinput_write_event(chosen_mouse_dev, C.EV_KEY, C.uint(linuxCode), C.int(code));
-    C.libevdev_uinput_write_event(chosen_mouse_dev, C.EV_SYN, C.SYN_REPORT, 0);
-
-	fmt.Println("foo")
-    // if (release) {
-    //   *chosen_mouse_dev_buttons_down &= ~(1 << button);
-    // } else {
-    //   *chosen_mouse_dev_buttons_down |= (1 << button);
-    // }
+	C.libevdev_uinput_write_event(chosen_mouse_dev, C.EV_MSC, C.MSC_SCAN, C.int(linuxScanCode))
+	C.libevdev_uinput_write_event(chosen_mouse_dev, C.EV_KEY, C.uint(linuxCode), C.int(code))
+	C.libevdev_uinput_write_event(chosen_mouse_dev, C.EV_SYN, C.SYN_REPORT, 0)
 }
 
 func SendKeyboard(keycode int, is_up bool, scan_code bool) {
-
-	code := 1
-	if !is_up {
-		code = 0
-	}
-
-	keyboard_dev := keyboard()
-
-	C.libevdev_uinput_create_from_device(keyboard_dev, C.LIBEVDEV_UINPUT_OPEN_MANAGED, &keyboard_input);
-
-
-    if scan_code {
-		linuxScanCode, ok := linuxScanCodeMap[C.uint(keycode)]
-		if(ok){
-			fmt.Println(linuxScanCode)
-			// TODO: scancode is not work
-			// libevdev_uinput_write_event(keyboard, EV_MSC, MSC_SCAN, C.uint(linuxScanCode));
-			// C.libevdev_uinput_write_event(keyboard_input, C.EV_KEY, C.uint(linuxScanCode), C.int(code));
-			return
-		} else {
-			fmt.Println("Not found scan keycode in linux", keycode)
-		}
-    }
+	code := 0
 	linuxCode, ok := linuxCodeMap[C.uint(keycode)]
-	if ok {
-		C.libevdev_uinput_write_event(keyboard_input, C.EV_KEY, C.uint(linuxCode), C.int(code));
-	} else {
+
+	if !ok {
 		fmt.Println("Not found keycode in linux", keycode)
 	}
+	if !is_up {
+		code = 1
+	}
+
+
+	C.libevdev_uinput_write_event(keyboard_input, C.EV_KEY, C.uint(linuxCode), C.int(code))
 }
 
 func SetClipboard(text string) {
 }
 
 func DisplayPosition(name string) (x, y, width, height int, err error) {
-	return 0, 0, 0, 0, nil
+	out, err := exec.Command("xdpyinfo").Output()
+	if err != nil {
+		panic(err)
+	}
+
+	resx, resy := int64(0), int64(0)
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.Contains(line, "dimensions") {
+			word0 := []string{}
+			for _, word := range strings.Split(line, " ") {
+				if len(word) == 0 {
+					continue
+				}
+				word0 = append(word0, word)
+			}
+
+			for index, val := range word0 {
+				if val == "pixels" {
+					if index == 0 {
+						continue
+					}
+
+					res := strings.Split(word0[index-1], "x")
+					if len(res) < 2 {
+						continue
+					}
+
+					resx, err = strconv.ParseInt(res[0], 10, 32)
+					if err != nil {
+						panic(err)
+					}
+					resy, err = strconv.ParseInt(res[1], 10, 32)
+					if err != nil {
+						panic(err)
+					}
+				}
+			}
+		}
+	}
+	return 0, 0, int(resx), int(resy), nil
+
 }
 
 func GetVirtualDisplay() (x, y int) {
 	return 0, 0
 }
-
