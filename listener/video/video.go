@@ -49,7 +49,7 @@ func CreatePipeline(queue *proxy.Queue) (listener.Listener,
 
 		for {
 			for local_index >= queue.CurrentIndex() {
-				time.Sleep(time.Millisecond)
+				time.Sleep(time.Microsecond * 100)
 			}
 
 			local_index++
