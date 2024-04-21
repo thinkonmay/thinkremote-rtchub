@@ -45,7 +45,6 @@ var (
 	mouse_abs_buttons_down         uint8  = 0
 	mouse_rel_buttons_down         uint8  = 0
 
-	display  = touch_port_t{}
 	keycodes = map[int]KeyCode{
 		0x08 /* VKEY_BACK */ :             {C.KEY_BACKSPACE, 0x7002A},
 		0x09 /* VKEY_TAB */ :              {C.KEY_TAB, 0x7002B},
@@ -385,18 +384,6 @@ func _init() error {
 		return errors.New("failed to create new gamepad device")
 	}
 
-	go func() {
-		for {
-			_, _, x, y, err := DisplayPosition("")
-			if err != nil {
-				panic(err)
-			}
-
-			display.height = float64(y)
-			display.width = float64(x)
-		}
-	}()
-
 	return nil
 }
 
@@ -416,9 +403,9 @@ func SendMouseRelative(x, y float32) {
 	use_mouse_abs = false
 }
 
-func SendMouseAbsolute(x, y float32) {
-	C.libevdev_uinput_write_event(mouse_abs_input, C.EV_ABS, C.ABS_X, C.int(x*float32(display.width)))
-	C.libevdev_uinput_write_event(mouse_abs_input, C.EV_ABS, C.ABS_Y, C.int(y*float32(display.height)))
+func SendMouseAbsolute(wx, wy, lx, ly float32) {
+	C.libevdev_uinput_write_event(mouse_abs_input, C.EV_ABS, C.ABS_X, C.int(lx))
+	C.libevdev_uinput_write_event(mouse_abs_input, C.EV_ABS, C.ABS_Y, C.int(ly))
 	C.libevdev_uinput_write_event(mouse_abs_input, C.EV_SYN, C.SYN_REPORT, 0)
 
 	// Remember this was the last device we sent input on
@@ -432,21 +419,19 @@ func SendMouseButton(button int, is_up bool) {
 	var btn_type int
 	var scan int
 	var chosen_mouse_dev *C.struct_libevdev_uinput
-	if button == 1 {
+
+	switch button {
+	case 0 :
 		btn_type = C.BTN_LEFT
 		scan = 90001
-	} else if button == 2 {
+	case 1 :
 		btn_type = C.BTN_MIDDLE
 		scan = 90003
-	} else if button == 3 {
+	case 2 :
 		btn_type = C.BTN_RIGHT
 		scan = 90002
-	} else if button == 4 {
-		btn_type = C.BTN_SIDE
-		scan = 90004
-	} else {
-		btn_type = C.BTN_EXTRA
-		scan = 90005
+	default:
+		return
 	}
 
 	if use_mouse_abs {
@@ -524,10 +509,10 @@ func DisplayPosition(name string) (x, y, width, height int, err error) {
 			}
 		}
 	}
-	return 0, 0, int(resx), int(resy), nil
+	return 1, 1, int(resx), int(resy), nil
 
 }
 
 func GetVirtualDisplay() (x, y int) {
-	return 0, 0
+	return 1, 1
 }

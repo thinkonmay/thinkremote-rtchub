@@ -222,12 +222,12 @@ func SendMouseRelative(x float32, y float32) {
 	)
 }
 
-func SendMouseAbsolute(x float32, y float32) {
+func SendMouseAbsolute(wx, wy, lx, ly float32) {
 	C.handle_mouse_javascript(
 		C.MOUSE_MOVE,
 		0,
-		C.float(x),
-		C.float(y),
+		C.float(wx),
+		C.float(wy),
 		0,
 		0,
 	)
@@ -286,12 +286,12 @@ func SetClipboard(text string) {
 func DisplayPosition(name string) (x, y, width, height int, err error) {
 	a, b, c, d := C.int(0), C.int(0), C.int(0), C.int(0)
 	if C.DisplayPosition(C.CString(name), &a, &b, &c, &d) > 0 {
-        x, y, width, height = int(a), int(b), int(c), int(d)
-        return
-    }
+		x, y, width, height = int(a), int(b), int(c), int(d)
+		return
+	}
 
-    err = fmt.Errorf("")
-    return
+	err = fmt.Errorf("")
+	return
 }
 
 func GetVirtualDisplay() (x, y int) {

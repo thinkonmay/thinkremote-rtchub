@@ -69,9 +69,13 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 			vx, vy = GetVirtualDisplay()
 		}
 	}()
-	convert_pos := func(a, b float64) (X, Y float32) {
+	convert_pos_win := func(a, b float64) (X, Y float32) {
 		return (float32(x) + (float32(width) * float32(a))) / float32(vx),
 			(float32(y) + (float32(height) * float32(b))) / float32(vy)
+	}
+	convert_pos_linux := func(a, b float64) (X, Y float32) {
+		return float32(a) * float32(width),
+			float32(b) * float32(height)
 	}
 
 	process := func() {
@@ -83,8 +87,9 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 			case "mma":
 				x, _ := strconv.ParseFloat(msg[1], 32)
 				y, _ := strconv.ParseFloat(msg[2], 32)
-				nx, ny := convert_pos(x, y)
-				SendMouseAbsolute(nx, ny)
+				wx, wy := convert_pos_win(x, y)
+				lx, ly := convert_pos_linux(x, y)
+				SendMouseAbsolute(wx, wy,lx,ly)
 			case "mmr":
 				x, _ := strconv.ParseFloat(msg[1], 32)
 				y, _ := strconv.ParseFloat(msg[2], 32)
