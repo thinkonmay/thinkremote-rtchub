@@ -36,11 +36,11 @@ func (queue *Queue) GetDisplay() string {
 func (queue *Queue) CurrentIndex() int {
 	return int(queue.index)
 }
-func (queue *Queue) Copy(in []byte, index int) int {
+func (queue *Queue) Copy(in []byte, index int) (size int, duration int64) {
 	real_index := index % int(C.QUEUE_SIZE)
 	block := &queue.array[real_index]
 	memcpy(unsafe.Pointer(&in[0]), unsafe.Pointer(&block.data[0]), int(block.size))
-	return int(block.size)
+	return int(block.size),int64(block.metadata.duration)
 }
 
 func (queue *Queue) Write(in []byte, size int) {

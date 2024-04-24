@@ -45,7 +45,7 @@ func CreatePipeline(memory *proxy.Queue) (*AudioPipeline, error) {
 			}
 
 			local_index++
-			size := queue.Copy(buffer, local_index)
+			size,_ := queue.Copy(buffer, local_index)
 			pipeline.Multiplexer.Send(buffer[:size], uint32(pipeline.clockRate/100))
 		}
 	}(memory)
