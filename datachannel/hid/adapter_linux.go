@@ -423,13 +423,13 @@ func SendMouseButton(button int, is_up bool) {
 	var chosen_mouse_dev *C.struct_libevdev_uinput
 
 	switch button {
-	case 0 :
+	case 0:
 		btn_type = C.BTN_LEFT
 		scan = 90001
-	case 1 :
+	case 1:
 		btn_type = C.BTN_MIDDLE
 		scan = 90003
-	case 2 :
+	case 2:
 		btn_type = C.BTN_RIGHT
 		scan = 90002
 	default:
@@ -474,7 +474,7 @@ func SetClipboard(text string) {
 func DisplayPosition(name string) (x, y, width, height int, err error) {
 	out, err := exec.Command("xdpyinfo").Output()
 	if err != nil {
-		panic(err)
+		return 0, 0, 0, 0, err
 	}
 
 	resx, resy := int64(0), int64(0)
@@ -501,11 +501,11 @@ func DisplayPosition(name string) (x, y, width, height int, err error) {
 
 					resx, err = strconv.ParseInt(res[0], 10, 32)
 					if err != nil {
-						panic(err)
+						return 0, 0, 0, 0, err
 					}
 					resy, err = strconv.ParseInt(res[1], 10, 32)
 					if err != nil {
-						panic(err)
+						return 0, 0, 0, 0, err
 					}
 				}
 			}
