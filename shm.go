@@ -30,8 +30,22 @@ func (memory *Queue) Raise(event_id, value int) {
 	memory.events[event_id].value_number = C.int(value)
 	memory.events[event_id].read = 0
 }
-func (queue *Queue) GetDisplay() string {
-	return C.GoString(&queue.metadata.display[0])
+
+// int env_width, env_height;
+// int width, height;
+// // Offset x and y coordinates of the client
+// float client_offsetX, client_offsetY;
+// float offsetX, offsetY;
+
+// float scalar_inv;
+func (queue *Queue) GetDisplay() (name string, width,height,offsetX,offsetY,envX,envY int) {
+	return C.GoString(&queue.metadata.display[0]),
+		int(queue.metadata.width),
+		int(queue.metadata.height),
+		int(queue.metadata.offsetX),
+		int(queue.metadata.offsetY),
+		int(queue.metadata.env_width),
+		int(queue.metadata.env_height)
 }
 func (queue *Queue) CurrentIndex() int {
 	return int(queue.index)

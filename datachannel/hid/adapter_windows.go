@@ -21,34 +21,6 @@ typedef enum
 HDESK _lastKnownInputDesktop = NULL;
 
 
-int DisplayPosition(char* display_name, int* x, int* y, int* width, int* height) {
-	HRESULT result = 1;
-	int deviceIndex = 0;
-	do
-	{
-		DISPLAY_DEVICEA dpd = {0};
-		PDISPLAY_DEVICEA displayDevice = &dpd;
-		displayDevice->cb = sizeof(DISPLAY_DEVICEA);
-
-		result = EnumDisplayDevicesA(NULL,
-			deviceIndex++, displayDevice, 0);
-        if ((displayDevice->StateFlags & DISPLAY_DEVICE_ACTIVE) &&
-			 !strcmp(display_name,displayDevice->DeviceName)) {
-
-			DEVMODEA dm = {};
-			if (!EnumDisplaySettingsA(displayDevice->DeviceName, ENUM_CURRENT_SETTINGS, &dm) )
-				continue;
-
-            *x = dm.dmPosition.x;
-            *y = dm.dmPosition.y;
-            *width  = dm.dmPelsWidth;
-			*height = dm.dmPelsHeight;
-            return 1;
-		}
-	} while (result);
-    return 0;
-}
-
 HDESK
 syncThreadDesktop() {
     HDESK hDesk = OpenInputDesktop(DF_ALLOWOTHERACCOUNTHOOK, FALSE, GENERIC_ALL);
@@ -281,19 +253,4 @@ func SendKeyboard(keycode int,
 
 func SetClipboard(text string) {
 	C.SetClipboard(C.CString(text))
-}
-
-func DisplayPosition(name string) (x, y, width, height int, err error) {
-	a, b, c, d := C.int(0), C.int(0), C.int(0), C.int(0)
-	if C.DisplayPosition(C.CString(name), &a, &b, &c, &d) > 0 {
-		x, y, width, height = int(a), int(b), int(c), int(d)
-		return
-	}
-
-	err = fmt.Errorf("")
-	return
-}
-
-func GetVirtualDisplay() (x, y int) {
-	return int(C.GetSystemMetrics(C.SM_CXVIRTUALSCREEN)),int(C.GetSystemMetrics(C.SM_CYVIRTUALSCREEN))
 }

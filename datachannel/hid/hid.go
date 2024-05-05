@@ -56,22 +56,19 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 		fmt.Printf("%s\n", err.Error())
 	}
 
-	x, y, width, height, vx, vy := 0, 0, 0, 0, 0, 0
+	offsetX, offsetY, width, height, envX, envY := 0, 0, 0, 0, 0, 0
 	go func() {
 		for {
 			time.Sleep(time.Second * 5)
-			a, b, c, d, err := DisplayPosition(queue.GetDisplay())
+			_, width, height, offsetX, offsetY,envX,envY = queue.GetDisplay()
 			if err != nil {
 				continue
 			}
-
-			x, y, width, height = a, b, c, d
-			vx, vy = GetVirtualDisplay()
 		}
 	}()
 	convert_pos_win := func(a, b float64) (X, Y float32) {
-		return (float32(x) + (float32(width) * float32(a))) / float32(vx),
-			(float32(y) + (float32(height) * float32(b))) / float32(vy)
+		return (float32(offsetX) + (float32(width) * float32(a))) / float32(envX),
+			(float32(offsetY) + (float32(height) * float32(b))) / float32(envY)
 	}
 	convert_pos_linux := func(a, b float64) (X, Y float32) {
 		return float32(a) * float32(width),

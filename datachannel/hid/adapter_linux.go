@@ -10,9 +10,6 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"os/exec"
-	"strconv"
-	"strings"
 	"unsafe"
 )
 
@@ -469,52 +466,4 @@ func SendKeyboard(keycode int, is_up bool, scan_code bool) {
 }
 
 func SetClipboard(text string) {
-}
-
-func DisplayPosition(name string) (x, y, width, height int, err error) {
-	out, err := exec.Command("xdpyinfo").Output()
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
-
-	resx, resy := int64(0), int64(0)
-	for _, line := range strings.Split(string(out), "\n") {
-		if strings.Contains(line, "dimensions") {
-			word0 := []string{}
-			for _, word := range strings.Split(line, " ") {
-				if len(word) == 0 {
-					continue
-				}
-				word0 = append(word0, word)
-			}
-
-			for index, val := range word0 {
-				if val == "pixels" {
-					if index == 0 {
-						continue
-					}
-
-					res := strings.Split(word0[index-1], "x")
-					if len(res) < 2 {
-						continue
-					}
-
-					resx, err = strconv.ParseInt(res[0], 10, 32)
-					if err != nil {
-						return 0, 0, 0, 0, err
-					}
-					resy, err = strconv.ParseInt(res[1], 10, 32)
-					if err != nil {
-						return 0, 0, 0, 0, err
-					}
-				}
-			}
-		}
-	}
-	return 1, 1, int(resx), int(resy), nil
-
-}
-
-func GetVirtualDisplay() (x, y int) {
-	return 1, 1
 }
