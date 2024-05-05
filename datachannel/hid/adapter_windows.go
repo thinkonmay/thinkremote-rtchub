@@ -177,7 +177,6 @@ SetClipboard(char* output) {
 
 */
 import "C"
-import "fmt"
 
 func init() {
 	C.syncThreadDesktop()
