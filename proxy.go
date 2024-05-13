@@ -24,7 +24,6 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 	webrtc_conf *config.WebRTCConfig,
 	chan_conf datachannel.IDatachannel,
 	lis []listener.Listener,
-	onTrack webrtc.OnTrackFunc,
 ) (err error) {
 	fmt.Printf("started proxy\n")
 	proxy := &Proxy{
@@ -33,7 +32,7 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 		listeners:        lis,
 	}
 
-	if proxy.webrtcClient, err = webrtc.InitWebRtcClient(onTrack, *webrtc_conf); err != nil {
+	if proxy.webrtcClient, err = webrtc.InitWebRtcClient(*webrtc_conf); err != nil {
 		return
 	}
 

@@ -19,8 +19,6 @@ type WebRTCClient struct {
 	conn      *webrtc.PeerConnection
 	Closed    bool
 
-	onTrack OnTrackFunc
-
 	fromSdpChannel chan *webrtc.SessionDescription
 	fromIceChannel chan *webrtc.ICECandidateInit
 
@@ -31,7 +29,7 @@ type WebRTCClient struct {
 	gatherState     chan *webrtc.ICEGathererState
 }
 
-func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebRTCClient, err error) {
+func InitWebRtcClient(conf config.WebRTCConfig) (client *WebRTCClient, err error) {
 	client = &WebRTCClient{
 		toSdpChannel:    make(chan *webrtc.SessionDescription, 2),
 		fromSdpChannel:  make(chan *webrtc.SessionDescription, 2),
@@ -39,7 +37,6 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		fromIceChannel:  make(chan *webrtc.ICECandidateInit, 2),
 		connectionState: make(chan *webrtc.ICEConnectionState, 2),
 		gatherState:     make(chan *webrtc.ICEGathererState, 2),
-		onTrack:         track,
 		Closed:          false,
 	}
 
@@ -78,7 +75,6 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 
 	client.conn.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 		fmt.Printf("new track %s\n", track.ID())
-		client.onTrack(track)
 	})
 
 	go func() { for { sdp := <-client.fromSdpChannel

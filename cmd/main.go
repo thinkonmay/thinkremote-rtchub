@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/hajimehoshi/oto"
 	"github.com/pion/webrtc/v3"
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
 
@@ -32,7 +33,7 @@ func main() {
 		if arg == "--token" {
 			token = args[i+1]
 		} else if arg == "--video_channel" {
-			videochannel,_ = strconv.ParseInt(args[i+1],10,16)
+			videochannel, _ = strconv.ParseInt(args[i+1], 10, 16)
 		} else if arg == "--video" {
 			video_url = args[i+1]
 		} else if arg == "--audio" {
@@ -48,8 +49,7 @@ func main() {
 		}
 	}
 
-
-	memory,err := proxy.ObtainSharedMemory(token)
+	memory, err := proxy.ObtainSharedMemory(token)
 	if err != nil {
 		fmt.Printf("error obtain shared memory %s\n", err.Error())
 		return
@@ -71,7 +71,29 @@ func main() {
 	chans.RegisterConsumer("manual", manual.NewManualCtx(memory.GetQueue(int(videochannel))))
 	chans.RegisterConsumer("hid", hid.NewHIDSingleton(memory.GetQueue(int(videochannel))))
 
-	handle_track := func(tr *webrtc.TrackRemote) { }
+	_ = func(track chan []byte) {
+		sampleRate := 48000
+		nChannels := 2
+		ctx, err := oto.NewContext(sampleRate, nChannels, 2, 15360)
+		if err != nil {
+			fmt.Printf("failed to create oto context %s\n", err.Error())
+			return
+		}
+
+		player := ctx.NewPlayer()
+
+		defer ctx.Close()
+		defer player.Close()
+
+		for {
+			buf := <-track
+			_, err = player.Write(buf)
+			if err != nil {
+				fmt.Printf("failed to write to oto player %s\n", err.Error())
+			}
+		}
+	}
+
 	go func() {
 		for {
 			signaling_client, err := http.InitHttpClient(video_url)
@@ -85,8 +107,7 @@ func main() {
 				err := proxy.InitWebRTCProxy(signaling_client,
 					rtc,
 					chans,
-					[]listener.Listener{videopipeline},
-					handle_track)
+					[]listener.Listener{videopipeline})
 				if err != nil {
 					fmt.Printf("webrtc error :%s\n", err.Error())
 				}
@@ -107,8 +128,7 @@ func main() {
 				err := proxy.InitWebRTCProxy(signaling_client,
 					rtc,
 					chans,
-					[]listener.Listener{audioPipeline},
-					handle_track)
+					[]listener.Listener{audioPipeline})
 				if err != nil {
 					fmt.Printf("webrtc error :%s\n", err.Error())
 				}
