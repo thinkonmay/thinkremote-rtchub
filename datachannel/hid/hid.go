@@ -57,13 +57,8 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 	}
 
 	offsetX, offsetY, width, height, envX, envY := 0, 0, 0, 0, 0, 0
-	go func() {
-		for {
-			time.Sleep(time.Second * 5)
+	go func() { for { time.Sleep(time.Second * 5)
 			_, width, height, offsetX, offsetY,envX,envY = queue.GetDisplay()
-			if err != nil {
-				continue
-			}
 		}
 	}()
 	convert_pos_win := func(a, b float64) (X, Y float32) {
@@ -71,12 +66,19 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 			(float32(offsetY) + (float32(height) * float32(b))) / float32(envY)
 	}
 	convert_pos_linux := func(a, b float64) (X, Y float32) {
-		return float32(a) * float32(width),
-			float32(b) * float32(height)
+		defer func ()  {
+			fmt.Printf("width %f, height %f\n",X,Y)
+		}()
+		return float32(a) * float32(1920),
+			float32(b) * float32(1080)
 	}
 
 	process := func() {
-		thread.HighPriorityThread()
+		defer func ()  {
+			if err := recover();err != nil {
+				fmt.Printf("recovered panic in HID thread: %v\n",err)
+			}
+		}()
 		for {
 			message := <-ret.recv
 			msg := strings.Split(message, "|")
@@ -139,7 +141,11 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 		}
 	}
 
-	go process()
+	go func ()  { thread.HighPriorityThread()
+		for {
+			process()
+		}
+	}()
 	return &ret
 }
 

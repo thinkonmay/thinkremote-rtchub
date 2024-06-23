@@ -385,14 +385,12 @@ func _init() error {
 }
 
 func init() {
-	err := _init()
-	if err != nil {
+	if err := _init();err != nil {
 		fmt.Printf("failed to initialize hid for linux : %s\n", err.Error())
 	}
 }
 
 func SendMouseRelative(x, y float32) {
-
 	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_REL, C.REL_X, C.int(x))
 	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_REL, C.REL_Y, C.int(y))
 	C.libevdev_uinput_write_event(mouse_rel_input, C.EV_SYN, C.SYN_REPORT, 0)
