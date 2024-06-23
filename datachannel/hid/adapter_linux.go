@@ -175,7 +175,6 @@ var (
 	mouse_abs_input *C.struct_libevdev_uinput
 	mouse_rel_input *C.struct_libevdev_uinput
 	keyboard_input  *C.struct_libevdev_uinput
-	gamepad_input   *C.struct_libevdev_uinput
 )
 
 func keyboard() evdev_t {
@@ -287,82 +286,11 @@ func mouse_abs() evdev_t {
 	return dev
 }
 
-func x360() evdev_t {
-	dev := C.libevdev_new()
-
-	stick := C.absinfo{
-		0,
-		-32768, 32767,
-		16,
-		128,
-		0,
-	}
-
-	trigger := C.absinfo{
-		0,
-		0, 255,
-		0,
-		0,
-		0,
-	}
-
-	dpad := C.absinfo{
-		0,
-		-1, 1,
-		0,
-		0,
-		0,
-	}
-
-	C.libevdev_set_uniq(dev, C.CString("Sunshine Gamepad"))
-	C.libevdev_set_id_product(dev, 0x28E)
-	C.libevdev_set_id_vendor(dev, 0x45E)
-	C.libevdev_set_id_bustype(dev, 0x3)
-	C.libevdev_set_id_version(dev, 0x110)
-	C.libevdev_set_name(dev, C.CString("Microsoft X-Box 360 pad"))
-
-	C.libevdev_enable_event_type(dev, C.EV_KEY)
-	C.libevdev_enable_event_code(dev, C.EV_KEY, C.BTN_WEST, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_KEY, C.BTN_EAST, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_KEY, C.BTN_NORTH, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_KEY, C.BTN_SOUTH, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_KEY, C.BTN_THUMBL, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_KEY, C.BTN_THUMBR, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_KEY, C.BTN_TR, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_KEY, C.BTN_TL, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_KEY, C.BTN_SELECT, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_KEY, C.BTN_MODE, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_KEY, C.BTN_START, unsafe.Pointer(nil))
-
-	C.libevdev_enable_event_type(dev, C.EV_ABS)
-	C.libevdev_enable_event_code(dev, C.EV_ABS, C.ABS_HAT0Y, unsafe.Pointer(&dpad))
-	C.libevdev_enable_event_code(dev, C.EV_ABS, C.ABS_HAT0X, unsafe.Pointer(&dpad))
-	C.libevdev_enable_event_code(dev, C.EV_ABS, C.ABS_Z, unsafe.Pointer(&trigger))
-	C.libevdev_enable_event_code(dev, C.EV_ABS, C.ABS_RZ, unsafe.Pointer(&trigger))
-	C.libevdev_enable_event_code(dev, C.EV_ABS, C.ABS_X, unsafe.Pointer(&stick))
-	C.libevdev_enable_event_code(dev, C.EV_ABS, C.ABS_RX, unsafe.Pointer(&stick))
-	C.libevdev_enable_event_code(dev, C.EV_ABS, C.ABS_Y, unsafe.Pointer(&stick))
-	C.libevdev_enable_event_code(dev, C.EV_ABS, C.ABS_RY, unsafe.Pointer(&stick))
-
-	C.libevdev_enable_event_type(dev, C.EV_FF)
-	C.libevdev_enable_event_code(dev, C.EV_FF, C.FF_RUMBLE, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_FF, C.FF_CONSTANT, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_FF, C.FF_PERIODIC, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_FF, C.FF_SINE, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_FF, C.FF_RAMP, unsafe.Pointer(nil))
-	C.libevdev_enable_event_code(dev, C.EV_FF, C.FF_GAIN, unsafe.Pointer(nil))
-	_ = stick
-	_ = dpad
-	_ = trigger
-
-	return dev
-}
 
 func _init() error {
 	keyboard_dev := keyboard()
 	mouse_rel_dev := mouse_rel()
 	mouse_abs_dev := mouse_abs()
-	gamepad_dev := x360()
 
 	rv := C.libevdev_uinput_create_from_device(mouse_abs_dev, C.LIBEVDEV_UINPUT_OPEN_MANAGED, &mouse_abs_input)
 	if rv > 0 || mouse_abs_input == nil {
@@ -375,10 +303,6 @@ func _init() error {
 	rv = C.libevdev_uinput_create_from_device(keyboard_dev, C.LIBEVDEV_UINPUT_OPEN_MANAGED, &keyboard_input)
 	if rv > 0 || keyboard_input == nil {
 		return errors.New("failed to create new keyboard device")
-	}
-	rv = C.libevdev_uinput_create_from_device(gamepad_dev, C.LIBEVDEV_UINPUT_OPEN_MANAGED, &gamepad_input)
-	if rv > 0 || gamepad_input == nil {
-		return errors.New("failed to create new gamepad device")
 	}
 
 	return nil
