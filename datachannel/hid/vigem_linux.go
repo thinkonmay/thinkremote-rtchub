@@ -14,37 +14,38 @@ import (
 )
 
 type gamepad_state struct {
-	buttonFlags uint32
-	lt          C.int
-	rt          C.int
-	lsX         C.int
-	lsY         C.int
-	rsX         C.int
-	rsY         C.int
+	buttonStates map[int]C.int
+
+	lt  C.int
+	rt  C.int
+	lsX C.int
+	lsY C.int
+	rsX C.int
+	rsY C.int
 }
 
 const (
-	DPAD_UP         = 0x0001
-	DPAD_DOWN       = 0x0002
-	DPAD_LEFT       = 0x0004
-	DPAD_RIGHT      = 0x0008
-	START           = 0x0010
-	GBACK           = 0x0020
-	LEFT_STICK      = 0x0040
-	RIGHT_STICK     = 0x0080
-	LEFT_BUTTON     = 0x0100
-	RIGHT_BUTTON    = 0x0200
-	GHOME           = 0x0400
-	A               = 0x1000
-	B               = 0x2000
-	X               = 0x4000
-	Y               = 0x8000
-	PADDLE1         = 0x010000
-	PADDLE2         = 0x020000
-	PADDLE3         = 0x040000
-	PADDLE4         = 0x080000
-	TOUCHPAD_BUTTON = 0x100000
-	MISC_BUTTON     = 0x200000
+	DPAD_VERT       = iota
+	DPAD_HORI       
+	START           
+	GBACK           
+	LEFT_STICK      
+	RIGHT_STICK     
+	LEFT_BUTTON     
+	RIGHT_BUTTON    
+	GHOME           
+	A               
+	B               
+	X               
+	Y               
+	PADDLE1         
+	PADDLE2         
+	PADDLE3         
+	PADDLE4         
+	TOUCHPAD_BUTTON 
+	MISC_BUTTON     
+
+	MAX_BUTTON
 )
 
 var (
@@ -72,7 +73,8 @@ type Emulator struct {
 }
 
 type Xbox360Controller struct {
-	gamepad_state_old gamepad_state
+	gamepad_state_old *gamepad_state
+	channel           chan *gamepad_state
 }
 
 func (c *Xbox360Controller) Close() error {
@@ -88,66 +90,89 @@ func (c *Xbox360Controller) Disconnect() error {
 }
 
 func (r *Xbox360Controller) pressButton(index int64, value bool) {
-	new := r.gamepad_state_old
-	defer r.send(&new)
-	switch index {
-		case 0:
-			new.buttonFlags = A
-		case 1:
-			new.buttonFlags = B
-		case 2:
-			new.buttonFlags = X
-		case 3:
-			new.buttonFlags = Y
-		case 4:
-			new.buttonFlags = LEFT_BUTTON
-		case 5:
-			new.buttonFlags = RIGHT_BUTTON
-		case 8:
-			new.buttonFlags = GBACK
-		case 9:
-			new.buttonFlags = START
-		case 10:
-			new.buttonFlags = LEFT_STICK
-		case 11:
-			new.buttonFlags = RIGHT_STICK
-		case 12:
-			new.buttonFlags = UP
-		case 13:
-			new.buttonFlags = DOWN
-		case 14:
-			new.buttonFlags = LEFT
-		case 15:
-			new.buttonFlags = RIGHT
-		case 16:
-			new.buttonFlags = MISC_BUTTON
+	new := *r.gamepad_state_old
+	prev := new.buttonStates
+	new.buttonStates = map[int]C.int{}
+	for k,v  := range prev { new.buttonStates[k] = v }
+	defer func() { r.channel <- &new }()
+
+	state := C.int(0)
+	if value {
+		state = 1
 	}
+
+	switch index {
+	case 0:
+		new.buttonStates[A] = state
+	case 1:
+		new.buttonStates[B] = state
+	case 2:
+		new.buttonStates[X] = state
+	case 3:
+		new.buttonStates[Y] = state
+	case 4:
+		new.buttonStates[LEFT_BUTTON] = state
+	case 5:
+		new.buttonStates[RIGHT_BUTTON] = state
+	case 8:
+		new.buttonStates[GBACK] = state
+	case 9:
+		new.buttonStates[START] = state
+	case 10:
+		new.buttonStates[LEFT_STICK] = state
+	case 11:
+		new.buttonStates[RIGHT_STICK] = state
+	case 12:
+		if value {
+			state = -1
+		}
+		new.buttonStates[DPAD_VERT] = state
+	case 13:
+		if value {
+			state = 1
+		}
+		new.buttonStates[DPAD_VERT] = state
+	case 14:
+		if value {
+			state = -1
+		}
+		new.buttonStates[DPAD_HORI] = state
+	case 15:
+		if value {
+			state = 1
+		}
+		new.buttonStates[DPAD_HORI] = state
+
+	case 16:
+		new.buttonStates[MISC_BUTTON] = state
+	}
+
 }
 
 func (r *Xbox360Controller) pressAxis(index int64, value float64) {
-	new := r.gamepad_state_old
-	defer r.send(&new)
+	new := *r.gamepad_state_old
+	defer func() { r.channel <- &new }()
 	switch index {
-		case 0:
-			new.lsX = C.int(value * 32767);
-		case 1:
-			new.lsY = -C.int(value * 32767);
-		case 2:
-			new.rsX = C.int(value * 32767);
-		case 3:
-			new.rsY = -C.int(value * 32767);
+	case 0:
+		new.lsX = C.int(value * 32767)
+	case 1:
+		new.lsY = -C.int(value * 32767)
+	case 2:
+		new.rsX = C.int(value * 32767)
+	case 3:
+		new.rsY = -C.int(value * 32767)
 	}
 
 }
 
 func (r *Xbox360Controller) pressSlider(index int64, value float64) {
-	new := r.gamepad_state_old
-	defer r.send(&new)
+	new := *r.gamepad_state_old
+	defer func() { r.channel <- &new }()
 	switch index {
-		case 6:
-			new.lt = C.int(value * 255);
-		case 7:
-			new.rt = C.int(value * 255);
+	case 6:
+		new.lt = C.int(value * 255)
+	case 7:
+		new.rt = C.int(value * 255)
 	}
 }
 
@@ -165,140 +190,102 @@ func (e *Emulator) Close() error {
 }
 
 func (e *Emulator) CreateXbox360Controller() (*Xbox360Controller, error) {
-	return &Xbox360Controller{
-		gamepad_state_old: gamepad_state{},
-	}, nil
+	ret := &Xbox360Controller{
+		gamepad_state_old: &gamepad_state{
+			buttonStates: map[int]C.int{},
+		},
+		channel:           make(chan *gamepad_state, 16),
+	}
+
+
+	for i := 0; i < MAX_BUTTON; i++ {
+		ret.gamepad_state_old.buttonStates[i] = 0
+	}
+
+
+
+	process := func() {
+		defer func ()  {
+			if err := recover();err != nil {
+				fmt.Printf("recovered panic in HID thread: %v\n",err)
+			}
+		}()
+		for {
+			ret.send(<-ret.channel)
+		}
+	}
+
+	go func ()  { 
+		for {
+			process()
+		}
+	}()
+	return ret, nil
 }
 
 func (controller *Xbox360Controller) send(gamepad_state *gamepad_state) {
-	gamepad_state_old := &controller.gamepad_state_old
-	bf := gamepad_state.buttonFlags ^ gamepad_state_old.buttonFlags
-	bf_new := gamepad_state.buttonFlags
-
-	if bf != 0 {
-		// up pressed == -1, down pressed == 1, else 0
-		if (DPAD_UP|DPAD_DOWN)&bf != 0 {
-			// button_state := bf_new & DPAD_UP ? -1 : (bf_new & DPAD_DOWN ? 1 : 0);
-			button_state := C.int(0)
-			if bf_new&DPAD_UP != 0 {
-				button_state = -1
-			} else if bf_new&DPAD_DOWN != 0 {
-				button_state = 1
-			} else {
-				button_state = 0
-			}
-
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_ABS, C.ABS_HAT0Y, C.int(button_state))
-		}
-
-		if (DPAD_LEFT|DPAD_RIGHT)&bf != 0 {
-			// int button_state = bf_new & DPAD_LEFT ? -1 : (bf_new & DPAD_RIGHT ? 1 : 0);
-			button_state := C.int(0)
-			if bf_new&DPAD_LEFT != 0 {
-				button_state = -1
-			} else if bf_new&DPAD_RIGHT != 0 {
-				button_state = 1
-			} else {
-				button_state = 0
-			}
-
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_ABS, C.ABS_HAT0X, button_state)
-		}
-
-		state := C.int(0)
-		if START&bf != 0 {
-			if bf_new&START != 0 {
-				state = 1
-			}
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_START, state)
-		}
-		if GBACK&bf != 0 {
-			if bf_new&GBACK != 0 {
-				state = 1
-			}
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_SELECT, state)
-		}
-		if LEFT_STICK&bf != 0 {
-			if bf_new&LEFT_STICK != 0 {
-				state = 1
-			}
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_THUMBL, state)
-		}
-		if RIGHT_STICK&bf != 0 {
-			if bf_new&RIGHT_STICK != 0 {
-				state = 1
-			}
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_THUMBR, state)
-		}
-		if LEFT_BUTTON&bf != 0 {
-			if bf_new&LEFT_BUTTON != 0 {
-				state = 1
-			}
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_TL, state)
-		}
-		if RIGHT_BUTTON&bf != 0 {
-			if bf_new&RIGHT_BUTTON != 0 {
-				state = 1
-			}
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_TR, state)
-		}
-		if (GHOME|MISC_BUTTON)&bf != 0 {
-			if bf_new&(GHOME|MISC_BUTTON) != 0 {
-				state = 1
-			}
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_MODE, state)
-		}
-		if A&bf != 0 {
-			if bf_new&A != 0 {
-				state = 1
-			}
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_SOUTH, state)
-		}
-		if B&bf != 0 {
-			if bf_new&B != 0 {
-				state = 1
-			}
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_EAST, state)
-		}
-		if X&bf != 0 {
-			if bf_new&X != 0 {
-				state = 1
-			}
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_NORTH, state)
-		}
-		if Y&bf != 0 {
-			if bf_new&Y != 0 {
-				state = 1
-			}
-			C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_WEST, state)
-		}
+	fmt.Printf("old %v\n",controller.gamepad_state_old.buttonStates)
+	fmt.Printf("new %v\n",gamepad_state.buttonStates)
+	if gamepad_state.buttonStates[START] != controller.gamepad_state_old.buttonStates[START] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_START, gamepad_state.buttonStates[START])
+	}
+	if gamepad_state.buttonStates[GBACK] != controller.gamepad_state_old.buttonStates[GBACK] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_SELECT, gamepad_state.buttonStates[GBACK])
+	}
+	if gamepad_state.buttonStates[LEFT_STICK] != controller.gamepad_state_old.buttonStates[LEFT_STICK] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_THUMBL, gamepad_state.buttonStates[LEFT_STICK])
+	}
+	if gamepad_state.buttonStates[RIGHT_STICK] != controller.gamepad_state_old.buttonStates[RIGHT_STICK] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_THUMBR, gamepad_state.buttonStates[RIGHT_STICK])
+	}
+	if gamepad_state.buttonStates[LEFT_BUTTON] != controller.gamepad_state_old.buttonStates[LEFT_BUTTON] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_TL, gamepad_state.buttonStates[LEFT_BUTTON])
+	}
+	if gamepad_state.buttonStates[RIGHT_BUTTON] != controller.gamepad_state_old.buttonStates[RIGHT_BUTTON] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_TR, gamepad_state.buttonStates[RIGHT_BUTTON])
+	}
+	if gamepad_state.buttonStates[A] != controller.gamepad_state_old.buttonStates[A] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_SOUTH, gamepad_state.buttonStates[A])
+	}
+	if gamepad_state.buttonStates[B] != controller.gamepad_state_old.buttonStates[B] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_EAST, gamepad_state.buttonStates[B])
+	}
+	if gamepad_state.buttonStates[X] != controller.gamepad_state_old.buttonStates[X] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_NORTH, gamepad_state.buttonStates[X])
+	}
+	if gamepad_state.buttonStates[Y] != controller.gamepad_state_old.buttonStates[Y] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_WEST, gamepad_state.buttonStates[Y])
+	}
+	if gamepad_state.buttonStates[MISC_BUTTON] != controller.gamepad_state_old.buttonStates[MISC_BUTTON] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_MODE, gamepad_state.buttonStates[MISC_BUTTON])
 	}
 
-	if gamepad_state_old.lt != gamepad_state.lt {
+	if gamepad_state.buttonStates[DPAD_VERT] != controller.gamepad_state_old.buttonStates[DPAD_VERT] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_ABS, C.ABS_HAT0Y, gamepad_state.buttonStates[DPAD_VERT])
+	}
+	if gamepad_state.buttonStates[DPAD_HORI] != controller.gamepad_state_old.buttonStates[DPAD_HORI] {
+		C.libevdev_uinput_write_event(gamepad_input, C.EV_ABS, C.ABS_HAT0X, gamepad_state.buttonStates[DPAD_HORI])
+	}
+	if controller.gamepad_state_old.lt != gamepad_state.lt {
 		C.libevdev_uinput_write_event(gamepad_input, C.EV_ABS, C.ABS_Z, gamepad_state.lt)
 	}
-
-	if gamepad_state_old.rt != gamepad_state.rt {
+	if controller.gamepad_state_old.rt != gamepad_state.rt {
 		C.libevdev_uinput_write_event(gamepad_input, C.EV_ABS, C.ABS_RZ, gamepad_state.rt)
 	}
-
-	if gamepad_state_old.lsX != gamepad_state.lsX {
+	if controller.gamepad_state_old.lsX != gamepad_state.lsX {
 		C.libevdev_uinput_write_event(gamepad_input, C.EV_ABS, C.ABS_X, gamepad_state.lsX)
 	}
-
-	if gamepad_state_old.lsY != gamepad_state.lsY {
+	if controller.gamepad_state_old.lsY != gamepad_state.lsY {
 		C.libevdev_uinput_write_event(gamepad_input, C.EV_ABS, C.ABS_Y, -gamepad_state.lsY)
 	}
-
-	if gamepad_state_old.rsX != gamepad_state.rsX {
+	if controller.gamepad_state_old.rsX != gamepad_state.rsX {
 		C.libevdev_uinput_write_event(gamepad_input, C.EV_ABS, C.ABS_RX, gamepad_state.rsX)
 	}
-
-	if gamepad_state_old.rsY != gamepad_state.rsY {
+	if controller.gamepad_state_old.rsY != gamepad_state.rsY {
 		C.libevdev_uinput_write_event(gamepad_input, C.EV_ABS, C.ABS_RY, -gamepad_state.rsY)
 	}
 
-	controller.gamepad_state_old = *gamepad_state
+	controller.gamepad_state_old = gamepad_state
 	C.libevdev_uinput_write_event(gamepad_input, C.EV_SYN, C.SYN_REPORT, 0)
 }
 

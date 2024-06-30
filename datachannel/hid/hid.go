@@ -66,9 +66,6 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 			(float32(offsetY) + (float32(height) * float32(b))) / float32(envY)
 	}
 	convert_pos_linux := func(a, b float64) (X, Y float32) {
-		defer func ()  {
-			fmt.Printf("width %f, height %f\n",X,Y)
-		}()
 		return float32(a) * float32(1920),
 			float32(b) * float32(1080)
 	}
