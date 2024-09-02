@@ -228,7 +228,7 @@ func (c *Xbox360Controller) Disconnect() error {
 	return nil
 }
 
-func (c *Xbox360Controller) Send(report *Xbox360ControllerReport) error {
+func (c *Xbox360Controller) send(report *Xbox360ControllerReport) error {
 	libErr, _, err := procTargetX360Update.Call(c.emulator.handle, c.handle, uintptr(unsafe.Pointer(&report.native)))
 
 	if !errors.Is(err, windows.ERROR_SUCCESS) {
@@ -310,7 +310,7 @@ func (r *Xbox360Controller) pressButton(index int64, value bool) {
 	}
 
 
-	r.Send(&r.slider)
+	r.send(&r.slider)
 }
 
 func (r *Xbox360Controller) pressAxis(index int64, value float64) {
@@ -325,7 +325,7 @@ func (r *Xbox360Controller) pressAxis(index int64, value float64) {
 			r.slider.native.sThumbRY = -C.short(value * 32767);
 	}
 
-	r.Send(&r.slider)
+	r.send(&r.slider)
 }
 
 func (r *Xbox360Controller) pressSlider(index int64, value float64) {
@@ -336,5 +336,5 @@ func (r *Xbox360Controller) pressSlider(index int64, value float64) {
 			r.slider.native.bRightTrigger = C.uchar(value * 255);
 	}
 
-	r.Send(&r.slider)
+	r.send(&r.slider)
 }
