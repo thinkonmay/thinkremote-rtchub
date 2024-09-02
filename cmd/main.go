@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v4"
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
 
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
@@ -32,7 +32,7 @@ func main() {
 		if arg == "--token" {
 			token = args[i+1]
 		} else if arg == "--video_channel" {
-			videochannel,_ = strconv.ParseInt(args[i+1],10,16)
+			videochannel, _ = strconv.ParseInt(args[i+1], 10, 16)
 		} else if arg == "--video" {
 			video_url = args[i+1]
 		} else if arg == "--audio" {
@@ -48,8 +48,7 @@ func main() {
 		}
 	}
 
-
-	memory,err := proxy.ObtainSharedMemory(token)
+	memory, err := proxy.ObtainSharedMemory(token)
 	if err != nil {
 		fmt.Printf("error obtain shared memory %s\n", err.Error())
 		return
@@ -71,7 +70,7 @@ func main() {
 	chans.RegisterConsumer("manual", manual.NewManualCtx(memory.GetQueue(int(videochannel))))
 	chans.RegisterConsumer("hid", hid.NewHIDSingleton(memory.GetQueue(int(videochannel))))
 
-	handle_track := func(tr *webrtc.TrackRemote) { }
+	handle_track := func(tr *webrtc.TrackRemote) {}
 	go func() {
 		for {
 			signaling_client, err := http.InitHttpClient(video_url)

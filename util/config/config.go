@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v4"
 )
 
 type WebRTCConfig struct {
@@ -14,25 +14,25 @@ type WebsocketConfig struct {
 }
 
 type AuthConfig struct {
-	Token         string		`json:"token"`
+	Token string `json:"token"`
 }
 type GrpcConfig struct {
-	Audio struct{
-		GrpcPort int `json:"GrpcPort"`
-		URL string `json:"URL"`
-	}`json:"Audio"`
+	Audio struct {
+		GrpcPort int    `json:"GrpcPort"`
+		URL      string `json:"URL"`
+	} `json:"Audio"`
 	Video struct {
-		GrpcPort int `json:"GrpcPort"`
-		URL string `json:"URL"`
-	}`json:"Video"`
+		GrpcPort int    `json:"GrpcPort"`
+		URL      string `json:"URL"`
+	} `json:"Video"`
 
-	ServerAddress string			`json:"HostName"`
+	ServerAddress string `json:"HostName"`
 }
 
 type ListenerConfig struct {
-	ID		  string
-	StreamID  string
-	Codec     string
+	ID       string
+	StreamID string
+	Codec    string
 }
 
 type BroadcasterConfig struct {

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/pion/rtp"
-	webrtc "github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v4"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
@@ -16,8 +16,8 @@ import (
 type OnTrackFunc func(*webrtc.TrackRemote)
 
 type WebRTCClient struct {
-	conn      *webrtc.PeerConnection
-	Closed    bool
+	conn   *webrtc.PeerConnection
+	Closed bool
 
 	onTrack OnTrackFunc
 
@@ -28,7 +28,7 @@ type WebRTCClient struct {
 	toIceChannel chan *webrtc.ICECandidateInit
 
 	connectionState chan *webrtc.ICEConnectionState
-	gatherState     chan *webrtc.ICEGathererState
+	gatherState     chan webrtc.ICEGatheringState
 }
 
 func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebRTCClient, err error) {
@@ -38,7 +38,7 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		toIceChannel:    make(chan *webrtc.ICECandidateInit, 2),
 		fromIceChannel:  make(chan *webrtc.ICECandidateInit, 2),
 		connectionState: make(chan *webrtc.ICEConnectionState, 2),
-		gatherState:     make(chan *webrtc.ICEGathererState, 2),
+		gatherState:     make(chan webrtc.ICEGatheringState, 2),
 		onTrack:         track,
 		Closed:          false,
 	}
@@ -71,9 +71,9 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		fmt.Printf("Connection state has changed %s \n", connectionState.String())
 		client.connectionState <- &connectionState
 	})
-	client.conn.OnICEGatheringStateChange(func(gatherState webrtc.ICEGathererState) {
-		fmt.Printf("Gather state has changed %s\n", gatherState.String())
-		client.gatherState <- &gatherState
+	client.conn.OnICEGatheringStateChange(func(is webrtc.ICEGatheringState) {
+		fmt.Printf("Gather state has changed %s\n", is.String())
+		client.gatherState <- is
 	})
 
 	client.conn.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
@@ -81,7 +81,9 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		client.onTrack(track)
 	})
 
-	go func() { for { sdp := <-client.fromSdpChannel
+	go func() {
+		for {
+			sdp := <-client.fromSdpChannel
 			var err error
 			if sdp == nil {
 				return
@@ -114,7 +116,9 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		}
 	}()
 
-	go func() { for { ice := <-client.fromIceChannel
+	go func() {
+		for {
+			ice := <-client.fromIceChannel
 			if ice == nil {
 				return
 			}
@@ -177,7 +181,9 @@ func (client *WebRTCClient) RegisterDataChannel(dc datachannel.IDatachannel, gro
 		}
 		channel.SendText(msg)
 	})
-	go func() { for { time.Sleep(time.Second)
+	go func() {
+		for {
+			time.Sleep(time.Second)
 			if client.Closed {
 				dc.DeregisterHandle(group, rand)
 				return
@@ -210,7 +216,9 @@ func (client *WebRTCClient) readLoopRTP(listener listener.Listener, track *webrt
 		}
 	})
 
-	go func() { for { time.Sleep(time.Millisecond * 100)
+	go func() {
+		for {
+			time.Sleep(time.Millisecond * 100)
 			if client.Closed {
 				listener.DeregisterRTPHandler(id)
 				return
@@ -219,11 +227,11 @@ func (client *WebRTCClient) readLoopRTP(listener listener.Listener, track *webrt
 	}()
 }
 
-func (webrtc *WebRTCClient) Close() {
-	webrtc.conn.Close()
-	webrtc.Closed = true
-	webrtc.connectionState <- nil
-	webrtc.gatherState <- nil
+func (client *WebRTCClient) Close() {
+	client.conn.Close()
+	client.Closed = true
+	client.connectionState <- nil
+	client.gatherState <- webrtc.ICEGatheringState(999)
 }
 func (webrtc *WebRTCClient) StopSignaling() {
 	fmt.Println("stopping signaling process")
@@ -233,7 +241,7 @@ func (webrtc *WebRTCClient) StopSignaling() {
 	webrtc.fromIceChannel <- nil
 }
 
-func (client *WebRTCClient) GatherStateChange() *webrtc.ICEGathererState {
+func (client *WebRTCClient) GatherStateChange() webrtc.ICEGatheringState {
 	return <-client.gatherState
 }
 func (client *WebRTCClient) ConnectionStateChange() *webrtc.ICEConnectionState {

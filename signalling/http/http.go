@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v4"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC/packet"
 )
@@ -197,7 +197,8 @@ func (client *WebsocketClient) OnSDP(fun signalling.OnSDPFunc) {
 }
 
 func (client *WebsocketClient) WaitForStart() {
-	for { time.Sleep(time.Millisecond * 100)
+	for {
+		time.Sleep(time.Millisecond * 100)
 		if client.connected {
 			return
 		}
@@ -205,7 +206,8 @@ func (client *WebsocketClient) WaitForStart() {
 }
 
 func (client *WebsocketClient) WaitForEnd() {
-	for { time.Sleep(time.Millisecond * 100)
+	for {
+		time.Sleep(time.Millisecond * 100)
 		if client.done {
 			return
 		}

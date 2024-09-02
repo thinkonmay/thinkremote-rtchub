@@ -7,7 +7,7 @@ import (
 	"unsafe"
 
 	"github.com/pion/rtp"
-	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v4"
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
@@ -52,11 +52,11 @@ func CreatePipeline(queue *proxy.Queue) (listener.Listener,
 			}
 
 			local_index++
-			size,duration := queue.Copy(buffer, local_index)
+			size, duration := queue.Copy(buffer, local_index)
 			if size > len(buffer) {
 				continue
 			}
-			
+
 			pipeline.Multiplexer.Send(buffer[:size], uint32(time.Duration(duration).Seconds()*pipeline.clockRate))
 		}
 	}(queue)

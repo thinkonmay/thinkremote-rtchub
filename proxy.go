@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	webrtclib "github.com/pion/webrtc/v3"
+	webrtclib "github.com/pion/webrtc/v4"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling"
@@ -15,7 +15,7 @@ import (
 type Proxy struct {
 	listeners []listener.Listener
 
-	chan_conf 		 datachannel.IDatachannel
+	chan_conf        datachannel.IDatachannel
 	signallingClient signalling.Signalling
 	webrtcClient     *webrtc.WebRTCClient
 }
@@ -37,19 +37,23 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 		return
 	}
 
-	go func() { for { state := proxy.webrtcClient.GatherStateChange()
-			if state == nil {
+	go func() {
+		for {
+			state := proxy.webrtcClient.GatherStateChange()
+			if state == 999 {
 				return
 			}
 
-			switch *state {
-			case webrtclib.ICEGathererStateGathering:
-			case webrtclib.ICEGathererStateComplete:
-			case webrtclib.ICEGathererStateClosed:
+			switch state {
+			case webrtclib.ICEGatheringStateGathering:
+			case webrtclib.ICEGatheringStateComplete:
+			case webrtclib.ICEGatheringStateUnknown:
 			}
 		}
 	}()
-	go func() { for { state := proxy.webrtcClient.ConnectionStateChange()
+	go func() {
+		for {
+			state := proxy.webrtcClient.ConnectionStateChange()
 			if state == nil {
 				return
 			}
@@ -67,7 +71,9 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 		}
 	}()
 
-	go func() { for { ice := proxy.webrtcClient.OnLocalICE()
+	go func() {
+		for {
+			ice := proxy.webrtcClient.OnLocalICE()
 			if ice == nil {
 				return
 			}
@@ -75,7 +81,9 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 		}
 	}()
 
-	go func() { for { sdp := proxy.webrtcClient.OnLocalSDP()
+	go func() {
+		for {
+			sdp := proxy.webrtcClient.OnLocalSDP()
 			if sdp == nil {
 				return
 			}
@@ -97,12 +105,14 @@ func (proxy *Proxy) start() error {
 	proxy.webrtcClient.Listen(proxy.listeners)
 	defer proxy.webrtcClient.StopSignaling()
 
-	success := make(chan bool,2)
-	go func() { proxy.signallingClient.WaitForEnd()
-		success<-true
+	success := make(chan bool, 2)
+	go func() {
+		proxy.signallingClient.WaitForEnd()
+		success <- true
 	}()
-	go func() { time.Sleep(time.Second * 60)
-		success<-false
+	go func() {
+		time.Sleep(time.Second * 60)
+		success <- false
 	}()
 
 	if !<-success {

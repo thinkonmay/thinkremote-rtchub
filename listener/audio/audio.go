@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/pion/rtp"
-	"github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v4"
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/multiplexer"
 	"github.com/thinkonmay/thinkremote-rtchub/listener/rtppay/opus"
@@ -45,7 +45,7 @@ func CreatePipeline(memory *proxy.Queue) (*AudioPipeline, error) {
 			}
 
 			local_index++
-			size,_ := queue.Copy(buffer, local_index)
+			size, _ := queue.Copy(buffer, local_index)
 			pipeline.Multiplexer.Send(buffer[:size], uint32(pipeline.clockRate/100))
 		}
 	}(memory)
