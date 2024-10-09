@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v4"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
@@ -14,12 +15,14 @@ import (
 )
 
 type OnTrackFunc func(*webrtc.TrackRemote)
+type OnIDRFunc func()
 
 type WebRTCClient struct {
 	conn   *webrtc.PeerConnection
 	Closed bool
 
 	onTrack OnTrackFunc
+	onIDR   OnIDRFunc
 
 	fromSdpChannel chan *webrtc.SessionDescription
 	fromIceChannel chan *webrtc.ICECandidateInit
@@ -31,7 +34,7 @@ type WebRTCClient struct {
 	gatherState     chan webrtc.ICEGatheringState
 }
 
-func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebRTCClient, err error) {
+func InitWebRtcClient(track OnTrackFunc, idr OnIDRFunc, conf config.WebRTCConfig) (client *WebRTCClient, err error) {
 	client = &WebRTCClient{
 		toSdpChannel:    make(chan *webrtc.SessionDescription, 2),
 		fromSdpChannel:  make(chan *webrtc.SessionDescription, 2),
@@ -40,6 +43,7 @@ func InitWebRtcClient(track OnTrackFunc, conf config.WebRTCConfig) (client *WebR
 		connectionState: make(chan *webrtc.ICEConnectionState, 2),
 		gatherState:     make(chan webrtc.ICEGatheringState, 2),
 		onTrack:         track,
+		onIDR:           idr,
 		Closed:          false,
 	}
 
@@ -150,13 +154,14 @@ func (client *WebRTCClient) Listen(listeners []listener.Listener) {
 			fmt.Printf("error add track %s\n", err.Error())
 			continue
 		}
-		_, err = client.conn.AddTrack(track)
+
+		sender, err := client.conn.AddTrack(track)
 		if err != nil {
 			fmt.Printf("error add track %s\n", err.Error())
 			continue
 		}
 
-		client.readLoopRTP(lis, track)
+		client.readLoopRTP(lis, track, sender)
 	}
 }
 
@@ -202,7 +207,9 @@ func (client *WebRTCClient) RegisterDataChannel(dc datachannel.IDatachannel, gro
 	})
 }
 
-func (client *WebRTCClient) readLoopRTP(listener listener.Listener, track *webrtc.TrackLocalStaticRTP) {
+func (client *WebRTCClient) readLoopRTP(listener listener.Listener,
+	track *webrtc.TrackLocalStaticRTP,
+	sender *webrtc.RTPSender) {
 	id := track.ID()
 
 	listener.RegisterRTPHandler(id, func(pk *rtp.Packet) {
@@ -215,6 +222,27 @@ func (client *WebRTCClient) readLoopRTP(listener listener.Listener, track *webrt
 			return
 		}
 	})
+
+	go func() {
+		for {
+			packets, _, err := sender.ReadRTCP()
+			if err != nil {
+				continue
+			}
+			for _, pkt := range packets {
+				switch pkt.(type) {
+				case *rtcp.FullIntraRequest:
+					client.onIDR()
+				case *rtcp.PictureLossIndication:
+					client.onIDR()
+				case *rtcp.TransportLayerNack:
+				case *rtcp.ReceiverReport:
+				case *rtcp.SenderReport:
+				case *rtcp.ExtendedReport:
+				}
+			}
+		}
+	}()
 
 	go func() {
 		for {

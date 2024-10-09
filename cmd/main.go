@@ -70,6 +70,7 @@ func main() {
 	chans.RegisterConsumer("manual", manual.NewManualCtx(memory.GetQueue(int(videochannel))))
 	chans.RegisterConsumer("hid", hid.NewHIDSingleton(memory.GetQueue(int(videochannel))))
 
+	handle_idr := func() { memory.GetQueue(int(videochannel)).Raise(proxy.Idr, 1) }
 	handle_track := func(tr *webrtc.TrackRemote) {}
 	go func() {
 		for {
@@ -85,7 +86,9 @@ func main() {
 					rtc,
 					chans,
 					[]listener.Listener{videopipeline},
-					handle_track)
+					handle_track,
+					handle_idr,
+				)
 				if err != nil {
 					fmt.Printf("webrtc error :%s\n", err.Error())
 				}
@@ -107,7 +110,9 @@ func main() {
 					rtc,
 					chans,
 					[]listener.Listener{audioPipeline},
-					handle_track)
+					handle_track,
+					func() {},
+				)
 				if err != nil {
 					fmt.Printf("webrtc error :%s\n", err.Error())
 				}

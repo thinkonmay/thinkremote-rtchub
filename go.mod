@@ -6,6 +6,7 @@ require (
 	github.com/ebitengine/purego v0.7.1
 	github.com/faiface/beep v1.1.0
 	github.com/pion/opus v0.0.0-20240105012622-483adc6e6efc
+	github.com/pion/rtcp v1.2.14
 	github.com/pion/rtp v1.8.9
 	github.com/pion/webrtc/v4 v4.0.0-beta.29.0.20240901035136-4ef00e6e5f78
 	google.golang.org/protobuf v1.28.1
@@ -17,7 +18,6 @@ require (
 	github.com/pion/dtls/v3 v3.0.2 // indirect
 	github.com/pion/ice/v4 v4.0.1 // indirect
 	github.com/pion/mdns/v2 v2.0.7 // indirect
-	github.com/pion/rtcp v1.2.14 // indirect
 	github.com/pion/srtp/v3 v3.0.3 // indirect
 	github.com/pion/stun/v3 v3.0.0 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect

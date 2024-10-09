@@ -306,7 +306,7 @@ func (r *Xbox360Controller) pressButton(index int64, value bool) {
 	if (value) {
 		r.slider.native.wButtons |= C.ushort(button);
 	} else {
-		r.slider.native.wButtons &= C.ushort(bits.Reverse(uint(button)));
+		r.slider.native.wButtons ^= C.ushort(button);
 	}
 
 
