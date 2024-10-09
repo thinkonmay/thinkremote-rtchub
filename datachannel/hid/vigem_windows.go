@@ -18,7 +18,6 @@ import "C"
 
 import (
 	"errors"
-	"math/bits"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -43,7 +42,6 @@ const (
 
 	VIGEM_ERROR_MAX = VIGEM_ERROR_XUSB_USERINDEX_OUT_OF_RANGE + 1
 )
-
 
 var (
 	client = windows.NewLazyDLL("ViGEmClient.dll")
@@ -160,7 +158,7 @@ func (e *Emulator) CreateXbox360Controller() (*Xbox360Controller, error) {
 	}
 	callback := windows.NewCallback(notificationHandler)
 
-	return &Xbox360Controller{e, handle, false, callback,Xbox360ControllerReport{}}, nil
+	return &Xbox360Controller{e, handle, false, callback, Xbox360ControllerReport{}}, nil
 }
 
 type x360NotificationHandler func(client, target uintptr, largeMotor, smallMotor, ledNumber byte) uintptr
@@ -171,7 +169,7 @@ type Xbox360Controller struct {
 	connected           bool
 	notificationHandler uintptr
 
-	slider 				Xbox360ControllerReport
+	slider Xbox360ControllerReport
 }
 
 func (c *Xbox360Controller) Close() error {
@@ -266,63 +264,60 @@ const (
 	Xbox360ControllerButtonY             = 1 << 15
 )
 
-
-
 func (r *Xbox360Controller) pressButton(index int64, value bool) {
 	var button C.ushort = 0
 	switch index {
-		case 0:
-			button = Xbox360ControllerButtonA
-		case 1:
-			button = Xbox360ControllerButtonB
-		case 2:
-			button = Xbox360ControllerButtonX
-		case 3:
-			button = Xbox360ControllerButtonY
-		case 4:
-			button = Xbox360ControllerButtonLeftShoulder
-		case 5:
-			button = Xbox360ControllerButtonRightShoulder
-		case 8:
-			button = Xbox360ControllerButtonBack
-		case 9:
-			button = Xbox360ControllerButtonStart
-		case 10:
-			button = Xbox360ControllerButtonLeftThumb
-		case 11:
-			button = Xbox360ControllerButtonRightThumb
-		case 12:
-			button = Xbox360ControllerButtonUp
-		case 13:
-			button = Xbox360ControllerButtonDown
-		case 14:
-			button = Xbox360ControllerButtonLeft
-		case 15:
-			button = Xbox360ControllerButtonRight
-		case 16:
-			button = Xbox360ControllerButtonGuide
+	case 0:
+		button = Xbox360ControllerButtonA
+	case 1:
+		button = Xbox360ControllerButtonB
+	case 2:
+		button = Xbox360ControllerButtonX
+	case 3:
+		button = Xbox360ControllerButtonY
+	case 4:
+		button = Xbox360ControllerButtonLeftShoulder
+	case 5:
+		button = Xbox360ControllerButtonRightShoulder
+	case 8:
+		button = Xbox360ControllerButtonBack
+	case 9:
+		button = Xbox360ControllerButtonStart
+	case 10:
+		button = Xbox360ControllerButtonLeftThumb
+	case 11:
+		button = Xbox360ControllerButtonRightThumb
+	case 12:
+		button = Xbox360ControllerButtonUp
+	case 13:
+		button = Xbox360ControllerButtonDown
+	case 14:
+		button = Xbox360ControllerButtonLeft
+	case 15:
+		button = Xbox360ControllerButtonRight
+	case 16:
+		button = Xbox360ControllerButtonGuide
 	}
 
-	if (value) {
-		r.slider.native.wButtons |= C.ushort(button);
+	if value {
+		r.slider.native.wButtons |= C.ushort(button)
 	} else {
-		r.slider.native.wButtons ^= C.ushort(button);
+		r.slider.native.wButtons ^= C.ushort(button)
 	}
-
 
 	r.send(&r.slider)
 }
 
 func (r *Xbox360Controller) pressAxis(index int64, value float64) {
 	switch index {
-		case 0:
-			r.slider.native.sThumbLX = C.short(value * 32767);
-		case 1:
-			r.slider.native.sThumbLY = -C.short(value * 32767);
-		case 2:
-			r.slider.native.sThumbRX = C.short(value * 32767);
-		case 3:
-			r.slider.native.sThumbRY = -C.short(value * 32767);
+	case 0:
+		r.slider.native.sThumbLX = C.short(value * 32767)
+	case 1:
+		r.slider.native.sThumbLY = -C.short(value * 32767)
+	case 2:
+		r.slider.native.sThumbRX = C.short(value * 32767)
+	case 3:
+		r.slider.native.sThumbRY = -C.short(value * 32767)
 	}
 
 	r.send(&r.slider)
@@ -330,10 +325,10 @@ func (r *Xbox360Controller) pressAxis(index int64, value float64) {
 
 func (r *Xbox360Controller) pressSlider(index int64, value float64) {
 	switch index {
-		case 6:
-			r.slider.native.bLeftTrigger = C.uchar(value * 255);
-		case 7:
-			r.slider.native.bRightTrigger = C.uchar(value * 255);
+	case 6:
+		r.slider.native.bLeftTrigger = C.uchar(value * 255)
+	case 7:
+		r.slider.native.bRightTrigger = C.uchar(value * 255)
 	}
 
 	r.send(&r.slider)
