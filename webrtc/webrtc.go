@@ -47,7 +47,11 @@ func InitWebRtcClient(track OnTrackFunc, idr OnIDRFunc, conf config.WebRTCConfig
 		Closed:          false,
 	}
 
-	if client.conn, err = webrtc.NewPeerConnection(webrtc.Configuration{ICEServers: conf.Ices}); err != nil {
+	if client.conn, err = webrtc.NewPeerConnection(
+		webrtc.Configuration{
+			ICEServers:         conf.Ices,
+			ICETransportPolicy: webrtc.ICETransportPolicyRelay,
+		}); err != nil {
 		return
 	}
 
