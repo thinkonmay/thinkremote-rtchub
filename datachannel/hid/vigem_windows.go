@@ -302,7 +302,9 @@ func (r *Xbox360Controller) pressButton(index int64, value bool) {
 	if value {
 		r.slider.native.wButtons |= C.ushort(button)
 	} else {
+		pre := r.slider.native.wButtons
 		r.slider.native.wButtons ^= C.ushort(button)
+		r.slider.native.wButtons &= pre
 	}
 
 	r.send(&r.slider)

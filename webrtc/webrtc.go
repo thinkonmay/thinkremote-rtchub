@@ -227,7 +227,7 @@ func (client *WebRTCClient) readLoopRTP(listener listener.Listener,
 		for {
 			packets, _, err := sender.ReadRTCP()
 			if err != nil {
-				continue
+				break
 			}
 			for _, pkt := range packets {
 				switch pkt.(type) {
@@ -236,6 +236,7 @@ func (client *WebRTCClient) readLoopRTP(listener listener.Listener,
 				case *rtcp.PictureLossIndication:
 					client.onIDR()
 				case *rtcp.TransportLayerNack:
+					client.onIDR()
 				case *rtcp.ReceiverReport:
 				case *rtcp.SenderReport:
 				case *rtcp.ExtendedReport:
