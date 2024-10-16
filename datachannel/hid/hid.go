@@ -56,9 +56,16 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 		fmt.Printf("%s\n", err.Error())
 	}
 
+	controller.emulator.onVibration = func(vibration Vibration) {
+		ret.send <- datachannel.Msg{
+			Msg: fmt.Sprintf("grum|%d|%d", int(vibration.LargeMotor), int(vibration.SmallMotor)),
+			Id:  "all",
+		}
+	}
+
 	offsetX, offsetY, width, height, envX, envY := 0, 0, 0, 0, 0, 0
 	go func() { for { time.Sleep(time.Second * 5)
-			_, width, height, offsetX, offsetY,envX,envY = queue.GetDisplay()
+			_, width, height, offsetX, offsetY, envX, envY = queue.GetDisplay()
 		}
 	}()
 	convert_pos_win := func(a, b float64) (X, Y float32) {
@@ -71,9 +78,9 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 	}
 
 	process := func() {
-		defer func ()  {
-			if err := recover();err != nil {
-				fmt.Printf("recovered panic in HID thread: %v\n",err)
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf("recovered panic in HID thread: %v\n", err)
 			}
 		}()
 		for {
@@ -85,7 +92,7 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 				y, _ := strconv.ParseFloat(msg[2], 32)
 				wx, wy := convert_pos_win(x, y)
 				lx, ly := convert_pos_linux(x, y)
-				SendMouseAbsolute(wx, wy,lx,ly)
+				SendMouseAbsolute(wx, wy, lx, ly)
 			case "mmr":
 				x, _ := strconv.ParseFloat(msg[1], 32)
 				y, _ := strconv.ParseFloat(msg[2], 32)
@@ -138,15 +145,13 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 		}
 	}
 
-	go func ()  { thread.HighPriorityThread()
+	go func() { thread.HighPriorityThread()
 		for {
 			process()
 		}
 	}()
 	return &ret
 }
-
-
 
 func (hid *HIDAdapter) Recv() (string, string) {
 	out := <-hid.send

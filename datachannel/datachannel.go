@@ -121,7 +121,7 @@ func (dc *Datachannel) RegisterHandle(group_name string,
 	go func() { for { msg := <-new_handler.handle_queue
 			if msg == nil {
 				return
-			} else if msg.Id != id {
+			} else if msg.Id != id && msg.Id != "all" {
 				continue
 			}
 
