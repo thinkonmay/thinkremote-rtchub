@@ -236,7 +236,6 @@ func (client *WebRTCClient) readLoopRTP(listener listener.Listener,
 				case *rtcp.PictureLossIndication:
 					client.onIDR()
 				case *rtcp.TransportLayerNack:
-					client.onIDR()
 				case *rtcp.ReceiverReport:
 				case *rtcp.SenderReport:
 				case *rtcp.ExtendedReport:
