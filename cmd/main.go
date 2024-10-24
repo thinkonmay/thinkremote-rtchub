@@ -20,6 +20,10 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
 )
 
+const (
+	DisplayFailureCode = 77
+)
+
 func main() {
 	args := os.Args[1:]
 	rtc := &config.WebRTCConfig{Ices: []webrtc.ICEServer{{}, {}}}
@@ -47,6 +51,14 @@ func main() {
 			rtc.Ices[1].Credential = args[i+1]
 		}
 	}
+
+	defer func() {
+		if err := recover(); err != nil {
+			os.Exit(DisplayFailureCode)
+		} else {
+			os.Exit(0)
+		}
+	}()
 
 	memory, err := proxy.ObtainSharedMemory(token)
 	if err != nil {
