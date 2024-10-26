@@ -86,6 +86,11 @@ func InitWebRtcClient(track OnTrackFunc, idr OnIDRFunc, conf config.WebRTCConfig
 	})
 
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf("panic in sdp thread %v", err)
+			}
+		}()
 		for {
 			sdp := <-client.fromSdpChannel
 			var err error
@@ -121,6 +126,11 @@ func InitWebRtcClient(track OnTrackFunc, idr OnIDRFunc, conf config.WebRTCConfig
 	}()
 
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf("panic in ice thread %v", err)
+			}
+		}()
 		for {
 			ice := <-client.fromIceChannel
 			if ice == nil {
@@ -224,6 +234,11 @@ func (client *WebRTCClient) readLoopRTP(listener listener.Listener,
 	})
 
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf("panic in rtcp thread %v", err)
+			}
+		}()
 		for {
 			packets, _, err := sender.ReadRTCP()
 			if err != nil {
@@ -259,7 +274,7 @@ func (client *WebRTCClient) Close() {
 	client.conn.Close()
 	client.Closed = true
 	client.connectionState <- nil
-	client.gatherState <- webrtc.ICEGatheringState(999)
+	client.gatherState <- webrtc.ICEGatheringState(-1)
 }
 func (webrtc *WebRTCClient) StopSignaling() {
 	fmt.Println("stopping signaling process")

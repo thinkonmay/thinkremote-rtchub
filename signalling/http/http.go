@@ -46,84 +46,94 @@ func InitHttpClient(AddressStr string) (_ signalling.Signalling, err error) {
 	q.Add("uniqueid", uuid.New().String())
 	u.RawQuery = q.Encode()
 
-	go func() {
-		for {
-			time.Sleep(300 * time.Millisecond)
-			if ret.done {
-				ret.iceChan <- nil
-				ret.sdpChan <- nil
-				ret.incoming <- nil
-				return
+	exchange := func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf("panic in http thread %v", err)
 			}
+		}()
 
-			pkt := []packet.SignalingMessage{}
-			for {
-				if len(ret.outcoming) == 0 {
-					break
-				}
-				out := <-ret.outcoming
-				pkt = append(pkt, *out)
-			}
+		pkt := []packet.SignalingMessage{}
+		for len(ret.outcoming) > 0 {
+			out := <-ret.outcoming
+			pkt = append(pkt, *out)
+		}
 
-			b, _ := json.Marshal(pkt)
-			resp, err := http.DefaultClient.Post(
-				u.String(),
-				"application/json",
-				strings.NewReader(string(b)),
-			)
-			if err != nil {
-				fmt.Printf("failed to send http %s", err.Error())
-				continue
-			}
-
-			b, err = io.ReadAll(resp.Body)
-			if err != nil {
-				fmt.Printf("failed to read http body %s", err.Error())
-			}
-
-			err = json.Unmarshal(b, &pkt)
-			if err != nil {
-				fmt.Printf("failed to read http body %s", err.Error())
-			}
-
+		if b, err := json.Marshal(pkt); err != nil {
+			return
+		} else if resp, err := http.DefaultClient.Post(
+			u.String(),
+			"application/json",
+			strings.NewReader(string(b)),
+		); err != nil {
+			return
+		} else if b, err := io.ReadAll(resp.Body); err != nil {
+			return
+		} else if err = json.Unmarshal(b, &pkt); err != nil {
+			return
+		} else {
 			for _, sm := range pkt {
 				ret.incoming <- &sm
 			}
 		}
+	}
+
+	notify := func() bool {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf("panic in signaling thread %v", err)
+			}
+		}()
+
+		res := <-ret.incoming
+		if res == nil {
+			return true
+		}
+
+		switch res.Type {
+		case packet.SignalingType_tSDP:
+			sdp := &webrtc.SessionDescription{}
+			sdp.SDP = res.Sdp.SDPData
+			sdp.Type = webrtc.NewSDPType(res.Sdp.Type)
+			fmt.Printf("SDP received: %s\n", res.Sdp.Type)
+			ret.sdpChan <- sdp
+		case packet.SignalingType_tICE:
+			ice := &webrtc.ICECandidateInit{}
+
+			ice.Candidate = res.Ice.Candidate
+			SDPMid := res.Ice.SDPMid
+			ice.SDPMid = &SDPMid
+			LineIndex := uint16(res.Ice.SDPMLineIndex)
+			ice.SDPMLineIndex = &LineIndex
+
+			fmt.Printf("ICE received\n")
+			ret.iceChan <- ice
+		case packet.SignalingType_tSTART:
+			ret.connected = true
+		case packet.SignalingType_tEND:
+			ret.Stop()
+		default:
+			fmt.Println("Unknown packet")
+		}
+
+		return false
+	}
+
+	go func() {
+		for !ret.done {
+			time.Sleep(300 * time.Millisecond)
+			exchange()
+		}
+
+		ret.iceChan <- nil
+		ret.sdpChan <- nil
+		ret.incoming <- nil
 	}()
 
 	go func() {
-		for {
-			res := <-ret.incoming
-			if res == nil {
-				return
-			}
-
-			switch res.Type {
-			case packet.SignalingType_tSDP:
-				sdp := &webrtc.SessionDescription{}
-				sdp.SDP = res.Sdp.SDPData
-				sdp.Type = webrtc.NewSDPType(res.Sdp.Type)
-				fmt.Printf("SDP received: %s\n", res.Sdp.Type)
-				ret.sdpChan <- sdp
-			case packet.SignalingType_tICE:
-				ice := &webrtc.ICECandidateInit{}
-
-				ice.Candidate = res.Ice.Candidate
-				SDPMid := res.Ice.SDPMid
-				ice.SDPMid = &SDPMid
-				LineIndex := uint16(res.Ice.SDPMLineIndex)
-				ice.SDPMLineIndex = &LineIndex
-
-				fmt.Printf("ICE received\n")
-				ret.iceChan <- ice
-			case packet.SignalingType_tSTART:
-				ret.connected = true
-			case packet.SignalingType_tEND:
-				ret.Stop()
-			default:
-				fmt.Println("Unknown packet")
-			}
+		finish := false
+		for !finish {
+			finish = notify()
 		}
 	}()
 	return ret, nil

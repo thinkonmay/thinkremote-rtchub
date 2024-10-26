@@ -41,7 +41,7 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 	go func() {
 		for {
 			state := proxy.webrtcClient.GatherStateChange()
-			if state == 999 {
+			if state == -1 {
 				return
 			}
 

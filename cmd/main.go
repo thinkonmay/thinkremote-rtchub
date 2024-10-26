@@ -84,7 +84,12 @@ func main() {
 
 	handle_idr := func() { memory.GetQueue(int(videochannel)).Raise(proxy.Idr, 1) }
 	handle_track := func(tr *webrtc.TrackRemote) {}
-	go func() {
+	video := func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf("panic in video thread %v", err)
+			}
+		}()
 		for {
 			signaling_client, err := http.InitHttpClient(video_url)
 			if err != nil {
@@ -94,6 +99,11 @@ func main() {
 
 			signaling_client.WaitForStart()
 			go func() {
+				defer func() {
+					if err := recover(); err != nil {
+						fmt.Printf("panic in webrtc video thread %v", err)
+					}
+				}()
 				err := proxy.InitWebRTCProxy(signaling_client,
 					rtc,
 					chans,
@@ -106,9 +116,14 @@ func main() {
 				}
 			}()
 		}
-	}()
+	}
 
-	go func() {
+	audio := func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf("panic in audio thread %v", err)
+			}
+		}()
 		for {
 			signaling_client, err := http.InitHttpClient(audio_url)
 			if err != nil {
@@ -118,6 +133,11 @@ func main() {
 
 			signaling_client.WaitForStart()
 			go func() {
+				defer func() {
+					if err := recover(); err != nil {
+						fmt.Printf("panic in webrtc audio thread %v", err)
+					}
+				}()
 				err := proxy.InitWebRTCProxy(signaling_client,
 					rtc,
 					chans,
@@ -130,8 +150,16 @@ func main() {
 				}
 			}()
 		}
-	}()
+	}
 
+	retry := func(execute func()) {
+		for {
+			execute()
+		}
+	}
+
+	go retry(audio)
+	go retry(video)
 	chann := make(chan os.Signal, 16)
 	signal.Notify(chann, syscall.SIGTERM, os.Interrupt)
 	<-chann

@@ -37,24 +37,22 @@ func NewManualCtx(queue *proxy.Queue) datachannel.DatachannelConsumer {
 	}
 
 	go func() {
+		dat := ManualPacket{}
 		for {
-			data := <-ret.In
-			dat := ManualPacket{}
-			err := json.Unmarshal([]byte(data), &dat)
-			if err != nil {
+			if err := json.Unmarshal([]byte(<-ret.In), &dat); err != nil {
 				fmt.Printf("error unmarshal packet %s\n", err.Error())
 				continue
 			}
 
 			switch dat.Type {
 			case "bitrate":
-				queue.Raise(proxy.Bitrate,dat.Value)
+				queue.Raise(proxy.Bitrate, dat.Value)
 			case "framerate":
-				queue.Raise(proxy.Framerate,dat.Value)
+				queue.Raise(proxy.Framerate, dat.Value)
 			case "pointer":
-				queue.Raise(proxy.Pointer,dat.Value)
+				queue.Raise(proxy.Pointer, dat.Value)
 			case "reset":
-				queue.Raise(proxy.Idr,dat.Value)
+				queue.Raise(proxy.Idr, dat.Value)
 			case "danger-reset":
 			}
 		}
