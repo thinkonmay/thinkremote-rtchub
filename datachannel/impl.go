@@ -83,7 +83,7 @@ func (dc *Datachannel) RegisterHandle(group_name string,
 	id string,
 	fun func(msg string)) {
 
-	if group, found := dc.groups[group_name]; found {
+	if group, found := dc.groups[group_name]; !found {
 		fmt.Printf("no group name %s available\n", group_name)
 	} else {
 		handler := &Handler{
