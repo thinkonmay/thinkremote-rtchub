@@ -10,7 +10,7 @@ func SafeThread(fun func()) chan error {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				ret <- fmt.Errorf("panic happened in thread %v", err)
+				ret <- fmt.Errorf("panic happened in safe thread %v", err)
 			}
 		}()
 
@@ -25,7 +25,7 @@ func SafeWait(pass_condition func() bool, exe func()) chan error {
 	wait := func() (_break bool) {
 		defer func() {
 			if err := recover(); err != nil {
-				ret <- fmt.Errorf("panic happened in thread %v", err)
+				ret <- fmt.Errorf("panic happened in safe compare %v", err)
 				_break = false
 			}
 		}()
@@ -36,7 +36,7 @@ func SafeWait(pass_condition func() bool, exe func()) chan error {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				ret <- fmt.Errorf("panic happened in thread %v", err)
+				ret <- fmt.Errorf("panic happened in safe wait %v", err)
 			}
 		}()
 		for !wait() {
@@ -52,7 +52,7 @@ func SafeLoop(stop chan bool, sleep_period time.Duration, fun func()) {
 	loop := func() {
 		defer func() {
 			if err := recover(); err != nil {
-				fmt.Printf("panic happened in thread %v", err)
+				fmt.Printf("panic happened in safe loop %v", err)
 			}
 		}()
 
