@@ -1,7 +1,6 @@
 package multiplexer
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/pion/rtp"
@@ -10,7 +9,7 @@ import (
 )
 
 const (
-	queue_size     = 1024
+	queue_size = 1024
 )
 
 type sample struct {
@@ -31,6 +30,7 @@ type Multiplexer struct {
 type Handler struct {
 	handler func(*rtp.Packet)
 	buffer  chan *rtp.Packet
+	stop    chan bool
 }
 
 func NewMultiplexer(id string, packetizer rtppay.Packetizer) *Multiplexer {
@@ -68,35 +68,31 @@ func (p *Multiplexer) Close() {
 }
 
 func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
-	if p.handler == nil {
-		fmt.Println("Try to register RTP handler while pipeline not ready")
-		return
+	handler := &Handler{
+		handler: fun,
+		buffer:  make(chan *rtp.Packet, queue_size),
+		stop:    make(chan bool, 2),
 	}
+
+	thread.HighPriorityLoop(handler.stop, func() {
+		select {
+		case buffer := <-handler.buffer:
+			handler.handler(buffer)
+		case <-handler.stop:
+			handler.stop <- true
+		}
+	})
 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	handler := Handler{
-		handler: fun,
-		buffer:  make(chan *rtp.Packet, queue_size),
-	}
-
-	p.handler[id] = &handler
-	go func() { thread.HighPriorityThread()
-		for {
-			buffer := <-handler.buffer
-			if buffer == nil {
-				return
-			}
-
-			handler.handler(buffer)
-		}
-	}()
+	p.handler[id] = handler
 }
 
 func (p *Multiplexer) DeregisterRTPHandler(id string) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	p.handler[id].buffer <- nil
-	delete(p.handler, id)
-	fmt.Printf("deregister RTP handler %s\n", id)
+	if handler, found := p.handler[id]; found {
+		handler.stop <- true
+		delete(p.handler, id)
+	}
 }

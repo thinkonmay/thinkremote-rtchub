@@ -13,215 +13,155 @@ import (
 	"github.com/pion/webrtc/v4"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/gRPC/packet"
+	"github.com/thinkonmay/thinkremote-rtchub/util/thread"
 )
 
 type WebsocketClient struct {
-	sdpChan chan *webrtc.SessionDescription
-	iceChan chan *webrtc.ICECandidateInit
+	sdpChan chan webrtc.SessionDescription
+	iceChan chan webrtc.ICECandidateInit
 
-	incoming  chan *packet.SignalingMessage
-	outcoming chan *packet.SignalingMessage
+	incoming  chan packet.SignalingMessage
+	outcoming chan packet.SignalingMessage
 
 	done      bool
 	connected bool
+	stop      chan bool
 }
 
 func InitHttpClient(AddressStr string) (_ signalling.Signalling, err error) {
-	ret := &WebsocketClient{
-		sdpChan: make(chan *webrtc.SessionDescription, 8),
-		iceChan: make(chan *webrtc.ICECandidateInit, 8),
+	client := &WebsocketClient{
+		sdpChan: make(chan webrtc.SessionDescription, 8),
+		iceChan: make(chan webrtc.ICECandidateInit, 8),
 
-		incoming:  make(chan *packet.SignalingMessage, 8),
-		outcoming: make(chan *packet.SignalingMessage, 8),
+		incoming:  make(chan packet.SignalingMessage, 8),
+		outcoming: make(chan packet.SignalingMessage, 8),
 
 		connected: false,
 		done:      false,
+		stop:      make(chan bool, 2),
 	}
 
 	u, err := url.Parse(AddressStr)
 	if err != nil {
-		return
+		return nil, err
+	} else {
+		q := u.Query()
+		q.Add("uniqueid", uuid.New().String())
+		u.RawQuery = q.Encode()
 	}
-	q := u.Query()
-	q.Add("uniqueid", uuid.New().String())
-	u.RawQuery = q.Encode()
 
-	exchange := func() {
-		defer func() {
-			if err := recover(); err != nil {
-				fmt.Printf("panic in http thread %v", err)
+	thread.SafeLoop(client.stop, time.Millisecond*10, func() {
+		select {
+		case res := <-client.incoming:
+			switch res.Type {
+			case packet.SignalingType_tSDP:
+				client.sdpChan <- webrtc.SessionDescription{
+					SDP:  res.Sdp.SDPData,
+					Type: webrtc.NewSDPType(res.Sdp.Type),
+				}
+			case packet.SignalingType_tICE:
+				LineIndex := uint16(res.Ice.SDPMLineIndex)
+				SDPMid := res.Ice.SDPMid
+				client.iceChan <- webrtc.ICECandidateInit{
+					Candidate:     res.Ice.Candidate,
+					SDPMid:        &SDPMid,
+					SDPMLineIndex: &LineIndex,
+				}
+			case packet.SignalingType_tSTART:
+				client.connected = true
+			case packet.SignalingType_tEND:
+				client.Stop()
+			default:
+				fmt.Println("Unknown packet")
 			}
-		}()
+		case <-client.stop:
+			client.stop <- true
+		}
+	})
 
+	thread.SafeLoop(client.stop, time.Millisecond*300, func() {
 		pkt := []packet.SignalingMessage{}
-		for len(ret.outcoming) > 0 {
-			out := <-ret.outcoming
-			pkt = append(pkt, *out)
+		for len(client.outcoming) > 0 {
+			pkt = append(pkt, <-client.outcoming)
 		}
 
 		if b, err := json.Marshal(pkt); err != nil {
-			return
 		} else if resp, err := http.DefaultClient.Post(
-			u.String(),
-			"application/json",
-			strings.NewReader(string(b)),
+			u.String(), "application/json", strings.NewReader(string(b)),
 		); err != nil {
-			return
 		} else if b, err := io.ReadAll(resp.Body); err != nil {
-			return
 		} else if err = json.Unmarshal(b, &pkt); err != nil {
-			return
 		} else {
 			for _, sm := range pkt {
-				ret.incoming <- &sm
+				client.incoming <- sm
 			}
 		}
-	}
+	})
 
-	notify := func() bool {
-		defer func() {
-			if err := recover(); err != nil {
-				fmt.Printf("panic in signaling thread %v", err)
-			}
-		}()
+	client.WaitForEnd(func() {
+		client.stop <- true
+	})
 
-		res := <-ret.incoming
-		if res == nil {
-			return true
-		}
-
-		switch res.Type {
-		case packet.SignalingType_tSDP:
-			sdp := &webrtc.SessionDescription{}
-			sdp.SDP = res.Sdp.SDPData
-			sdp.Type = webrtc.NewSDPType(res.Sdp.Type)
-			fmt.Printf("SDP received: %s\n", res.Sdp.Type)
-			ret.sdpChan <- sdp
-		case packet.SignalingType_tICE:
-			ice := &webrtc.ICECandidateInit{}
-
-			ice.Candidate = res.Ice.Candidate
-			SDPMid := res.Ice.SDPMid
-			ice.SDPMid = &SDPMid
-			LineIndex := uint16(res.Ice.SDPMLineIndex)
-			ice.SDPMLineIndex = &LineIndex
-
-			fmt.Printf("ICE received\n")
-			ret.iceChan <- ice
-		case packet.SignalingType_tSTART:
-			ret.connected = true
-		case packet.SignalingType_tEND:
-			ret.Stop()
-		default:
-			fmt.Println("Unknown packet")
-		}
-
-		return false
-	}
-
-	go func() {
-		for !ret.done {
-			time.Sleep(300 * time.Millisecond)
-			exchange()
-		}
-
-		ret.iceChan <- nil
-		ret.sdpChan <- nil
-		ret.incoming <- nil
-	}()
-
-	go func() {
-		finish := false
-		for !finish {
-			finish = notify()
-		}
-	}()
-	return ret, nil
+	return client, nil
 }
 
-func (client *WebsocketClient) SendSDP(desc *webrtc.SessionDescription) error {
-	if !client.connected {
-		return fmt.Errorf("signaling client is closed")
-	}
-
-	req := packet.SignalingMessage{
-		Type: packet.SignalingType_tSDP,
-		Sdp: &packet.SDP{
-			Type:    desc.Type.String(),
-			SDPData: desc.SDP,
-		},
-	}
-
-	fmt.Printf("SDP send %s\n", req.Sdp.Type)
-	client.outcoming <- &req
-	return nil
+func (client *WebsocketClient) SendSDP(desc webrtc.SessionDescription) {
+	thread.SafeWait(func() bool {
+		return client.connected
+	}, func() {
+		client.outcoming <- packet.SignalingMessage{
+			Type: packet.SignalingType_tSDP,
+			Sdp: &packet.SDP{
+				Type:    desc.Type.String(),
+				SDPData: desc.SDP,
+			},
+		}
+	})
 }
 
-func (client *WebsocketClient) SendICE(ice *webrtc.ICECandidateInit) error {
-	if !client.connected {
-		return fmt.Errorf("signaling client is closed")
-	}
-
-	req := packet.SignalingMessage{
-		Type: packet.SignalingType_tICE,
-		Ice: &packet.ICE{
-			SDPMid:        *ice.SDPMid,
-			SDPMLineIndex: int64(*ice.SDPMLineIndex),
-			Candidate:     ice.Candidate,
-		},
-	}
-
-	fmt.Printf("ICE sent %v\n", req.Ice)
-	client.outcoming <- &req
-	return nil
+func (client *WebsocketClient) SendICE(ice webrtc.ICECandidateInit) {
+	thread.SafeWait(func() bool {
+		return client.connected
+	}, func() {
+		client.outcoming <- packet.SignalingMessage{
+			Type: packet.SignalingType_tICE,
+			Ice: &packet.ICE{
+				SDPMid:        *ice.SDPMid,
+				SDPMLineIndex: int64(*ice.SDPMLineIndex),
+				Candidate:     ice.Candidate,
+			},
+		}
+	})
 }
 
 func (client *WebsocketClient) OnICE(fun signalling.OnIceFunc) {
-	go func() {
-		for {
-			ice := <-client.iceChan
-			if ice == nil {
-				return
-			}
-			if !client.connected {
-				continue
-			}
+	thread.SafeLoop(client.stop, time.Millisecond*10, func() {
+		select {
+		case ice := <-client.iceChan:
 			fun(ice)
+		case <-client.stop:
+			client.stop <- true
 		}
-	}()
+	})
 }
 
 func (client *WebsocketClient) OnSDP(fun signalling.OnSDPFunc) {
-	go func() {
-		for {
-			sdp := <-client.sdpChan
-			if sdp == nil {
-				return
-			}
-			if !client.connected {
-				continue
-			}
+	thread.SafeLoop(client.stop, time.Millisecond*10, func() {
+		select {
+		case sdp := <-client.sdpChan:
 			fun(sdp)
+		case <-client.stop:
+			client.stop <- true
 		}
-	}()
+	})
 }
 
-func (client *WebsocketClient) WaitForStart() {
-	for {
-		time.Sleep(time.Millisecond * 100)
-		if client.connected {
-			return
-		}
-	}
+func (client *WebsocketClient) WaitForStart(fun func()) {
+	thread.SafeWait(func() bool { return client.connected }, fun)
 }
 
-func (client *WebsocketClient) WaitForEnd() {
-	for {
-		time.Sleep(time.Millisecond * 100)
-		if client.done {
-			return
-		}
-	}
+func (client *WebsocketClient) WaitForEnd(fun func()) {
+	thread.SafeWait(func() bool { return client.done }, fun)
 }
 
 func (client *WebsocketClient) Stop() {

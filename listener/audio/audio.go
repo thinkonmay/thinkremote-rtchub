@@ -1,7 +1,6 @@
 package audio
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -14,7 +13,7 @@ import (
 )
 
 type AudioPipeline struct {
-	closed bool
+	closed chan bool
 	mut    *sync.Mutex
 
 	clockRate float64
@@ -23,10 +22,9 @@ type AudioPipeline struct {
 	Multiplexer *multiplexer.Multiplexer
 }
 
-// CreatePipeline creates a GStreamer Pipeline
-func CreatePipeline(memory *proxy.Queue) (*AudioPipeline, error) {
+func CreatePipeline(queue *proxy.Queue) (*AudioPipeline, error) {
 	pipeline := &AudioPipeline{
-		closed:    false,
+		closed:    make(chan bool, 2),
 		clockRate: 48000,
 		codec:     webrtc.MimeTypeOpus,
 		mut:       &sync.Mutex{},
@@ -34,21 +32,17 @@ func CreatePipeline(memory *proxy.Queue) (*AudioPipeline, error) {
 		Multiplexer: multiplexer.NewMultiplexer("audio", opus.NewOpusPayloader()),
 	}
 
-	go func(queue *proxy.Queue) {
-		thread.HighPriorityThread()
-		buffer := make([]byte, 256*1024) //256kB
-		local_index := queue.CurrentIndex()
-
-		for {
-			for local_index >= queue.CurrentIndex() {
-				time.Sleep(time.Millisecond)
-			}
-
-			local_index++
-			size, _ := queue.Copy(buffer, local_index)
-			pipeline.Multiplexer.Send(buffer[:size], uint32(pipeline.clockRate/100))
+	buffer := make([]byte, 256*1024) //256kB
+	local_index := queue.CurrentIndex()
+	thread.HighPriorityLoop(pipeline.closed, func() {
+		for local_index >= queue.CurrentIndex() {
+			time.Sleep(time.Millisecond)
 		}
-	}(memory)
+
+		local_index++
+		size, _ := queue.Copy(buffer, local_index)
+		pipeline.Multiplexer.Send(buffer[:size], uint32(pipeline.clockRate/100))
+	})
 	return pipeline, nil
 }
 
@@ -57,7 +51,7 @@ func (p *AudioPipeline) GetCodec() string {
 }
 
 func (p *AudioPipeline) Close() {
-	fmt.Println("stoping audio pipeline")
+	p.closed <- true
 }
 
 func (p *AudioPipeline) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {

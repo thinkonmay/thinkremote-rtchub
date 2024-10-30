@@ -118,7 +118,7 @@ type Vibration struct {
 	SmallMotor byte
 }
 
-func NewEmulator(onVibration func(vibration Vibration)) (*Emulator, error) {
+func NewEmulator() (*Emulator, error) {
 	handle, _, err := procAlloc.Call()
 
 	if !errors.Is(err, windows.ERROR_SUCCESS) {
@@ -134,7 +134,7 @@ func NewEmulator(onVibration func(vibration Vibration)) (*Emulator, error) {
 		return nil, err
 	}
 
-	return &Emulator{handle, onVibration}, nil
+	return &Emulator{handle: handle, onVibration: func(vibration Vibration) {}}, nil
 }
 
 func (e *Emulator) Close() error {

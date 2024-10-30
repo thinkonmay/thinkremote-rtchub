@@ -1,7 +1,6 @@
 package video
 
 import (
-	"fmt"
 	"sync"
 	"time"
 	"unsafe"
@@ -17,7 +16,7 @@ import (
 
 type VideoPipelineC unsafe.Pointer
 type VideoPipeline struct {
-	closed   bool
+	closed   chan bool
 	pipeline unsafe.Pointer
 	mut      *sync.Mutex
 
@@ -27,12 +26,11 @@ type VideoPipeline struct {
 	Multiplexer *multiplexer.Multiplexer
 }
 
-// CreatePipeline creates a GStreamer Pipeline
 func CreatePipeline(queue *proxy.Queue) (listener.Listener,
 	error) {
 
 	pipeline := &VideoPipeline{
-		closed:   false,
+		closed:   make(chan bool, 2),
 		pipeline: nil,
 		mut:      &sync.Mutex{},
 		codec:    webrtc.MimeTypeH264,
@@ -41,25 +39,19 @@ func CreatePipeline(queue *proxy.Queue) (listener.Listener,
 		Multiplexer: multiplexer.NewMultiplexer("video", h264.NewH264Payloader()),
 	}
 
-	go func(queue *proxy.Queue) {
-		thread.HighPriorityThread()
-		buffer := make([]byte, 1024*1024) //1MB
-		local_index := queue.CurrentIndex()
+	buffer := make([]byte, 1024*1024) //1MB
+	local_index := queue.CurrentIndex()
+	thread.HighPriorityLoop(pipeline.closed, func() {
+		for local_index >= queue.CurrentIndex() {
+			time.Sleep(time.Microsecond * 100)
+		}
 
-		for {
-			for local_index >= queue.CurrentIndex() {
-				time.Sleep(time.Microsecond * 100)
-			}
-
-			local_index++
-			size, duration := queue.Copy(buffer, local_index)
-			if size > len(buffer) {
-				continue
-			}
-
+		local_index++
+		if size, duration := queue.Copy(buffer, local_index); size > len(buffer) {
+		} else {
 			pipeline.Multiplexer.Send(buffer[:size], uint32(time.Duration(duration).Seconds()*pipeline.clockRate))
 		}
-	}(queue)
+	})
 	return pipeline, nil
 }
 
@@ -68,7 +60,7 @@ func (p *VideoPipeline) GetCodec() string {
 }
 
 func (p *VideoPipeline) Close() {
-	fmt.Println("stopping video pipeline")
+	p.closed <- true
 }
 
 func (p *VideoPipeline) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {

@@ -9,6 +9,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
+	"github.com/thinkonmay/thinkremote-rtchub/util/thread"
 	"github.com/thinkonmay/thinkremote-rtchub/webrtc"
 )
 
@@ -18,6 +19,8 @@ type Proxy struct {
 	chan_conf        datachannel.IDatachannel
 	signallingClient signalling.Signalling
 	webrtcClient     *webrtc.WebRTCClient
+
+	stop chan bool
 }
 
 func InitWebRTCProxy(grpc_conf signalling.Signalling,
@@ -32,34 +35,29 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 		chan_conf:        chan_conf,
 		signallingClient: grpc_conf,
 		listeners:        lis,
+		stop:             make(chan bool, 2),
 	}
 
 	if proxy.webrtcClient, err = webrtc.InitWebRtcClient(onTrack, onIDR, *webrtc_conf); err != nil {
 		return
 	}
 
-	go func() {
-		for {
-			state := proxy.webrtcClient.GatherStateChange()
-			if state == -1 {
-				return
-			}
-
+	thread.SafeLoop(proxy.stop, 0, func() {
+		select {
+		case state := <-proxy.webrtcClient.GatherStateChange():
 			switch state {
 			case webrtclib.ICEGatheringStateGathering:
 			case webrtclib.ICEGatheringStateComplete:
 			case webrtclib.ICEGatheringStateUnknown:
 			}
+		case <-proxy.stop:
+			proxy.stop <- true
 		}
-	}()
-	go func() {
-		for {
-			state := proxy.webrtcClient.ConnectionStateChange()
-			if state == nil {
-				return
-			}
-
-			switch *state {
+	})
+	thread.SafeLoop(proxy.stop, 0, func() {
+		select {
+		case state := <-proxy.webrtcClient.ConnectionStateChange():
+			switch state {
 			case webrtclib.ICEConnectionStateConnected:
 			case webrtclib.ICEConnectionStateCompleted:
 			case webrtclib.ICEConnectionStateClosed:
@@ -69,32 +67,30 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 			case webrtclib.ICEConnectionStateDisconnected:
 				proxy.Stop()
 			}
+		case <-proxy.stop:
+			proxy.stop <- true
 		}
-	}()
-
-	go func() {
-		for {
-			ice := proxy.webrtcClient.OnLocalICE()
-			if ice == nil {
-				return
-			}
+	})
+	thread.SafeLoop(proxy.stop, 0, func() {
+		select {
+		case ice := <-proxy.webrtcClient.OnLocalICE():
 			proxy.signallingClient.SendICE(ice)
+		case <-proxy.stop:
+			proxy.stop <- true
 		}
-	}()
-
-	go func() {
-		for {
-			sdp := proxy.webrtcClient.OnLocalSDP()
-			if sdp == nil {
-				return
-			}
+	})
+	thread.SafeLoop(proxy.stop, 0, func() {
+		select {
+		case sdp := <-proxy.webrtcClient.OnLocalSDP():
 			proxy.signallingClient.SendSDP(sdp)
+		case <-proxy.stop:
+			proxy.stop <- true
 		}
-	}()
-	proxy.signallingClient.OnICE(func(i *webrtclib.ICECandidateInit) {
+	})
+	proxy.signallingClient.OnICE(func(i webrtclib.ICECandidateInit) {
 		proxy.webrtcClient.OnIncomingICE(i)
 	})
-	proxy.signallingClient.OnSDP(func(i *webrtclib.SessionDescription) {
+	proxy.signallingClient.OnSDP(func(i webrtclib.SessionDescription) {
 		proxy.webrtcClient.OnIncominSDP(i)
 	})
 
@@ -107,14 +103,13 @@ func (proxy *Proxy) start() error {
 	defer proxy.webrtcClient.StopSignaling()
 
 	success := make(chan bool, 2)
-	go func() {
-		proxy.signallingClient.WaitForEnd()
+	proxy.signallingClient.WaitForEnd(func() {
 		success <- true
-	}()
-	go func() {
+	})
+	thread.SafeThread(func() {
 		time.Sleep(time.Second * 60)
 		success <- false
-	}()
+	})
 
 	if !<-success {
 		return fmt.Errorf("application exchange signaling timeout, closing")
@@ -128,4 +123,5 @@ func (prox *Proxy) Stop() {
 	fmt.Println("proxy stopped")
 	prox.webrtcClient.Close()
 	prox.signallingClient.Stop()
+	prox.stop <- true
 }

@@ -65,7 +65,6 @@ int SetGPURealtimePriority() {
 import "C"
 import "fmt"
 
-
 func init() {
 	resulta := C.SetPriorityClass(C.GetCurrentProcess(), C.REALTIME_PRIORITY_CLASS)
 	resultb := C.SetGPURealtimePriority()
@@ -76,8 +75,22 @@ func init() {
 	}
 }
 
+func HighPriorityLoop(stop chan bool, fun func()) {
+	wrapper := func() {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf("panic happened in thread %v", err)
+			}
+		}()
 
+		fun()
+	}
+	SafeThread(func() {
+		C.SetThreadPriority(C.GetCurrentThread(), C.THREAD_PRIORITY_HIGHEST)
+		for len(stop) == 0 {
+			wrapper()
+		}
 
-func HighPriorityThread() {
-	C.SetThreadPriority(C.GetCurrentThread(), C.THREAD_PRIORITY_HIGHEST)
+		<-stop
+	})
 }

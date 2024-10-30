@@ -18,6 +18,7 @@ import (
 	"github.com/thinkonmay/thinkremote-rtchub/listener/video"
 	"github.com/thinkonmay/thinkremote-rtchub/signalling/http"
 	"github.com/thinkonmay/thinkremote-rtchub/util/config"
+	"github.com/thinkonmay/thinkremote-rtchub/util/thread"
 )
 
 const (
@@ -72,7 +73,7 @@ func main() {
 		return
 	}
 
-	videopipeline, err := video.CreatePipeline(memory.GetQueue(int(videochannel)))
+	videoPipeline, err := video.CreatePipeline(memory.GetQueue(int(videochannel)))
 	if err != nil {
 		fmt.Printf("error initiate video pipeline %s\n", err.Error())
 		return
@@ -81,86 +82,67 @@ func main() {
 	chans := datachannel.NewDatachannel("hid", "manual")
 	chans.RegisterConsumer("manual", manual.NewManualCtx(memory.GetQueue(int(videochannel))))
 	chans.RegisterConsumer("hid", hid.NewHIDSingleton(memory.GetQueue(int(videochannel))))
+	defer chans.DeregisterConsumer("hid")
+	defer chans.DeregisterConsumer("manual")
+	defer audioPipeline.Close()
+	defer videoPipeline.Close()
 
 	handle_idr := func() { memory.GetQueue(int(videochannel)).Raise(proxy.Idr, 1) }
 	handle_track := func(tr *webrtc.TrackRemote) {}
-	video := func() {
-		defer func() {
-			if err := recover(); err != nil {
-				fmt.Printf("panic in video thread %v", err)
-			}
-		}()
-		for {
-			signaling_client, err := http.InitHttpClient(video_url)
-			if err != nil {
-				fmt.Printf("error initiate signaling client %s\n", err.Error())
-				continue
-			}
 
-			signaling_client.WaitForStart()
-			go func() {
-				defer func() {
-					if err := recover(); err != nil {
-						fmt.Printf("panic in webrtc video thread %v", err)
+	stop := make(chan bool, 2)
+	thread.SafeLoop(stop, 0, func() {
+		next := make(chan bool)
+		if signaling_client, err := http.InitHttpClient(video_url); err != nil {
+			fmt.Printf("error initiate signaling client %s\n", err.Error())
+			return
+		} else {
+			signaling_client.WaitForStart(func() {
+				next <- true
+				thread.SafeThread(func() {
+					if err := proxy.InitWebRTCProxy(signaling_client,
+						rtc,
+						chans,
+						[]listener.Listener{videoPipeline},
+						handle_track,
+						handle_idr,
+					); err != nil {
+						fmt.Printf("webrtc error :%s\n", err.Error())
 					}
-				}()
-				err := proxy.InitWebRTCProxy(signaling_client,
-					rtc,
-					chans,
-					[]listener.Listener{videopipeline},
-					handle_track,
-					handle_idr,
-				)
-				if err != nil {
-					fmt.Printf("webrtc error :%s\n", err.Error())
-				}
-			}()
+				})
+			})
 		}
-	}
 
-	audio := func() {
-		defer func() {
-			if err := recover(); err != nil {
-				fmt.Printf("panic in audio thread %v", err)
-			}
-		}()
-		for {
-			signaling_client, err := http.InitHttpClient(audio_url)
-			if err != nil {
-				fmt.Printf("error initiate signaling client %s\n", err.Error())
-				continue
-			}
+		<-next
+	})
 
-			signaling_client.WaitForStart()
-			go func() {
-				defer func() {
-					if err := recover(); err != nil {
-						fmt.Printf("panic in webrtc audio thread %v", err)
+	thread.SafeLoop(stop, 0, func() {
+		next := make(chan bool)
+		if signaling_client, err := http.InitHttpClient(audio_url); err != nil {
+			fmt.Printf("error initiate signaling client %s\n", err.Error())
+			return
+		} else {
+			signaling_client.WaitForStart(func() {
+				next <- true
+				thread.SafeThread(func() {
+					if err := proxy.InitWebRTCProxy(signaling_client,
+						rtc,
+						chans,
+						[]listener.Listener{audioPipeline},
+						handle_track,
+						func() {},
+					); err != nil {
+						fmt.Printf("webrtc error :%s\n", err.Error())
 					}
-				}()
-				err := proxy.InitWebRTCProxy(signaling_client,
-					rtc,
-					chans,
-					[]listener.Listener{audioPipeline},
-					handle_track,
-					func() {},
-				)
-				if err != nil {
-					fmt.Printf("webrtc error :%s\n", err.Error())
-				}
-			}()
+				})
+			})
 		}
-	}
 
-	retry := func(execute func()) {
-		for {
-			execute()
-		}
-	}
+		<-next
+	})
 
-	go retry(audio)
-	go retry(video)
 	chann := make(chan os.Signal, 16)
 	signal.Notify(chann, syscall.SIGTERM, os.Interrupt)
 	<-chann
+	stop <- true
 }

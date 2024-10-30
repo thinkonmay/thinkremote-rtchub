@@ -6,6 +6,7 @@ import (
 
 	proxy "github.com/thinkonmay/thinkremote-rtchub"
 	"github.com/thinkonmay/thinkremote-rtchub/datachannel"
+	"github.com/thinkonmay/thinkremote-rtchub/util/thread"
 )
 
 const (
@@ -13,12 +14,8 @@ const (
 )
 
 type Manual struct {
-	In   chan string
-	ctxs []string
-	Out  chan struct {
-		id  string
-		val string
-	}
+	In  chan string
+	Out chan string
 }
 
 type ManualPacket struct {
@@ -28,22 +25,15 @@ type ManualPacket struct {
 
 func NewManualCtx(queue *proxy.Queue) datachannel.DatachannelConsumer {
 	ret := &Manual{
-		In: make(chan string, queue_size),
-		Out: make(chan struct {
-			id  string
-			val string
-		}, queue_size),
-		ctxs: []string{},
+		In:  make(chan string, queue_size),
+		Out: make(chan string, queue_size),
 	}
 
-	go func() {
-		dat := ManualPacket{}
-		for {
-			if err := json.Unmarshal([]byte(<-ret.In), &dat); err != nil {
-				fmt.Printf("error unmarshal packet %s\n", err.Error())
-				continue
-			}
-
+	dat := ManualPacket{}
+	thread.SafeLoop(make(chan bool), 0, func() {
+		if err := json.Unmarshal([]byte(<-ret.In), &dat); err != nil {
+			fmt.Printf("error unmarshal packet %s\n", err.Error())
+		} else {
 			switch dat.Type {
 			case "bitrate":
 				queue.Raise(proxy.Bitrate, dat.Value)
@@ -56,20 +46,16 @@ func NewManualCtx(queue *proxy.Queue) datachannel.DatachannelConsumer {
 			case "danger-reset":
 			}
 		}
-	}()
+
+	})
 
 	return ret
 }
 
 // TODO
-func (manual *Manual) Recv() (string, string) {
-	out := <-manual.Out
-	return out.id, out.val
+func (manual *Manual) Recv() chan string {
+	return manual.Out
 }
-func (manual *Manual) Send(id string, msg string) {
+func (manual *Manual) Send(msg string) {
 	manual.In <- msg
-}
-
-func (manual *Manual) SetContext(ids []string) {
-	manual.ctxs = ids
 }

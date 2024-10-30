@@ -11,6 +11,8 @@ import (
 	"errors"
 	"fmt"
 	"unsafe"
+
+	"github.com/thinkonmay/thinkremote-rtchub/util/thread"
 )
 
 type gamepad_state struct {
@@ -25,25 +27,25 @@ type gamepad_state struct {
 }
 
 const (
-	DPAD_VERT       = iota
-	DPAD_HORI       
-	START           
-	GBACK           
-	LEFT_STICK      
-	RIGHT_STICK     
-	LEFT_BUTTON     
-	RIGHT_BUTTON    
-	GHOME           
-	A               
-	B               
-	X               
-	Y               
-	PADDLE1         
-	PADDLE2         
-	PADDLE3         
-	PADDLE4         
-	TOUCHPAD_BUTTON 
-	MISC_BUTTON     
+	DPAD_VERT = iota
+	DPAD_HORI
+	START
+	GBACK
+	LEFT_STICK
+	RIGHT_STICK
+	LEFT_BUTTON
+	RIGHT_BUTTON
+	GHOME
+	A
+	B
+	X
+	Y
+	PADDLE1
+	PADDLE2
+	PADDLE3
+	PADDLE4
+	TOUCHPAD_BUTTON
+	MISC_BUTTON
 
 	MAX_BUTTON
 )
@@ -93,7 +95,9 @@ func (r *Xbox360Controller) pressButton(index int64, value bool) {
 	new := *r.gamepad_state_old
 	prev := new.buttonStates
 	new.buttonStates = map[int]C.int{}
-	for k,v  := range prev { new.buttonStates[k] = v }
+	for k, v := range prev {
+		new.buttonStates[k] = v
+	}
 	defer func() { r.channel <- &new }()
 
 	state := C.int(0)
@@ -181,7 +185,7 @@ type Vibration struct {
 	SmallMotor byte
 }
 
-func NewEmulator(onVibration func(vibration Vibration)) (*Emulator, error) {
+func NewEmulator() (*Emulator, error) {
 	return &Emulator{}, nil
 }
 
@@ -194,38 +198,22 @@ func (e *Emulator) CreateXbox360Controller() (*Xbox360Controller, error) {
 		gamepad_state_old: &gamepad_state{
 			buttonStates: map[int]C.int{},
 		},
-		channel:           make(chan *gamepad_state, 16),
+		channel: make(chan *gamepad_state, 16),
 	}
-
 
 	for i := 0; i < MAX_BUTTON; i++ {
 		ret.gamepad_state_old.buttonStates[i] = 0
 	}
 
-
-
-	process := func() {
-		defer func ()  {
-			if err := recover();err != nil {
-				fmt.Printf("recovered panic in HID thread: %v\n",err)
-			}
-		}()
-		for {
-			ret.send(<-ret.channel)
-		}
-	}
-
-	go func ()  { 
-		for {
-			process()
-		}
-	}()
+	thread.SafeLoop(make(chan bool), 0, func() {
+		ret.send(<-ret.channel)
+	})
 	return ret, nil
 }
 
 func (controller *Xbox360Controller) send(gamepad_state *gamepad_state) {
-	fmt.Printf("old %v\n",controller.gamepad_state_old.buttonStates)
-	fmt.Printf("new %v\n",gamepad_state.buttonStates)
+	fmt.Printf("old %v\n", controller.gamepad_state_old.buttonStates)
+	fmt.Printf("new %v\n", gamepad_state.buttonStates)
 	if gamepad_state.buttonStates[START] != controller.gamepad_state_old.buttonStates[START] {
 		C.libevdev_uinput_write_event(gamepad_input, C.EV_KEY, C.BTN_START, gamepad_state.buttonStates[START])
 	}
