@@ -119,7 +119,7 @@ func (dc *Datachannel) DeregisterHandle(group_name string, id string) {
 	if handler, found := group.handlers[id]; !found {
 		fmt.Printf("no handler name %s available\n", id)
 	} else {
-		handler.stop <- true
+		go func() { handler.stop <- true }()
 		delete(group.handlers, id)
 	}
 }
