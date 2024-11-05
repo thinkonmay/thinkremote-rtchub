@@ -5,19 +5,16 @@ import (
 	"time"
 )
 
-func SafeThread(fun func()) chan error {
-	ret := make(chan error)
+func SafeThread(fun func()) {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				ret <- fmt.Errorf("panic happened in safe thread %v", err)
+				fmt.Printf("panic happened in safe thread %v", err)
 			}
 		}()
 
 		fun()
-		ret <- nil
 	}()
-	return ret
 }
 
 func SafeWait(pass_condition func() bool, exe func()) chan error {
@@ -71,6 +68,31 @@ func SafeLoop(stop chan bool, sleep_period time.Duration, fun func()) {
 		for len(stop) == 0 {
 			loop()
 			time.Sleep(sleep_period)
+		}
+	}()
+}
+
+func SafeSelect(stop chan bool, target chan interface{}, fun func(interface{})) {
+	loop := func(i interface{}) {
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Printf("panic happened in safe loop %v", err)
+			}
+		}()
+
+		fun(i)
+	}
+
+	go func() {
+		exit := false
+		for !exit {
+			select {
+			case <-stop:
+				exit = true
+				go func() { stop <- true }()
+			case out := <-target:
+				loop(out)
+			}
 		}
 	}()
 }

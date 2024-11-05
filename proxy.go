@@ -42,55 +42,37 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 		return
 	}
 
-	thread.SafeLoop(proxy.stop, 0, func() {
-		select {
-		case state := <-proxy.webrtcClient.GatherStateChange():
-			switch state {
-			case webrtclib.ICEGatheringStateGathering:
-			case webrtclib.ICEGatheringStateComplete:
-			case webrtclib.ICEGatheringStateUnknown:
-			}
-		case <-proxy.stop:
-			thread.TriggerStop(proxy.stop)
+	thread.SafeSelect(proxy.stop, proxy.webrtcClient.GatherStateChange(), func(_state interface{}) {
+		state := _state.(webrtclib.ICEGatheringState)
+		switch state {
+		case webrtclib.ICEGatheringStateGathering:
+		case webrtclib.ICEGatheringStateComplete:
+		case webrtclib.ICEGatheringStateUnknown:
 		}
 	})
-	thread.SafeLoop(proxy.stop, 0, func() {
-		select {
-		case state := <-proxy.webrtcClient.ConnectionStateChange():
-			switch state {
-			case webrtclib.ICEConnectionStateConnected:
-			case webrtclib.ICEConnectionStateCompleted:
-			case webrtclib.ICEConnectionStateClosed:
-				proxy.Stop()
-			case webrtclib.ICEConnectionStateFailed:
-				proxy.Stop()
-			case webrtclib.ICEConnectionStateDisconnected:
-				proxy.Stop()
-			}
-		case <-proxy.stop:
-			thread.TriggerStop(proxy.stop)
+	thread.SafeSelect(proxy.stop, proxy.webrtcClient.ConnectionStateChange(), func(_state interface{}) {
+		state := _state.(webrtclib.ICEConnectionState)
+		switch state {
+		case webrtclib.ICEConnectionStateConnected:
+		case webrtclib.ICEConnectionStateCompleted:
+		case webrtclib.ICEConnectionStateClosed:
+			proxy.Stop()
+		case webrtclib.ICEConnectionStateFailed:
+			proxy.Stop()
+		case webrtclib.ICEConnectionStateDisconnected:
+			proxy.Stop()
 		}
 	})
-	thread.SafeLoop(proxy.stop, 0, func() {
-		select {
-		case ice := <-proxy.webrtcClient.OnLocalICE():
-			proxy.signallingClient.SendICE(ice)
-		case <-proxy.stop:
-			thread.TriggerStop(proxy.stop)
-		}
+	thread.SafeSelect(proxy.stop, proxy.webrtcClient.OnLocalICE(), func(ice interface{}) {
+		proxy.signallingClient.SendICE(ice.(*webrtclib.ICECandidateInit))
 	})
-	thread.SafeLoop(proxy.stop, 0, func() {
-		select {
-		case sdp := <-proxy.webrtcClient.OnLocalSDP():
-			proxy.signallingClient.SendSDP(sdp)
-		case <-proxy.stop:
-			thread.TriggerStop(proxy.stop)
-		}
+	thread.SafeSelect(proxy.stop, proxy.webrtcClient.OnLocalSDP(), func(sdp interface{}) {
+		proxy.signallingClient.SendSDP(sdp.(*webrtclib.SessionDescription))
 	})
-	proxy.signallingClient.OnICE(func(i webrtclib.ICECandidateInit) {
+	proxy.signallingClient.OnICE(func(i *webrtclib.ICECandidateInit) {
 		proxy.webrtcClient.OnIncomingICE(i)
 	})
-	proxy.signallingClient.OnSDP(func(i webrtclib.SessionDescription) {
+	proxy.signallingClient.OnSDP(func(i *webrtclib.SessionDescription) {
 		proxy.webrtcClient.OnIncominSDP(i)
 	})
 

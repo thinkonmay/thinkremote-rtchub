@@ -17,5 +17,5 @@ type IDatachannel interface {
 
 type DatachannelConsumer interface {
 	Send(string)
-	Recv() chan string
+	Recv() chan interface{}
 }

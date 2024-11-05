@@ -24,25 +24,20 @@ type WebRTCClient struct {
 	onTrack OnTrackFunc
 	onIDR   OnIDRFunc
 
-	fromSdpChannel chan webrtc.SessionDescription
-	fromIceChannel chan webrtc.ICECandidateInit
-
-	toSdpChannel chan webrtc.SessionDescription
-	toIceChannel chan webrtc.ICECandidateInit
-
-	connectionState chan webrtc.ICEConnectionState
-	gatherState     chan webrtc.ICEGatheringState
+	fromSdpChannel, fromIceChannel,
+	toSdpChannel, toIceChannel,
+	connectionState, gatherState chan interface{}
 }
 
 func InitWebRtcClient(track OnTrackFunc, idr OnIDRFunc, conf config.WebRTCConfig) (client *WebRTCClient, err error) {
 	client = &WebRTCClient{
 		stop:            make(chan bool, 2),
-		toSdpChannel:    make(chan webrtc.SessionDescription, 2),
-		fromSdpChannel:  make(chan webrtc.SessionDescription, 2),
-		toIceChannel:    make(chan webrtc.ICECandidateInit, 2),
-		fromIceChannel:  make(chan webrtc.ICECandidateInit, 2),
-		connectionState: make(chan webrtc.ICEConnectionState, 2),
-		gatherState:     make(chan webrtc.ICEGatheringState, 2),
+		toSdpChannel:    make(chan interface{}, 2),
+		fromSdpChannel:  make(chan interface{}, 2),
+		toIceChannel:    make(chan interface{}, 2),
+		fromIceChannel:  make(chan interface{}, 2),
+		connectionState: make(chan interface{}, 2),
+		gatherState:     make(chan interface{}, 2),
 		onTrack:         track,
 		onIDR:           idr,
 		Closed:          false,
@@ -58,7 +53,7 @@ func InitWebRtcClient(track OnTrackFunc, idr OnIDRFunc, conf config.WebRTCConfig
 			return
 		}
 		init := ice.ToJSON()
-		client.toIceChannel <- init
+		client.toIceChannel <- &init
 	})
 
 	client.conn.OnNegotiationNeeded(func() {
@@ -70,7 +65,7 @@ func InitWebRtcClient(track OnTrackFunc, idr OnIDRFunc, conf config.WebRTCConfig
 			fmt.Printf("error creating offer %s\n", err.Error())
 			return
 		}
-		client.toSdpChannel <- offer
+		client.toSdpChannel <- &offer
 	})
 	client.conn.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		fmt.Printf("Connection state has changed %s \n", connectionState.String())
@@ -86,37 +81,31 @@ func InitWebRtcClient(track OnTrackFunc, idr OnIDRFunc, conf config.WebRTCConfig
 		client.onTrack(track)
 	})
 
-	thread.SafeLoop(client.stop, time.Millisecond*10, func() {
-		select {
-		case sdp := <-client.fromSdpChannel:
-			switch sdp.Type {
-			case webrtc.SDPTypeAnswer: // answer
-				if err := client.conn.SetRemoteDescription(sdp); err != nil {
-				}
-			case webrtc.SDPTypeOffer:
-				if err := client.conn.SetRemoteDescription(sdp); err != nil {
-				} else if ans, err := client.conn.CreateAnswer(&webrtc.AnswerOptions{}); err != nil {
-				} else if err = client.conn.SetLocalDescription(ans); err != nil {
-				} else {
-					client.toSdpChannel <- ans
-				}
+	thread.SafeSelect(client.stop, client.fromSdpChannel, func(_sdp interface{}) {
+		sdp := _sdp.(*webrtc.SessionDescription)
+		switch sdp.Type {
+		case webrtc.SDPTypeAnswer: // answer
+			if err := client.conn.SetRemoteDescription(*sdp); err != nil {
+				fmt.Printf("failed to set remote desc %s", err.Error())
 			}
-		case <-client.stop:
-			thread.TriggerStop(client.stop)
+		case webrtc.SDPTypeOffer:
+			if err := client.conn.SetRemoteDescription(*sdp); err != nil {
+			} else if ans, err := client.conn.CreateAnswer(&webrtc.AnswerOptions{}); err != nil {
+			} else if err = client.conn.SetLocalDescription(ans); err != nil {
+			} else {
+				client.toSdpChannel <- &ans
+			}
 		}
 	})
 
-	thread.SafeLoop(client.stop, time.Millisecond*10, func() {
-		select {
-		case ice := <-client.fromIceChannel:
-			sdp := client.conn.RemoteDescription()
-			pending := client.conn.PendingRemoteDescription()
-			if sdp == pending {
-			} else if err := client.conn.AddICECandidate(ice); err != nil {
-				fmt.Printf("error add ice candicate %s\n", err.Error())
-			}
-		case <-client.stop:
-			thread.TriggerStop(client.stop)
+	thread.SafeSelect(client.stop, client.fromIceChannel, func(_ice interface{}) {
+		ice := _ice.(*webrtc.ICECandidateInit)
+		sdp := client.conn.RemoteDescription()
+		pending := client.conn.PendingRemoteDescription()
+
+		if sdp == pending {
+		} else if err := client.conn.AddICECandidate(*ice); err != nil {
+			fmt.Printf("error add ice candicate %s\n", err.Error())
 		}
 	})
 
@@ -188,24 +177,34 @@ func (client *WebRTCClient) readLoopRTP(listener listener.Listener,
 	id := track.ID()
 
 	listener.RegisterRTPHandler(id, func(pk *rtp.Packet) {
-		track.WriteRTP(pk)
+		if err := track.WriteRTP(pk); err != nil {
+			fmt.Printf("failed to send rtp %s", err.Error())
+		}
 	})
 
 	stop := make(chan bool, 2)
-	thread.SafeLoop(stop, time.Millisecond*10, func() {
+	thread.SafeLoop(stop, 0, func() {
 		if packets, _, err := sender.ReadRTCP(); err == nil {
+			IDR := false
 			for _, pkt := range packets {
 				switch pkt.(type) {
 				case *rtcp.FullIntraRequest:
-					client.onIDR()
+					IDR = true
 				case *rtcp.PictureLossIndication:
-					client.onIDR()
+					IDR = true
 				case *rtcp.TransportLayerNack:
 				case *rtcp.ReceiverReport:
 				case *rtcp.SenderReport:
 				case *rtcp.ExtendedReport:
 				}
 			}
+
+			if IDR {
+				client.onIDR()
+			}
+		} else {
+			fmt.Printf("failed to receive rtcp %s", err.Error())
+			time.Sleep(time.Second)
 		}
 	})
 
@@ -220,31 +219,30 @@ func (client *WebRTCClient) readLoopRTP(listener listener.Listener,
 func (client *WebRTCClient) Close() {
 	client.conn.Close()
 	client.Closed = true
-	client.gatherState <- webrtc.ICEGatheringState(-1)
 }
 func (webrtc *WebRTCClient) StopSignaling() {
 	fmt.Println("stopping signaling process")
 }
 
-func (client *WebRTCClient) GatherStateChange() chan webrtc.ICEGatheringState {
+func (client *WebRTCClient) GatherStateChange() chan interface{} {
 	return client.gatherState
 }
-func (client *WebRTCClient) ConnectionStateChange() chan webrtc.ICEConnectionState {
+func (client *WebRTCClient) ConnectionStateChange() chan interface{} {
 	return client.connectionState
 }
 
-func (webrtc *WebRTCClient) OnIncominSDP(sdp webrtc.SessionDescription) {
+func (webrtc *WebRTCClient) OnIncominSDP(sdp *webrtc.SessionDescription) {
 	webrtc.fromSdpChannel <- sdp
 }
 
-func (webrtc *WebRTCClient) OnIncomingICE(ice webrtc.ICECandidateInit) {
+func (webrtc *WebRTCClient) OnIncomingICE(ice *webrtc.ICECandidateInit) {
 	webrtc.fromIceChannel <- ice
 }
 
-func (webrtc *WebRTCClient) OnLocalICE() chan webrtc.ICECandidateInit {
+func (webrtc *WebRTCClient) OnLocalICE() chan interface{} {
 	return webrtc.toIceChannel
 }
 
-func (webrtc *WebRTCClient) OnLocalSDP() chan webrtc.SessionDescription {
+func (webrtc *WebRTCClient) OnLocalSDP() chan interface{} {
 	return webrtc.toSdpChannel
 }

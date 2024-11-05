@@ -17,11 +17,10 @@ import (
 )
 
 type WebsocketClient struct {
-	sdpChan chan webrtc.SessionDescription
-	iceChan chan webrtc.ICECandidateInit
+	sdpChan chan interface{}
+	iceChan chan interface{}
 
-	incoming  chan packet.SignalingMessage
-	outcoming chan packet.SignalingMessage
+	incoming, outcoming chan interface{}
 
 	done      bool
 	connected bool
@@ -30,11 +29,11 @@ type WebsocketClient struct {
 
 func InitHttpClient(AddressStr string) (_ signalling.Signalling, err error) {
 	client := &WebsocketClient{
-		sdpChan: make(chan webrtc.SessionDescription, 8),
-		iceChan: make(chan webrtc.ICECandidateInit, 8),
+		sdpChan: make(chan interface{}, 8),
+		iceChan: make(chan interface{}, 8),
 
-		incoming:  make(chan packet.SignalingMessage, 8),
-		outcoming: make(chan packet.SignalingMessage, 8),
+		incoming:  make(chan interface{}, 8),
+		outcoming: make(chan interface{}, 8),
 
 		connected: false,
 		done:      false,
@@ -50,39 +49,35 @@ func InitHttpClient(AddressStr string) (_ signalling.Signalling, err error) {
 		u.RawQuery = q.Encode()
 	}
 
-	thread.SafeLoop(client.stop, time.Millisecond*10, func() {
-		select {
-		case res := <-client.incoming:
-			switch res.Type {
-			case packet.SignalingType_tSDP:
-				client.sdpChan <- webrtc.SessionDescription{
-					SDP:  res.Sdp.SDPData,
-					Type: webrtc.NewSDPType(res.Sdp.Type),
-				}
-			case packet.SignalingType_tICE:
-				LineIndex := uint16(res.Ice.SDPMLineIndex)
-				SDPMid := res.Ice.SDPMid
-				client.iceChan <- webrtc.ICECandidateInit{
-					Candidate:     res.Ice.Candidate,
-					SDPMid:        &SDPMid,
-					SDPMLineIndex: &LineIndex,
-				}
-			case packet.SignalingType_tSTART:
-				client.connected = true
-			case packet.SignalingType_tEND:
-				client.Stop()
-			default:
-				fmt.Println("Unknown packet")
+	thread.SafeSelect(client.stop, client.incoming, func(_res interface{}) {
+		res := _res.(*packet.SignalingMessage)
+		switch res.Type {
+		case packet.SignalingType_tSDP:
+			client.sdpChan <- &webrtc.SessionDescription{
+				SDP:  res.Sdp.SDPData,
+				Type: webrtc.NewSDPType(res.Sdp.Type),
 			}
-		case <-client.stop:
-			thread.TriggerStop(client.stop)
+		case packet.SignalingType_tICE:
+			LineIndex := uint16(res.Ice.SDPMLineIndex)
+			SDPMid := res.Ice.SDPMid
+			client.iceChan <- &webrtc.ICECandidateInit{
+				Candidate:     res.Ice.Candidate,
+				SDPMid:        &SDPMid,
+				SDPMLineIndex: &LineIndex,
+			}
+		case packet.SignalingType_tSTART:
+			client.connected = true
+		case packet.SignalingType_tEND:
+			client.Stop()
+		default:
+			fmt.Println("Unknown packet")
 		}
 	})
 
 	thread.SafeLoop(client.stop, time.Millisecond*300, func() {
-		pkt := []packet.SignalingMessage{}
+		pkt := []*packet.SignalingMessage{}
 		for len(client.outcoming) > 0 {
-			pkt = append(pkt, <-client.outcoming)
+			pkt = append(pkt, (<-client.outcoming).(*packet.SignalingMessage))
 		}
 
 		if b, err := json.Marshal(pkt); err != nil {
@@ -105,11 +100,11 @@ func InitHttpClient(AddressStr string) (_ signalling.Signalling, err error) {
 	return client, nil
 }
 
-func (client *WebsocketClient) SendSDP(desc webrtc.SessionDescription) {
+func (client *WebsocketClient) SendSDP(desc *webrtc.SessionDescription) {
 	thread.SafeWait(func() bool {
 		return client.connected
 	}, func() {
-		client.outcoming <- packet.SignalingMessage{
+		client.outcoming <- &packet.SignalingMessage{
 			Type: packet.SignalingType_tSDP,
 			Sdp: &packet.SDP{
 				Type:    desc.Type.String(),
@@ -119,11 +114,11 @@ func (client *WebsocketClient) SendSDP(desc webrtc.SessionDescription) {
 	})
 }
 
-func (client *WebsocketClient) SendICE(ice webrtc.ICECandidateInit) {
+func (client *WebsocketClient) SendICE(ice *webrtc.ICECandidateInit) {
 	thread.SafeWait(func() bool {
 		return client.connected
 	}, func() {
-		client.outcoming <- packet.SignalingMessage{
+		client.outcoming <- &packet.SignalingMessage{
 			Type: packet.SignalingType_tICE,
 			Ice: &packet.ICE{
 				SDPMid:        *ice.SDPMid,
@@ -135,24 +130,14 @@ func (client *WebsocketClient) SendICE(ice webrtc.ICECandidateInit) {
 }
 
 func (client *WebsocketClient) OnICE(fun signalling.OnIceFunc) {
-	thread.SafeLoop(client.stop, time.Millisecond*10, func() {
-		select {
-		case ice := <-client.iceChan:
-			fun(ice)
-		case <-client.stop:
-			thread.TriggerStop(client.stop)
-		}
+	thread.SafeSelect(client.stop, client.iceChan, func(ice interface{}) {
+		fun(ice.(*webrtc.ICECandidateInit))
 	})
 }
 
 func (client *WebsocketClient) OnSDP(fun signalling.OnSDPFunc) {
-	thread.SafeLoop(client.stop, time.Millisecond*10, func() {
-		select {
-		case sdp := <-client.sdpChan:
-			fun(sdp)
-		case <-client.stop:
-			thread.TriggerStop(client.stop)
-		}
+	thread.SafeSelect(client.stop, client.sdpChan, func(sdp interface{}) {
+		fun(sdp.(*webrtc.SessionDescription))
 	})
 }
 

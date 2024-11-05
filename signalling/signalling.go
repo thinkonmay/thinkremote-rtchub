@@ -11,12 +11,12 @@ type DeviceSelection struct {
 	Framerate int    `json:"framerate"`
 }
 
-type OnIceFunc func(webrtc.ICECandidateInit)
-type OnSDPFunc func(webrtc.SessionDescription)
+type OnIceFunc func(*webrtc.ICECandidateInit)
+type OnSDPFunc func(*webrtc.SessionDescription)
 
 type Signalling interface {
-	SendSDP(webrtc.SessionDescription)
-	SendICE(webrtc.ICECandidateInit)
+	SendSDP(*webrtc.SessionDescription)
+	SendICE(*webrtc.ICECandidateInit)
 
 	OnICE(OnIceFunc)
 	OnSDP(OnSDPFunc)

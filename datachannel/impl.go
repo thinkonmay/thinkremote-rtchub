@@ -9,13 +9,13 @@ import (
 
 type Handler struct {
 	handler      func(string)
-	handle_queue chan string
+	handle_queue chan interface{}
 	stop         chan bool
 }
 
 type DatachannelGroup struct {
-	send chan string
-	recv chan string
+	send chan interface{}
+	recv chan interface{}
 	stop chan bool
 
 	mutext   *sync.Mutex
@@ -35,23 +35,19 @@ func NewDatachannel(names ...string) IDatachannel {
 
 	for _, name := range names {
 		group := &DatachannelGroup{
-			send:     make(chan string, queue_size),
-			recv:     make(chan string, queue_size),
+			send:     make(chan interface{}, queue_size),
+			recv:     make(chan interface{}, queue_size),
 			stop:     make(chan bool, 2),
 			handlers: map[string]*Handler{},
 			mutext:   &sync.Mutex{},
 		}
 
-		thread.SafeLoop(group.stop, 0, func() {
-			select {
-			case msg := <-group.recv:
-				group.mutext.Lock()
-				defer group.mutext.Unlock()
-				for _, handler := range group.handlers {
-					handler.handle_queue <- msg
-				}
-			case <-group.stop:
-				thread.TriggerStop(group.stop)
+		thread.SafeSelect(group.stop, group.recv, func(_msg interface{}) {
+			msg := _msg.(string)
+			group.mutext.Lock()
+			defer group.mutext.Unlock()
+			for _, handler := range group.handlers {
+				handler.handle_queue <- msg
 			}
 		})
 
@@ -88,17 +84,12 @@ func (dc *Datachannel) RegisterHandle(group_name string,
 	} else {
 		handler := &Handler{
 			handler:      fun,
-			handle_queue: make(chan string, queue_size),
+			handle_queue: make(chan interface{}, queue_size),
 			stop:         make(chan bool, 2),
 		}
 
-		thread.SafeLoop(handler.stop, 0, func() {
-			select {
-			case msg := <-handler.handle_queue:
-				handler.handler(msg)
-			case <-handler.stop:
-				thread.TriggerStop(handler.stop)
-			}
+		thread.SafeSelect(handler.stop, handler.handle_queue, func(_msg interface{}) {
+			handler.handler(_msg.(string))
 		})
 
 		group.mutext.Lock()
@@ -130,21 +121,11 @@ func (dc *Datachannel) RegisterConsumer(group_name string, consumer DatachannelC
 	} else if group.consumer != nil {
 		fmt.Printf("consumer for group %s available\n", group_name)
 	} else {
-		thread.SafeLoop(group.stop, 0, func() {
-			select {
-			case data := <-consumer.Recv():
-				group.recv <- data
-			case <-group.stop:
-				thread.TriggerStop(group.stop)
-			}
+		thread.SafeSelect(group.stop, consumer.Recv(), func(data interface{}) {
+			group.recv <- data
 		})
-		thread.SafeLoop(group.stop, 0, func() {
-			select {
-			case data := <-group.send:
-				consumer.Send(data)
-			case <-group.stop:
-				thread.TriggerStop(group.stop)
-			}
+		thread.SafeSelect(group.stop, group.send, func(data interface{}) {
+			consumer.Send(data.(string))
 		})
 
 		group.consumer = consumer

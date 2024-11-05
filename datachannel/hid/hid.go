@@ -22,13 +22,13 @@ const (
 )
 
 type HIDAdapter struct {
-	send chan string
+	send chan interface{}
 	recv chan string
 }
 
 func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 	ret := HIDAdapter{
-		send: make(chan string, queue_size),
+		send: make(chan interface{}, queue_size),
 		recv: make(chan string, queue_size),
 	}
 	em, err := NewEmulator()
@@ -122,7 +122,7 @@ func NewHIDSingleton(queue *proxy.Queue) datachannel.DatachannelConsumer {
 	return &ret
 }
 
-func (hid *HIDAdapter) Recv() chan string {
+func (hid *HIDAdapter) Recv() chan interface{} {
 	return hid.send
 
 }

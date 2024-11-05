@@ -15,7 +15,7 @@ const (
 
 type Manual struct {
 	In  chan string
-	Out chan string
+	Out chan interface{}
 }
 
 type ManualPacket struct {
@@ -26,7 +26,7 @@ type ManualPacket struct {
 func NewManualCtx(queue *proxy.Queue) datachannel.DatachannelConsumer {
 	ret := &Manual{
 		In:  make(chan string, queue_size),
-		Out: make(chan string, queue_size),
+		Out: make(chan interface{}, queue_size),
 	}
 
 	dat := ManualPacket{}
@@ -53,7 +53,7 @@ func NewManualCtx(queue *proxy.Queue) datachannel.DatachannelConsumer {
 }
 
 // TODO
-func (manual *Manual) Recv() chan string {
+func (manual *Manual) Recv() chan interface{} {
 	return manual.Out
 }
 func (manual *Manual) Send(msg string) {
