@@ -51,7 +51,7 @@ func (p *AudioPipeline) GetCodec() string {
 }
 
 func (p *AudioPipeline) Close() {
-	p.closed <- true
+	thread.TriggerStop(p.closed)
 }
 
 func (p *AudioPipeline) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {

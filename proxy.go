@@ -51,7 +51,7 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 			case webrtclib.ICEGatheringStateUnknown:
 			}
 		case <-proxy.stop:
-			proxy.stop <- true
+			thread.TriggerStop(proxy.stop)
 		}
 	})
 	thread.SafeLoop(proxy.stop, 0, func() {
@@ -68,7 +68,7 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 				proxy.Stop()
 			}
 		case <-proxy.stop:
-			proxy.stop <- true
+			thread.TriggerStop(proxy.stop)
 		}
 	})
 	thread.SafeLoop(proxy.stop, 0, func() {
@@ -76,7 +76,7 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 		case ice := <-proxy.webrtcClient.OnLocalICE():
 			proxy.signallingClient.SendICE(ice)
 		case <-proxy.stop:
-			proxy.stop <- true
+			thread.TriggerStop(proxy.stop)
 		}
 	})
 	thread.SafeLoop(proxy.stop, 0, func() {
@@ -84,7 +84,7 @@ func InitWebRTCProxy(grpc_conf signalling.Signalling,
 		case sdp := <-proxy.webrtcClient.OnLocalSDP():
 			proxy.signallingClient.SendSDP(sdp)
 		case <-proxy.stop:
-			proxy.stop <- true
+			thread.TriggerStop(proxy.stop)
 		}
 	})
 	proxy.signallingClient.OnICE(func(i webrtclib.ICECandidateInit) {
@@ -123,5 +123,5 @@ func (prox *Proxy) Stop() {
 	fmt.Println("proxy stopped")
 	prox.webrtcClient.Close()
 	prox.signallingClient.Stop()
-	prox.stop <- true
+	thread.TriggerStop(prox.stop)
 }

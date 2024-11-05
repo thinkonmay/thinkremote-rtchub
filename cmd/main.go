@@ -91,6 +91,8 @@ func main() {
 	handle_track := func(tr *webrtc.TrackRemote) {}
 
 	stop := make(chan bool, 2)
+	defer thread.TriggerStop(stop)
+
 	thread.SafeLoop(stop, 0, func() {
 		next := make(chan bool)
 		if signaling_client, err := http.InitHttpClient(video_url); err != nil {
@@ -144,5 +146,4 @@ func main() {
 	chann := make(chan os.Signal, 16)
 	signal.Notify(chann, syscall.SIGTERM, os.Interrupt)
 	<-chann
-	stop <- true
 }

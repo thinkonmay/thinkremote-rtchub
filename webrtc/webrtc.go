@@ -102,7 +102,7 @@ func InitWebRtcClient(track OnTrackFunc, idr OnIDRFunc, conf config.WebRTCConfig
 				}
 			}
 		case <-client.stop:
-			client.stop <- true
+			thread.TriggerStop(client.stop)
 		}
 	})
 
@@ -116,7 +116,7 @@ func InitWebRtcClient(track OnTrackFunc, idr OnIDRFunc, conf config.WebRTCConfig
 				fmt.Printf("error add ice candicate %s\n", err.Error())
 			}
 		case <-client.stop:
-			client.stop <- true
+			thread.TriggerStop(client.stop)
 		}
 	})
 
@@ -212,7 +212,7 @@ func (client *WebRTCClient) readLoopRTP(listener listener.Listener,
 	thread.SafeWait(func() bool {
 		return client.Closed
 	}, func() {
-		stop <- true
+		thread.TriggerStop(stop)
 		listener.DeregisterRTPHandler(id)
 	})
 }

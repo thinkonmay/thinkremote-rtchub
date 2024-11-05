@@ -51,7 +51,7 @@ func NewDatachannel(names ...string) IDatachannel {
 					handler.handle_queue <- msg
 				}
 			case <-group.stop:
-				group.stop <- true
+				thread.TriggerStop(group.stop)
 			}
 		})
 
@@ -97,7 +97,7 @@ func (dc *Datachannel) RegisterHandle(group_name string,
 			case msg := <-handler.handle_queue:
 				handler.handler(msg)
 			case <-handler.stop:
-				handler.stop <- true
+				thread.TriggerStop(group.stop)
 			}
 		})
 
@@ -119,7 +119,7 @@ func (dc *Datachannel) DeregisterHandle(group_name string, id string) {
 	if handler, found := group.handlers[id]; !found {
 		fmt.Printf("no handler name %s available\n", id)
 	} else {
-		go func() { handler.stop <- true }()
+		thread.TriggerStop(handler.stop)
 		delete(group.handlers, id)
 	}
 }
@@ -135,7 +135,7 @@ func (dc *Datachannel) RegisterConsumer(group_name string, consumer DatachannelC
 			case data := <-consumer.Recv():
 				group.recv <- data
 			case <-group.stop:
-				group.stop <- true
+				thread.TriggerStop(group.stop)
 			}
 		})
 		thread.SafeLoop(group.stop, 0, func() {
@@ -143,7 +143,7 @@ func (dc *Datachannel) RegisterConsumer(group_name string, consumer DatachannelC
 			case data := <-group.send:
 				consumer.Send(data)
 			case <-group.stop:
-				group.stop <- true
+				thread.TriggerStop(group.stop)
 			}
 		})
 
@@ -155,6 +155,6 @@ func (dc *Datachannel) DeregisterConsumer(group_name string) {
 	if group, found := dc.groups[group_name]; !found {
 		fmt.Printf("no group name %s available\n", group_name)
 	} else {
-		group.stop <- true
+		thread.TriggerStop(group.stop)
 	}
 }

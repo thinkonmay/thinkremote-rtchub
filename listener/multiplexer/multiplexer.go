@@ -79,7 +79,7 @@ func (p *Multiplexer) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {
 		case buffer := <-handler.buffer:
 			handler.handler(buffer)
 		case <-handler.stop:
-			handler.stop <- true
+			thread.TriggerStop(handler.stop)
 		}
 	})
 
@@ -92,7 +92,7 @@ func (p *Multiplexer) DeregisterRTPHandler(id string) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	if handler, found := p.handler[id]; found {
-		handler.stop <- true
+		thread.TriggerStop(handler.stop)
 		delete(p.handler, id)
 	}
 }

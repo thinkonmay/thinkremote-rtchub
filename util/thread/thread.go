@@ -48,6 +48,14 @@ func SafeWait(pass_condition func() bool, exe func()) chan error {
 	return ret
 }
 
+func TriggerStop(stop chan bool) {
+	if len(stop) > 0 {
+		return
+	}
+
+	stop <- true
+}
+
 func SafeLoop(stop chan bool, sleep_period time.Duration, fun func()) {
 	loop := func() {
 		defer func() {

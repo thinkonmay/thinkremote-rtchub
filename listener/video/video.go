@@ -60,7 +60,7 @@ func (p *VideoPipeline) GetCodec() string {
 }
 
 func (p *VideoPipeline) Close() {
-	p.closed <- true
+	thread.TriggerStop(p.closed)
 }
 
 func (p *VideoPipeline) RegisterRTPHandler(id string, fun func(pkt *rtp.Packet)) {

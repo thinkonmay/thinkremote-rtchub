@@ -75,7 +75,7 @@ func InitHttpClient(AddressStr string) (_ signalling.Signalling, err error) {
 				fmt.Println("Unknown packet")
 			}
 		case <-client.stop:
-			client.stop <- true
+			thread.TriggerStop(client.stop)
 		}
 	})
 
@@ -99,7 +99,7 @@ func InitHttpClient(AddressStr string) (_ signalling.Signalling, err error) {
 	})
 
 	client.WaitForEnd(func() {
-		client.stop <- true
+		thread.TriggerStop(client.stop)
 	})
 
 	return client, nil
@@ -140,7 +140,7 @@ func (client *WebsocketClient) OnICE(fun signalling.OnIceFunc) {
 		case ice := <-client.iceChan:
 			fun(ice)
 		case <-client.stop:
-			client.stop <- true
+			thread.TriggerStop(client.stop)
 		}
 	})
 }
@@ -151,7 +151,7 @@ func (client *WebsocketClient) OnSDP(fun signalling.OnSDPFunc) {
 		case sdp := <-client.sdpChan:
 			fun(sdp)
 		case <-client.stop:
-			client.stop <- true
+			thread.TriggerStop(client.stop)
 		}
 	})
 }
