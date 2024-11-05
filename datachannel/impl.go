@@ -108,15 +108,18 @@ func (dc *Datachannel) RegisterHandle(group_name string,
 }
 
 func (dc *Datachannel) DeregisterHandle(group_name string, id string) {
-	if group, found := dc.groups[group_name]; !found {
+	group, found := dc.groups[group_name]
+	if !found {
 		fmt.Printf("no group name %s available\n", group_name)
-	} else if handler, found := group.handlers[id]; !found {
+		return
+	}
+
+	group.mutext.Lock()
+	defer group.mutext.Unlock()
+	if handler, found := group.handlers[id]; !found {
 		fmt.Printf("no handler name %s available\n", id)
 	} else {
 		handler.stop <- true
-
-		group.mutext.Lock()
-		defer group.mutext.Unlock()
 		delete(group.handlers, id)
 	}
 }
