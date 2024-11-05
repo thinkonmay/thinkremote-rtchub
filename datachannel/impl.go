@@ -97,7 +97,7 @@ func (dc *Datachannel) RegisterHandle(group_name string,
 			case msg := <-handler.handle_queue:
 				handler.handler(msg)
 			case <-handler.stop:
-				thread.TriggerStop(group.stop)
+				thread.TriggerStop(handler.stop)
 			}
 		})
 

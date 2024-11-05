@@ -53,7 +53,7 @@ func TriggerStop(stop chan bool) {
 		return
 	}
 
-	go func() { stop <- true }()
+	stop <- true
 }
 
 func SafeLoop(stop chan bool, sleep_period time.Duration, fun func()) {
