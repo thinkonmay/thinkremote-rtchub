@@ -1,6 +1,7 @@
 package video
 
 import (
+	"fmt"
 	"sync"
 	"time"
 	"unsafe"
@@ -41,6 +42,7 @@ func CreatePipeline(queue *proxy.Queue) (listener.Listener,
 
 	buffer := make([]byte, 1024*1024) //1MB
 	local_index := queue.CurrentIndex()
+	firsttime := true
 	thread.HighPriorityLoop(pipeline.closed, func() {
 		for local_index >= queue.CurrentIndex() {
 			time.Sleep(time.Microsecond * 100)
@@ -50,6 +52,12 @@ func CreatePipeline(queue *proxy.Queue) (listener.Listener,
 		if size, duration := queue.Copy(buffer, local_index); size > len(buffer) {
 		} else {
 			pipeline.Multiplexer.Send(buffer[:size], uint32(time.Duration(duration).Seconds()*pipeline.clockRate))
+		}
+
+
+		if firsttime {
+			fmt.Println("capturing video")
+			firsttime = false
 		}
 	})
 	return pipeline, nil
